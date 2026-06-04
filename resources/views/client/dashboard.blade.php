@@ -13,79 +13,110 @@
     @endif
 
     <div class="card">
-    <h3>Balance Status</h3>
+        <h3>Balance Status</h3>
 
-    <p>
-        Current Balance:
-        @if($balance >= 0)
-            <strong style="color:#22c55e;">৳{{ number_format($balance, 2) }}</strong>
-        @else
-            <strong style="color:#ef4444;">-৳{{ number_format(abs($balance), 2) }}</strong>
-        @endif
-    </p>
+        <p>
+            Current Balance:
+            @if($balance >= 0)
+                <strong style="color:#22c55e;">৳{{ number_format($balance, 2) }}</strong>
+            @else
+                <strong style="color:#ef4444;">-৳{{ number_format(abs($balance), 2) }}</strong>
+            @endif
+        </p>
 
-    @php
-        $balancePercent = $approvedPayments > 0
-            ? max(0, min(100, ($balance / $approvedPayments) * 100))
-            : 0;
-    @endphp
+        @php
+            $balancePercent = $approvedPayments > 0
+                ? max(0, min(100, ($balance / $approvedPayments) * 100))
+                : 0;
+        @endphp
 
-    <div style="
-        width:100%;
-        height:16px;
-        background:rgba(255,255,255,.10);
-        border-radius:20px;
-        overflow:hidden;
-        border:1px solid rgba(255,255,255,.16);
-    ">
-        <div style="
-            width:{{ $balancePercent }}%;
-            height:100%;
-            background:{{ $balance < 5000 ? '#ef4444' : '#22c55e' }};
-        "></div>
+        <div style="width:100%; height:16px; background:rgba(255,255,255,.10); border-radius:20px; overflow:hidden; border:1px solid rgba(255,255,255,.16);">
+            <div style="width:{{ $balancePercent }}%; height:100%; background:{{ $balance < 5000 ? '#ef4444' : '#22c55e' }};"></div>
+        </div>
+
+        <p style="margin-top:10px;">
+            Used: ৳{{ number_format($totalSpendBdt, 2) }} /
+            Paid: ৳{{ number_format($approvedPayments, 2) }}
+        </p>
     </div>
 
-    <p style="margin-top:10px;">
-        Used: ৳{{ number_format($totalSpendBdt, 2) }} /
-        Paid: ৳{{ number_format($approvedPayments, 2) }}
-    </p>
-</div>
+    <div class="card">
+        <h3>Business Summary</h3>
 
-<div class="card">
-    <h3>Last 7 Days Spend & Orders</h3>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <p>Total Spend USD</p>
+                <h2>${{ number_format($totalSpendUsd, 2) }}</h2>
+            </div>
 
-    @if($monthlyReports->count())
-        <table>
-            <tr>
-                <th>Date</th>
-                <th>Spend</th>
-                <th>Orders</th>
-                <th>Spend Bar</th>
-            </tr>
+            <div class="stat-card">
+                <p>Total Spend BDT</p>
+                <h2>৳{{ number_format($totalSpendBdt, 2) }}</h2>
+            </div>
 
-            @foreach($monthlyReports as $report)
-                <tr>
-                    <td>{{ $report->date }}</td>
-                    <td>${{ number_format($report->spend, 2) }}</td>
-                    <td>{{ $report->orders }}</td>
-                    <td>
-                        <div style="width:100%; height:12px; background:rgba(255,255,255,.10); border-radius:20px; overflow:hidden;">
-                            <div style="
-                                width:{{ min(100, $report->spend * 2) }}%;
-                                height:100%;
-                                background:linear-gradient(90deg, #2f8cff, #42e8ff);
-                            "></div>
-                        </div>
-                    </td>
-                </tr>
-            @endforeach
-        </table>
-    @else
-        <div style="text-align:center; padding:40px; color:#94a3b8;">
-            No chart data found.
+            <div class="stat-card">
+                <p>Total Orders</p>
+                <h2>{{ number_format($totalOrders) }}</h2>
+            </div>
+
+            <div class="stat-card">
+                <p>Avg Cost / Order</p>
+                <h2>৳{{ number_format($avgCostPerOrder, 2) }}</h2>
+            </div>
+
+            <div class="stat-card">
+                <p>Total Paid</p>
+                <h2 style="color:#22c55e;">৳{{ number_format($approvedPayments, 2) }}</h2>
+            </div>
+
+            <div class="stat-card">
+                <p>Pending Payment</p>
+                <h2 style="color:#f59e0b;">৳{{ number_format($pendingPayments, 2) }}</h2>
+            </div>
+
+            <div class="stat-card">
+                <p>Current Due</p>
+                <h2 style="color:#ef4444;">৳{{ number_format(max(0, $currentDue), 2) }}</h2>
+            </div>
+
+            <div class="stat-card">
+                <p>Payment Coverage</p>
+                <h2>{{ number_format($paymentCoverage, 1) }}%</h2>
+            </div>
         </div>
-    @endif
-</div>
+    </div>
+
+    <div class="card">
+        <h3>Last 7 Days Spend & Orders</h3>
+
+        @if($monthlyReports->count())
+            <table>
+                <tr>
+                    <th>Date</th>
+                    <th>Spend</th>
+                    <th>Orders</th>
+                    <th>Spend Bar</th>
+                </tr>
+
+                @foreach($monthlyReports as $report)
+                    <tr>
+                        <td>{{ $report->date }}</td>
+                        <td>${{ number_format($report->spend, 2) }}</td>
+                        <td>{{ $report->orders }}</td>
+                        <td>
+                            <div style="width:100%; height:12px; background:rgba(255,255,255,.10); border-radius:20px; overflow:hidden;">
+                                <div style="width:{{ min(100, $report->spend * 2) }}%; height:100%; background:linear-gradient(90deg, #2f8cff, #42e8ff);"></div>
+                            </div>
+                        </td>
+                    </tr>
+                @endforeach
+            </table>
+        @else
+            <div style="text-align:center; padding:40px; color:#94a3b8;">
+                No chart data found.
+            </div>
+        @endif
+    </div>
 
     <div class="stats-grid">
         <div class="stat-card">
@@ -118,6 +149,7 @@
     <div class="card">
         <a class="btn" href="/client/payments/create">Submit Payment</a>
         <a class="btn" href="/client/payments">Payment History</a>
+        <a class="btn" href="/client/invoices">My Invoices</a>
     </div>
 
     <div class="card">
@@ -145,62 +177,6 @@
             </div>
         @endif
     </div>
-
-    <div class="card">
-    <h3>Business Summary</h3>
-
-    <div class="stats-grid">
-
-        <div class="stat-card">
-            <p>Total Spend (USD)</p>
-            <h2>${{ number_format($totalSpendUsd, 2) }}</h2>
-        </div>
-
-        <div class="stat-card">
-            <p>Total Spend (BDT)</p>
-            <h2>৳{{ number_format($totalSpendBdt, 2) }}</h2>
-        </div>
-
-        <div class="stat-card">
-            <p>Total Orders</p>
-            <h2>{{ number_format($totalOrders) }}</h2>
-        </div>
-
-        <div class="stat-card">
-            <p>Cost Per Order</p>
-            <h2>৳{{ number_format($avgCostPerOrder, 2) }}</h2>
-        </div>
-
-        <div class="stat-card">
-            <p>Total Paid</p>
-            <h2 style="color:#22c55e;">
-                ৳{{ number_format($approvedPayments, 2) }}
-            </h2>
-        </div>
-
-        <div class="stat-card">
-            <p>Pending Payment</p>
-            <h2 style="color:#f59e0b;">
-                ৳{{ number_format($pendingPayments, 2) }}
-            </h2>
-        </div>
-
-        <div class="stat-card">
-            <p>Current Due</p>
-            <h2 style="color:#ef4444;">
-                ৳{{ number_format(max(0, $currentDue), 2) }}
-            </h2>
-        </div>
-
-        <div class="stat-card">
-            <p>Payment Coverage</p>
-            <h2>
-                {{ number_format($paymentCoverage, 1) }}%
-            </h2>
-        </div>
-
-    </div>
-</div>
 
     <div class="card">
         <h3>Recent Reports</h3>
@@ -233,6 +209,7 @@
 
         <table>
             <tr>
+                <th>Invoice No</th>
                 <th>Amount</th>
                 <th>Method</th>
                 <th>Status</th>
@@ -242,6 +219,13 @@
 
             @forelse($recentPayments as $payment)
                 <tr>
+                    <td>
+                        @if($payment->invoice)
+                            {{ $payment->invoice->invoice_number }}
+                        @else
+                            -
+                        @endif
+                    </td>
                     <td>৳{{ number_format($payment->amount, 2) }}</td>
                     <td>{{ $payment->payment_method }}</td>
                     <td>
@@ -253,18 +237,12 @@
                             <span class="badge badge-danger">Rejected</span>
                         @endif
                     </td>
-                    <td>
-                        @if($payment->status === 'rejected')
-                            {{ $payment->reject_reason }}
-                        @else
-                            -
-                        @endif
-                    </td>
+                    <td>{{ $payment->status === 'rejected' ? $payment->reject_reason : '-' }}</td>
                     <td>{{ $payment->created_at }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="5">No payments found.</td>
+                    <td colspan="6">No payments found.</td>
                 </tr>
             @endforelse
         </table>
