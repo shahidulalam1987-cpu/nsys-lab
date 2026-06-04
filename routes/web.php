@@ -80,6 +80,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
 Route::middleware(['auth', 'client', 'client.status'])->group(function () {
     Route::get('/client/dashboard', [ClientDashboardController::class, 'index']);
+    Route::get('/client/statement', [ClientDashboardController::class, 'statement']);
 
     Route::get('/client/payments', [ClientPaymentController::class, 'index']);
     Route::get('/client/payments/create', [ClientPaymentController::class, 'create']);

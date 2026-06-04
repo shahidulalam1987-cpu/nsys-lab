@@ -271,6 +271,7 @@
     </div>
 
     <a class="{{ request()->is('client/dashboard') ? 'active-menu' : '' }}" href="/client/dashboard">Dashboard</a>
+    <a class="{{ request()->is('client/statement') ? 'active-menu' : '' }}" href="/client/statement">Statement</a>
     <a class="{{ request()->is('client/payments') ? 'active-menu' : '' }}" href="/client/payments">Payment History</a>
     <a class="{{ request()->is('client/payments/create') ? 'active-menu' : '' }}" href="/client/payments/create">Submit Payment</a>
     <a class="{{ request()->is('client/invoices*') ? 'active-menu' : '' }}" href="/client/invoices">Invoices</a>
