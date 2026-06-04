@@ -5,38 +5,37 @@
 
     <p>{{ $client->company_name }} | Today: {{ $today }}</p>
 
-    @if($balance < 5000)
+    @if($availableBalance < 5000)
         <div class="card" style="border-color:#ef4444;">
             <h3 style="color:#ef4444;">Low Balance Warning</h3>
-            <p>Your current balance is low. Please submit a payment.</p>
+            <p>Your available balance is low. Please submit a payment.</p>
         </div>
     @endif
 
     <div class="card">
         <h3>Balance Status</h3>
 
-        <p>
-            Current Balance:
-            @if($balance >= 0)
-                <strong style="color:#22c55e;">৳{{ number_format($balance, 2) }}</strong>
-            @else
-                <strong style="color:#ef4444;">-৳{{ number_format(abs($balance), 2) }}</strong>
-            @endif
-        </p>
-
         @php
             $balancePercent = $approvedPayments > 0
-                ? max(0, min(100, ($balance / $approvedPayments) * 100))
+                ? max(0, min(100, ($availableBalance / $approvedPayments) * 100))
                 : 0;
         @endphp
 
         <div style="width:100%; height:16px; background:rgba(255,255,255,.10); border-radius:20px; overflow:hidden; border:1px solid rgba(255,255,255,.16);">
-            <div style="width:{{ $balancePercent }}%; height:100%; background:{{ $balance < 5000 ? '#ef4444' : '#22c55e' }};"></div>
+            <div style="width:{{ $balancePercent }}%; height:100%; background:{{ $availableBalance < 5000 ? '#ef4444' : '#22c55e' }};"></div>
         </div>
 
         <p style="margin-top:10px;">
-            Used: ৳{{ number_format($totalSpendBdt, 2) }} /
-            Paid: ৳{{ number_format($approvedPayments, 2) }}
+            Used: BDT {{ number_format($totalSpendBdt, 2) }} /
+            Paid: BDT {{ number_format($approvedPayments, 2) }}
+        </p>
+
+        <p>
+            Current Due:
+            <strong style="color:#ef4444;">BDT {{ number_format($currentDue, 2) }}</strong>
+            <br>
+            Available Balance:
+            <strong style="color:#22c55e;">BDT {{ number_format($availableBalance, 2) }}</strong>
         </p>
     </div>
 
@@ -51,7 +50,7 @@
 
             <div class="stat-card">
                 <p>Total Spend BDT</p>
-                <h2>৳{{ number_format($totalSpendBdt, 2) }}</h2>
+                <h2>BDT {{ number_format($totalSpendBdt, 2) }}</h2>
             </div>
 
             <div class="stat-card">
@@ -61,22 +60,22 @@
 
             <div class="stat-card">
                 <p>Avg Cost / Order</p>
-                <h2>৳{{ number_format($avgCostPerOrder, 2) }}</h2>
+                <h2>BDT {{ number_format($avgCostPerOrder, 2) }}</h2>
             </div>
 
             <div class="stat-card">
                 <p>Total Paid</p>
-                <h2 style="color:#22c55e;">৳{{ number_format($approvedPayments, 2) }}</h2>
+                <h2 style="color:#22c55e;">BDT {{ number_format($approvedPayments, 2) }}</h2>
             </div>
 
             <div class="stat-card">
                 <p>Pending Payment</p>
-                <h2 style="color:#f59e0b;">৳{{ number_format($pendingPayments, 2) }}</h2>
+                <h2 style="color:#f59e0b;">BDT {{ number_format($pendingPayments, 2) }}</h2>
             </div>
 
             <div class="stat-card">
                 <p>Current Due</p>
-                <h2 style="color:#ef4444;">৳{{ number_format(max(0, $currentDue), 2) }}</h2>
+                <h2 style="color:#ef4444;">BDT {{ number_format($currentDue, 2) }}</h2>
             </div>
 
             <div class="stat-card">
@@ -131,18 +130,12 @@
 
         <div class="stat-card">
             <p>Approved Payment</p>
-            <h2>৳{{ number_format($approvedPayments, 2) }}</h2>
+            <h2>BDT {{ number_format($approvedPayments, 2) }}</h2>
         </div>
 
         <div class="stat-card">
-            <p>Current Balance</p>
-            <h2>
-                @if($balance >= 0)
-                    +৳{{ number_format($balance, 2) }}
-                @else
-                    -৳{{ number_format(abs($balance), 2) }}
-                @endif
-            </h2>
+            <p>Available Balance</p>
+            <h2>BDT {{ number_format($availableBalance, 2) }}</h2>
         </div>
     </div>
 
@@ -150,6 +143,7 @@
         <a class="btn" href="/client/payments/create">Submit Payment</a>
         <a class="btn" href="/client/payments">Payment History</a>
         <a class="btn" href="/client/invoices">My Invoices</a>
+        <a class="btn" href="/client/statement">Statement</a>
     </div>
 
     <div class="card">
@@ -226,7 +220,7 @@
                             -
                         @endif
                     </td>
-                    <td>৳{{ number_format($payment->amount, 2) }}</td>
+                    <td>BDT {{ number_format($payment->amount, 2) }}</td>
                     <td>{{ $payment->payment_method }}</td>
                     <td>
                         @if($payment->status == 'approved')

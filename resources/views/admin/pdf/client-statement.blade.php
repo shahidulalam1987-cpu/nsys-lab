@@ -7,14 +7,14 @@
     <style>
         body {
             font-family: DejaVu Sans, sans-serif;
-            font-size: 12px;
+            font-size: 11px;
             color: #111827;
         }
 
         .header {
             border-bottom: 2px solid #2563eb;
-            padding-bottom: 15px;
-            margin-bottom: 20px;
+            padding-bottom: 14px;
+            margin-bottom: 18px;
         }
 
         .brand {
@@ -28,7 +28,7 @@
         }
 
         h2 {
-            margin-top: 25px;
+            margin-top: 22px;
             color: #111827;
         }
 
@@ -45,7 +45,8 @@
 
         th, td {
             border: 1px solid #d1d5db;
-            padding: 8px;
+            padding: 7px;
+            vertical-align: top;
         }
 
         .summary td {
@@ -63,8 +64,8 @@
         }
 
         .footer {
-            margin-top: 30px;
-            font-size: 11px;
+            margin-top: 28px;
+            font-size: 10px;
             color: #6b7280;
             text-align: center;
         }
@@ -83,95 +84,76 @@
         <tr>
             <th>Client Name</th>
             <td>{{ $client->company_name }}</td>
-        </tr>
-        <tr>
             <th>Phone</th>
-            <td>{{ $client->phone }}</td>
+            <td>{{ $client->phone ?: 'N/A' }}</td>
         </tr>
         <tr>
             <th>Client Rate</th>
-            <td>{{ $client->client_rate }}</td>
-        </tr>
-        <tr>
+            <td>BDT {{ number_format($summary['client_rate'], 2) }}</td>
             <th>Buy Rate</th>
-            <td>{{ $client->buy_rate }}</td>
+            <td>BDT {{ number_format($summary['buy_rate'], 2) }}</td>
         </tr>
         <tr>
             <th>Status</th>
-            <td>{{ ucfirst($client->status) }}</td>
+            <td colspan="3">{{ ucfirst($client->status) }}</td>
         </tr>
     </table>
 
     <h2>Financial Summary</h2>
     <table class="summary">
         <tr>
-            <th>Approved Payment</th>
             <th>Total Spend USD</th>
-            <th>Total Spend BDT</th>
-            <th>Balance</th>
+            <th>Total Debit</th>
+            <th>Total Credit</th>
+            <th>Current Due</th>
+            <th>Available Balance</th>
+            <th>Profit</th>
         </tr>
         <tr>
-            <td>BDT {{ number_format($approvedPayment, 2) }}</td>
-            <td>USD {{ number_format($totalDollarSpend, 2) }}</td>
-            <td>BDT {{ number_format($totalSpendBdt, 2) }}</td>
-            <td>
-                @if($balance >= 0)
-                    <span class="positive">BDT {{ number_format($balance, 2) }}</span>
-                @else
-                    <span class="negative">-BDT {{ number_format(abs($balance), 2) }}</span>
-                @endif
-            </td>
+            <td>USD {{ number_format($summary['total_spend_usd'], 2) }}</td>
+            <td>BDT {{ number_format($summary['total_debit'], 2) }}</td>
+            <td>BDT {{ number_format($summary['total_credit'], 2) }}</td>
+            <td class="negative">BDT {{ number_format($summary['current_due'], 2) }}</td>
+            <td class="positive">BDT {{ number_format($summary['available_balance'], 2) }}</td>
+            <td>BDT {{ number_format($summary['profit'], 2) }}</td>
         </tr>
     </table>
 
-    <h2>Payment History</h2>
+    <h2>Ledger</h2>
     <table>
         <tr>
-            <th>ID</th>
-            <th>Amount</th>
-            <th>Method</th>
-            <th>Transaction ID</th>
-            <th>Status</th>
             <th>Date</th>
-        </tr>
-
-        @forelse($payments as $payment)
-            <tr>
-                <td>{{ $payment->id }}</td>
-                <td>BDT {{ number_format($payment->amount, 2) }}</td>
-                <td>{{ $payment->payment_method }}</td>
-                <td>{{ $payment->transaction_id }}</td>
-                <td>{{ ucfirst($payment->status) }}</td>
-                <td>{{ $payment->created_at }}</td>
-            </tr>
-        @empty
-            <tr>
-                <td colspan="6">No payment history found.</td>
-            </tr>
-        @endforelse
-    </table>
-
-    <h2>Daily Report History</h2>
-    <table>
-        <tr>
-            <th>ID</th>
-            <th>Date</th>
+            <th>Type</th>
             <th>Page</th>
-            <th>Spend USD</th>
+            <th>Invoice</th>
             <th>Orders</th>
+            <th>Spend USD</th>
+            <th>Debit</th>
+            <th>Credit</th>
+            <th>Running Due Balance</th>
         </tr>
 
-        @forelse($reports as $report)
+        @forelse($ledger['rows'] as $row)
             <tr>
-                <td>{{ $report->id }}</td>
-                <td>{{ $report->report_date }}</td>
-                <td>{{ $report->page_name }}</td>
-                <td>USD {{ number_format($report->dollar_spend, 2) }}</td>
-                <td>{{ $report->orders }}</td>
+                <td>{{ $row['date'] }}</td>
+                <td>{{ $row['transaction_type'] }}</td>
+                <td>{{ $row['page'] }}</td>
+                <td>{{ $row['invoice_number'] ?: '-' }}</td>
+                <td>{{ $row['orders'] ?? '-' }}</td>
+                <td>{{ $row['spend_usd'] !== null ? 'USD ' . number_format($row['spend_usd'], 2) : '-' }}</td>
+                <td>BDT {{ number_format($row['debit'], 2) }}</td>
+                <td>BDT {{ number_format($row['credit'], 2) }}</td>
+                <td>
+                    @if($row['running_balance'] >= 0)
+                        BDT {{ number_format($row['running_balance'], 2) }}
+                    @else
+                        -BDT {{ number_format(abs($row['running_balance']), 2) }}
+                    @endif
+                </td>
             </tr>
         @empty
             <tr>
-                <td colspan="5">No report history found.</td>
+                <td colspan="9">No ledger entries found.</td>
             </tr>
         @endforelse
     </table>

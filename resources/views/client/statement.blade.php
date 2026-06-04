@@ -43,14 +43,8 @@
         </div>
 
         <div class="stat-card">
-            <p>Current Balance</p>
-            <h2>
-                @if($currentBalance >= 0)
-                    BDT {{ number_format($currentBalance, 2) }}
-                @else
-                    -BDT {{ number_format(abs($currentBalance), 2) }}
-                @endif
-            </h2>
+            <p>Available Balance</p>
+            <h2 style="color:#22c55e;">BDT {{ number_format($availableBalance, 2) }}</h2>
         </div>
     </div>
 
@@ -63,9 +57,10 @@
                     <th>Date</th>
                     <th>Transaction Type</th>
                     <th>Page</th>
+                    <th>Invoice</th>
                     <th>Debit</th>
                     <th>Credit</th>
-                    <th>Running Balance</th>
+                    <th>Running Due Balance</th>
                 </tr>
 
                 @forelse($ledgerRows as $row)
@@ -73,6 +68,7 @@
                         <td>{{ $row['date'] }}</td>
                         <td>{{ $row['transaction_type'] }}</td>
                         <td>{{ $row['page'] }}</td>
+                        <td>{{ $row['invoice_number'] ?: '-' }}</td>
                         <td>BDT {{ number_format($row['debit'], 2) }}</td>
                         <td>BDT {{ number_format($row['credit'], 2) }}</td>
                         <td>
@@ -85,7 +81,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" style="text-align:center; padding:32px;">No statement records found.</td>
+                        <td colspan="7" style="text-align:center; padding:32px;">No statement records found.</td>
                     </tr>
                 @endforelse
             </table>

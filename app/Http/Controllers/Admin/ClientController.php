@@ -5,11 +5,12 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\User;
+use App\Services\ClientLedgerService;
 use Illuminate\Http\Request;
 
 class ClientController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, ClientLedgerService $ledgerService)
     {
         $query = Client::with(['payments', 'dailyReports']);
 
@@ -28,23 +29,15 @@ class ClientController extends Controller
         $clients = $query->latest()->get();
 
         foreach ($clients as $client) {
-            $totalPayment = $client->payments
-                ->where('status', 'approved')
-                ->sum('amount');
+            $summary = $ledgerService->build($client)['summary'];
 
-            $totalDollarSpend = $client->dailyReports->sum('dollar_spend');
-            $totalOrders = $client->dailyReports->sum('orders');
-
-            $totalSpendBdt = $totalDollarSpend * $client->client_rate;
-            $totalProfit = $totalDollarSpend * ($client->client_rate - $client->buy_rate);
-            $balance = $totalPayment - $totalSpendBdt;
-
-            $client->total_payment = $totalPayment;
-            $client->total_dollar_spend = $totalDollarSpend;
-            $client->total_orders = $totalOrders;
-            $client->total_spend_bdt = $totalSpendBdt;
-            $client->total_profit = $totalProfit;
-            $client->balance = $balance;
+            $client->total_payment = $summary['total_credit'];
+            $client->total_dollar_spend = $summary['total_spend_usd'];
+            $client->total_orders = $summary['total_orders'];
+            $client->total_spend_bdt = $summary['total_debit'];
+            $client->total_profit = $summary['profit'];
+            $client->current_due = $summary['current_due'];
+            $client->available_balance = $summary['available_balance'];
         }
 
         return view('admin.clients.index', compact('clients'));

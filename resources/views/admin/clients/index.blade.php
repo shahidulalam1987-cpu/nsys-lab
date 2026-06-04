@@ -34,42 +34,38 @@
                 <th>Spend USD</th>
                 <th>Spend BDT</th>
                 <th>Orders</th>
-                <th>Balance</th>
+                <th>Current Due</th>
+                <th>Available Balance</th>
                 <th>Profit</th>
                 <th>Status</th>
             </tr>
 
             @foreach($clients as $client)
-            <tr>
-                <td>{{ $client->id }}</td>
-                <td>
-                    <a href="/admin/clients/{{ $client->id }}">
-                        {{ $client->company_name }}
-                    </a>
-                </td>
-                <td>{{ $client->phone }}</td>
-                <td>৳{{ number_format($client->total_payment, 2) }}</td>
-                <td>${{ number_format($client->total_dollar_spend, 2) }}</td>
-                <td>৳{{ number_format($client->total_spend_bdt, 2) }}</td>
-                <td>{{ $client->total_orders }}</td>
-                <td>
-                    @if($client->balance >= 0)
-                        +৳{{ number_format($client->balance, 2) }}
-                    @else
-                        -৳{{ number_format(abs($client->balance), 2) }}
-                    @endif
-                </td>
-                <td>৳{{ number_format($client->total_profit, 2) }}</td>
-                <td>
-    @if($client->status == 'active')
-        <span class="badge badge-success">Active</span>
-    @elseif($client->status == 'pending')
-        <span class="badge badge-warning">Pending</span>
-    @else
-        <span class="badge badge-danger">Inactive</span>
-    @endif
-</td>
-            </tr>
+                <tr>
+                    <td>{{ $client->id }}</td>
+                    <td>
+                        <a href="/admin/clients/{{ $client->id }}">
+                            {{ $client->company_name }}
+                        </a>
+                    </td>
+                    <td>{{ $client->phone }}</td>
+                    <td>BDT {{ number_format($client->total_payment, 2) }}</td>
+                    <td>${{ number_format($client->total_dollar_spend, 2) }}</td>
+                    <td>BDT {{ number_format($client->total_spend_bdt, 2) }}</td>
+                    <td>{{ $client->total_orders }}</td>
+                    <td>BDT {{ number_format($client->current_due, 2) }}</td>
+                    <td>BDT {{ number_format($client->available_balance, 2) }}</td>
+                    <td>BDT {{ number_format($client->total_profit, 2) }}</td>
+                    <td>
+                        @if($client->status == 'active')
+                            <span class="badge badge-success">Active</span>
+                        @elseif($client->status == 'pending')
+                            <span class="badge badge-warning">Pending</span>
+                        @else
+                            <span class="badge badge-danger">Inactive</span>
+                        @endif
+                    </td>
+                </tr>
             @endforeach
         </table>
     </div>

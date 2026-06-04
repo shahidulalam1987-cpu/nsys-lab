@@ -23,8 +23,8 @@
                 <span class="badge badge-danger">Inactive</span>
             @endif
         </p>
-        <p><strong>Client Rate:</strong> {{ $client->client_rate }}</p>
-        <p><strong>Buy Rate:</strong> {{ $client->buy_rate }}</p>
+        <p><strong>Client Rate:</strong> BDT {{ number_format($summary['client_rate'], 2) }}</p>
+        <p><strong>Buy Rate:</strong> BDT {{ number_format($summary['buy_rate'], 2) }}</p>
     </div>
 
     <div class="card">
@@ -38,25 +38,59 @@
                 <th>Total Revenue</th>
                 <th>Total Cost</th>
                 <th>Total Orders</th>
-                <th>Balance</th>
+                <th>Current Due</th>
+                <th>Available Balance</th>
                 <th>Profit</th>
             </tr>
             <tr>
-                <td>৳{{ number_format($approvedPayment, 2) }}</td>
-                <td>৳{{ number_format($pendingPayment, 2) }}</td>
-                <td>${{ number_format($totalDollarSpend, 2) }}</td>
-                <td>৳{{ number_format($totalRevenue, 2) }}</td>
-                <td>৳{{ number_format($totalCost, 2) }}</td>
-                <td>{{ $totalOrders }}</td>
-                <td>
-                    @if($balance >= 0)
-                        <span class="badge badge-success">+৳{{ number_format($balance, 2) }}</span>
-                    @else
-                        <span class="badge badge-danger">-৳{{ number_format(abs($balance), 2) }}</span>
-                    @endif
-                </td>
-                <td>৳{{ number_format($totalProfit, 2) }}</td>
+                <td>BDT {{ number_format($summary['total_credit'], 2) }}</td>
+                <td>BDT {{ number_format($summary['pending_payment'], 2) }}</td>
+                <td>${{ number_format($summary['total_spend_usd'], 2) }}</td>
+                <td>BDT {{ number_format($summary['total_revenue'], 2) }}</td>
+                <td>BDT {{ number_format($summary['total_cost'], 2) }}</td>
+                <td>{{ $summary['total_orders'] }}</td>
+                <td><span class="badge badge-danger">BDT {{ number_format($summary['current_due'], 2) }}</span></td>
+                <td><span class="badge badge-success">BDT {{ number_format($summary['available_balance'], 2) }}</span></td>
+                <td>BDT {{ number_format($summary['profit'], 2) }}</td>
             </tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Ledger</h2>
+
+        <table>
+            <tr>
+                <th>Date</th>
+                <th>Transaction Type</th>
+                <th>Page</th>
+                <th>Invoice</th>
+                <th>Debit</th>
+                <th>Credit</th>
+                <th>Running Due Balance</th>
+            </tr>
+
+            @forelse($ledger['rows'] as $row)
+                <tr>
+                    <td>{{ $row['date'] }}</td>
+                    <td>{{ $row['transaction_type'] }}</td>
+                    <td>{{ $row['page'] }}</td>
+                    <td>{{ $row['invoice_number'] ?: '-' }}</td>
+                    <td>BDT {{ number_format($row['debit'], 2) }}</td>
+                    <td>BDT {{ number_format($row['credit'], 2) }}</td>
+                    <td>
+                        @if($row['running_balance'] >= 0)
+                            BDT {{ number_format($row['running_balance'], 2) }}
+                        @else
+                            -BDT {{ number_format(abs($row['running_balance']), 2) }}
+                        @endif
+                    </td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="7">No ledger entries found.</td>
+                </tr>
+            @endforelse
         </table>
     </div>
 
@@ -94,6 +128,7 @@
         <table>
             <tr>
                 <th>ID</th>
+                <th>Invoice</th>
                 <th>Amount</th>
                 <th>Method</th>
                 <th>Transaction ID</th>
@@ -106,7 +141,8 @@
             @forelse($payments->take(10) as $payment)
                 <tr>
                     <td>{{ $payment->id }}</td>
-                    <td>৳{{ number_format($payment->amount, 2) }}</td>
+                    <td>{{ $payment->invoice?->invoice_number ?? '-' }}</td>
+                    <td>BDT {{ number_format($payment->amount, 2) }}</td>
                     <td>{{ $payment->payment_method }}</td>
                     <td>{{ $payment->transaction_id }}</td>
                     <td>
@@ -125,18 +161,12 @@
                             <span class="badge badge-danger">Rejected</span>
                         @endif
                     </td>
-                    <td>
-                        @if($payment->status === 'rejected')
-                            {{ $payment->reject_reason }}
-                        @else
-                            -
-                        @endif
-                    </td>
-                    <td>{{ $payment->created_at }}</td>
+                    <td>{{ $payment->status === 'rejected' ? $payment->reject_reason : '-' }}</td>
+                    <td>{{ $payment->approved_at ?: $payment->created_at }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="8">No payments found.</td>
+                    <td colspan="9">No payments found.</td>
                 </tr>
             @endforelse
         </table>

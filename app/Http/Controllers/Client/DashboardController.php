@@ -6,13 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\Payment;
 use App\Models\DailyReport;
+use App\Services\ClientLedgerService;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(ClientLedgerService $ledgerService)
     {
         $client = Client::where('user_id', auth()->id())->firstOrFail();
+        $ledger = $ledgerService->build($client);
+        $summary = $ledger['summary'];
 
         $today = date('Y-m-d');
 
@@ -23,26 +26,18 @@ class DashboardController extends Controller
         $todaySpend = $todayReports->sum('dollar_spend');
         $todayOrders = $todayReports->sum('orders');
 
-        $reports = DailyReport::where('client_id', $client->id)->get();
-
         $payments = Payment::where('client_id', $client->id)->get();
-
-        $totalSpendUsd = $reports->sum('dollar_spend');
-        $totalOrders = $reports->sum('orders');
-
-        $totalSpendBdt = $totalSpendUsd * $client->client_rate;
-
-        $approvedPayments = $payments
-            ->where('status', 'approved')
-            ->sum('amount');
 
         $pendingPayments = $payments
             ->where('status', 'pending')
             ->sum('amount');
 
-        $balance = $approvedPayments - $totalSpendBdt;
-
-        $currentDue = $totalSpendBdt - $approvedPayments;
+        $totalSpendUsd = $summary['total_spend_usd'];
+        $totalOrders = $summary['total_orders'];
+        $totalSpendBdt = $summary['total_debit'];
+        $approvedPayments = $summary['total_credit'];
+        $currentDue = $summary['current_due'];
+        $availableBalance = $summary['available_balance'];
 
         $avgCostPerOrder = $totalOrders > 0
             ? $totalSpendBdt / $totalOrders
@@ -82,8 +77,8 @@ class DashboardController extends Controller
             'totalOrders',
             'approvedPayments',
             'pendingPayments',
-            'balance',
             'currentDue',
+            'availableBalance',
             'avgCostPerOrder',
             'paymentCoverage',
             'recentReports',
@@ -92,7 +87,7 @@ class DashboardController extends Controller
         ));
     }
 
-    public function statement(Request $request)
+    public function statement(Request $request, ClientLedgerService $ledgerService)
     {
         $filters = $request->validate([
             'from_date' => ['nullable', 'date'],
@@ -101,57 +96,13 @@ class DashboardController extends Controller
 
         $client = Client::where('user_id', auth()->id())->firstOrFail();
 
-        $reports = DailyReport::where('client_id', $client->id)
-            ->when($filters['from_date'] ?? null, fn ($query, $date) => $query->whereDate('report_date', '>=', $date))
-            ->when($filters['to_date'] ?? null, fn ($query, $date) => $query->whereDate('report_date', '<=', $date))
-            ->orderBy('report_date')
-            ->orderBy('id')
-            ->get();
-
-        $payments = Payment::where('client_id', $client->id)
-            ->where('status', 'approved')
-            ->when($filters['from_date'] ?? null, fn ($query, $date) => $query->whereDate('created_at', '>=', $date))
-            ->when($filters['to_date'] ?? null, fn ($query, $date) => $query->whereDate('created_at', '<=', $date))
-            ->orderBy('created_at')
-            ->orderBy('id')
-            ->get();
-
-        $clientRate = max((float) ($client->client_rate ?? 0), 0);
-
-        $ledgerRows = $reports->map(function (DailyReport $report) use ($clientRate) {
-            $debit = (float) $report->dollar_spend * $clientRate;
-
-            return [
-                'date' => $report->report_date,
-                'sort_date' => $report->report_date . ' 00:00:00',
-                'transaction_type' => 'Ad Spend',
-                'page' => $report->page_name,
-                'debit' => $debit,
-                'credit' => 0,
-            ];
-        })->merge($payments->map(function (Payment $payment) {
-            return [
-                'date' => $payment->created_at->format('Y-m-d'),
-                'sort_date' => $payment->created_at->format('Y-m-d H:i:s'),
-                'transaction_type' => 'Payment',
-                'page' => '-',
-                'debit' => 0,
-                'credit' => (float) $payment->amount,
-            ];
-        }))->sortBy('sort_date')->values();
-
-        $runningBalance = 0;
-        $ledgerRows = $ledgerRows->map(function (array $row) use (&$runningBalance) {
-            $runningBalance += $row['debit'] - $row['credit'];
-            $row['running_balance'] = $runningBalance;
-
-            return $row;
-        });
-
-        $totalSpend = $ledgerRows->sum('debit');
-        $totalPaid = $ledgerRows->sum('credit');
-        $currentDue = max($totalSpend - $totalPaid, 0);
-        $currentBalance = $totalPaid - $totalSpend;
+        $ledger = $ledgerService->build($client, $filters);
+        $ledgerRows = $ledger['rows'];
+        $summary = $ledger['summary'];
+        $totalSpend = $summary['total_debit'];
+        $totalPaid = $summary['total_credit'];
+        $currentDue = $summary['current_due'];
+        $availableBalance = $summary['available_balance'];
 
         return view('client.statement', compact(
             'client',
@@ -160,7 +111,7 @@ class DashboardController extends Controller
             'totalSpend',
             'totalPaid',
             'currentDue',
-            'currentBalance'
+            'availableBalance'
         ));
     }
 }

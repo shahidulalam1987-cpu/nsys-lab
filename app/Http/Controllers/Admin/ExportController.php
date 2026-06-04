@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Client;
 use App\Models\Payment;
+use App\Services\ClientLedgerService;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class ExportController extends Controller
@@ -150,17 +152,11 @@ class ExportController extends Controller
 
     return response()->stream($callback, 200, $headers);
   }
-  public function clientStatementCsv($id)
+  public function clientStatementCsv(ClientLedgerService $ledgerService, $id)
 {
-    $client = \App\Models\Client::findOrFail($id);
-
-    $payments = \App\Models\Payment::where('client_id', $client->id)
-        ->latest()
-        ->get();
-
-    $reports = \App\Models\DailyReport::where('client_id', $client->id)
-        ->latest()
-        ->get();
+    $client = Client::findOrFail($id);
+    $ledger = $ledgerService->build($client);
+    $summary = $ledger['summary'];
 
     $fileName = 'client-statement-' . $client->id . '-' . date('Y-m-d') . '.csv';
 
@@ -169,51 +165,39 @@ class ExportController extends Controller
         'Content-Disposition' => "attachment; filename=\"$fileName\"",
     ];
 
-    $callback = function () use ($client, $payments, $reports) {
+    $callback = function () use ($client, $ledger, $summary) {
         $file = fopen('php://output', 'w');
-
-        $approvedPayment = $payments->where('status', 'approved')->sum('amount');
-        $totalDollarSpend = $reports->sum('dollar_spend');
-        $totalSpendBdt = $totalDollarSpend * $client->client_rate;
-        $balance = $approvedPayment - $totalSpendBdt;
 
         fputcsv($file, ['Client Statement']);
         fputcsv($file, ['Client', $client->company_name]);
         fputcsv($file, ['Phone', $client->phone]);
-        fputcsv($file, ['Client Rate', $client->client_rate]);
-        fputcsv($file, ['Buy Rate', $client->buy_rate]);
-        fputcsv($file, ['Approved Payment', $approvedPayment]);
-        fputcsv($file, ['Total Spend USD', $totalDollarSpend]);
-        fputcsv($file, ['Total Spend BDT', $totalSpendBdt]);
-        fputcsv($file, ['Balance', $balance]);
+        fputcsv($file, ['Client Rate', $summary['client_rate']]);
+        fputcsv($file, ['Buy Rate', $summary['buy_rate']]);
+        fputcsv($file, ['Total Debit', $summary['total_debit']]);
+        fputcsv($file, ['Total Credit', $summary['total_credit']]);
+        fputcsv($file, ['Current Due', $summary['current_due']]);
+        fputcsv($file, ['Available Balance', $summary['available_balance']]);
+        fputcsv($file, ['Total Spend USD', $summary['total_spend_usd']]);
+        fputcsv($file, ['Total Orders', $summary['total_orders']]);
+        fputcsv($file, ['Total Revenue', $summary['total_revenue']]);
+        fputcsv($file, ['Total Cost', $summary['total_cost']]);
+        fputcsv($file, ['Profit', $summary['profit']]);
 
         fputcsv($file, []);
-        fputcsv($file, ['Payments']);
-        fputcsv($file, ['ID', 'Amount', 'Method', 'Transaction ID', 'Status', 'Reject Reason', 'Date']);
+        fputcsv($file, ['Ledger']);
+        fputcsv($file, ['Date', 'Transaction Type', 'Page', 'Invoice', 'Spend USD', 'Orders', 'Debit BDT', 'Credit BDT', 'Running Due Balance BDT']);
 
-        foreach ($payments as $payment) {
+        foreach ($ledger['rows'] as $row) {
             fputcsv($file, [
-                $payment->id,
-                $payment->amount,
-                $payment->payment_method,
-                $payment->transaction_id,
-                $payment->status,
-                $payment->reject_reason,
-                $payment->created_at,
-            ]);
-        }
-
-        fputcsv($file, []);
-        fputcsv($file, ['Daily Reports']);
-        fputcsv($file, ['ID', 'Date', 'Page', 'Dollar Spend', 'Orders']);
-
-        foreach ($reports as $report) {
-            fputcsv($file, [
-                $report->id,
-                $report->report_date,
-                $report->page_name,
-                $report->dollar_spend,
-                $report->orders,
+                $row['date'],
+                $row['transaction_type'],
+                $row['page'],
+                $row['invoice_number'],
+                $row['spend_usd'],
+                $row['orders'],
+                $row['debit'],
+                $row['credit'],
+                $row['running_balance'],
             ]);
         }
 
@@ -223,34 +207,15 @@ class ExportController extends Controller
     return response()->stream($callback, 200, $headers);
   }
 
-  public function clientStatementPdf($id)
+  public function clientStatementPdf(ClientLedgerService $ledgerService, $id)
 {
-    $client = \App\Models\Client::findOrFail($id);
-
-    $payments = \App\Models\Payment::where('client_id', $client->id)
-        ->latest()
-        ->get();
-
-    $reports = \App\Models\DailyReport::where('client_id', $client->id)
-        ->latest()
-        ->get();
-
-    $approvedPayment = $payments->where('status', 'approved')->sum('amount');
-
-    $totalDollarSpend = $reports->sum('dollar_spend');
-
-    $totalSpendBdt = $totalDollarSpend * $client->client_rate;
-
-    $balance = $approvedPayment - $totalSpendBdt;
+    $client = Client::findOrFail($id);
+    $ledger = $ledgerService->build($client);
 
     $pdf = Pdf::loadView('admin.pdf.client-statement', [
         'client' => $client,
-        'payments' => $payments,
-        'reports' => $reports,
-        'approvedPayment' => $approvedPayment,
-        'totalDollarSpend' => $totalDollarSpend,
-        'totalSpendBdt' => $totalSpendBdt,
-        'balance' => $balance,
+        'ledger' => $ledger,
+        'summary' => $ledger['summary'],
     ]);
 
     return $pdf->download(
