@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\Payment;
 use App\Models\DailyReport;
+use App\Models\Employee;
+use App\Models\SalaryPayment;
 
 class DashboardController extends Controller
 {
@@ -72,6 +74,25 @@ class DashboardController extends Controller
             'totalBalance',
             'recentPayments',
             'recentReports'
+        ));
+    }
+
+    public function employeeDepartment()
+    {
+        $totalEmployees = Employee::count();
+        $activeEmployees = Employee::where('status', 'active')->count();
+        $probationEmployees = Employee::where('status', 'probation')->count();
+        $pendingSalaryPayments = SalaryPayment::where('status', 'pending')->sum('amount');
+        $recentEmployees = Employee::latest()->take(5)->get();
+        $recentSalaryPayments = SalaryPayment::with('client')->latest()->take(5)->get();
+
+        return view('admin.employee-dashboard', compact(
+            'totalEmployees',
+            'activeEmployees',
+            'probationEmployees',
+            'pendingSalaryPayments',
+            'recentEmployees',
+            'recentSalaryPayments'
         ));
     }
 }

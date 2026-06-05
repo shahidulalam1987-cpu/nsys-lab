@@ -34,8 +34,15 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 18px;
             padding: 0 28px;
             backdrop-filter: blur(14px);
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 22px;
         }
 
         .brand {
@@ -44,6 +51,29 @@
             background: linear-gradient(90deg, var(--blue), var(--cyan));
             -webkit-background-clip: text;
             color: transparent;
+        }
+
+        .department-tabs {
+            display: flex;
+            gap: 8px;
+        }
+
+        .department-tab {
+            color: var(--muted);
+            text-decoration: none;
+            padding: 9px 12px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: rgba(255,255,255,.06);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .department-tab:hover,
+        .department-tab.active-department {
+            color: white;
+            background: linear-gradient(90deg, var(--blue), var(--cyan));
+            box-shadow: 0 10px 30px rgba(47, 140, 255, 0.25);
         }
 
         .logout-btn {
@@ -212,6 +242,25 @@
 }
 
 @media (max-width: 900px) {
+    .topbar {
+        height: auto;
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 14px;
+    }
+
+    .topbar-left {
+        width: 100%;
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .department-tabs {
+        width: 100%;
+        overflow-x: auto;
+    }
+
     .layout {
         flex-direction: column;
     }
@@ -265,8 +314,22 @@
 </head>
 
 <body>
+    @php
+        $isEmployeeDepartment = request()->is('client/employee-dashboard')
+            || request()->is('client/employees')
+            || request()->is('client/salary-fund')
+            || request()->is('client/salary-payments*');
+    @endphp
+
     <div class="topbar">
-        <div class="brand">NSYS Client Portal</div>
+        <div class="topbar-left">
+            <div class="brand">NSYS Client Portal</div>
+
+            <div class="department-tabs">
+                <a class="department-tab {{ ! $isEmployeeDepartment ? 'active-department' : '' }}" href="/client/dashboard">Boosting Department</a>
+                <a class="department-tab {{ $isEmployeeDepartment ? 'active-department' : '' }}" href="/client/employee-dashboard">Employee Department</a>
+            </div>
+        </div>
 
         <form method="POST" action="/logout">
             @csrf
@@ -287,19 +350,21 @@
         @endif
     </div>
 
-    <a class="{{ request()->is('client/dashboard') ? 'active-menu' : '' }}" href="/client/dashboard">Dashboard</a>
-
-    <div class="sidebar-section-title">Boosting Department</div>
-    <a class="{{ request()->is('client/statement') ? 'active-menu' : '' }}" href="/client/statement">Statement</a>
-    <a class="{{ request()->is('client/payments') ? 'active-menu' : '' }}" href="/client/payments">Payment History</a>
-    <a class="{{ request()->is('client/payments/create') ? 'active-menu' : '' }}" href="/client/payments/create">Submit Payment</a>
-    <a class="{{ request()->is('client/invoices*') ? 'active-menu' : '' }}" href="/client/invoices">Invoices</a>
-
-    <div class="sidebar-section-title">Employee Department</div>
-    <a class="{{ request()->is('client/employees') ? 'active-menu' : '' }}" href="/client/employees">My Employees</a>
-    <a class="{{ request()->is('client/salary-fund') ? 'active-menu' : '' }}" href="/client/salary-fund">Salary Fund</a>
-    <a class="{{ request()->is('client/salary-payments') ? 'active-menu' : '' }}" href="/client/salary-payments">Salary Payments</a>
-    <a class="{{ request()->is('client/salary-payments/create') ? 'active-menu' : '' }}" href="/client/salary-payments/create">Submit Salary Payment</a>
+    @if($isEmployeeDepartment)
+        <div class="sidebar-section-title">Employee Department</div>
+        <a class="{{ request()->is('client/employee-dashboard') ? 'active-menu' : '' }}" href="/client/employee-dashboard">Dashboard</a>
+        <a class="{{ request()->is('client/employees') ? 'active-menu' : '' }}" href="/client/employees">My Employees</a>
+        <a class="{{ request()->is('client/salary-fund') ? 'active-menu' : '' }}" href="/client/salary-fund">Salary Fund</a>
+        <a class="{{ request()->is('client/salary-payments') ? 'active-menu' : '' }}" href="/client/salary-payments">Salary Payments</a>
+        <a class="{{ request()->is('client/salary-payments/create') ? 'active-menu' : '' }}" href="/client/salary-payments/create">Submit Salary Payment</a>
+    @else
+        <div class="sidebar-section-title">Boosting Department</div>
+        <a class="{{ request()->is('client/dashboard') ? 'active-menu' : '' }}" href="/client/dashboard">Dashboard</a>
+        <a class="{{ request()->is('client/statement') ? 'active-menu' : '' }}" href="/client/statement">Statement</a>
+        <a class="{{ request()->is('client/payments') ? 'active-menu' : '' }}" href="/client/payments">Payment History</a>
+        <a class="{{ request()->is('client/payments/create') ? 'active-menu' : '' }}" href="/client/payments/create">Submit Payment</a>
+        <a class="{{ request()->is('client/invoices*') ? 'active-menu' : '' }}" href="/client/invoices">Invoices</a>
+    @endif
     </div>
 
         <div class="content">

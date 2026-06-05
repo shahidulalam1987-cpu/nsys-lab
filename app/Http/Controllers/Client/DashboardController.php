@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\Payment;
 use App\Models\DailyReport;
+use App\Models\SalaryPayment;
 use App\Services\ClientLedgerService;
+use App\Services\SalaryFundService;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -112,6 +114,27 @@ class DashboardController extends Controller
             'totalPaid',
             'currentDue',
             'availableBalance'
+        ));
+    }
+
+    public function employeeDepartment(Request $request, SalaryFundService $salaryFundService)
+    {
+        $client = Client::where('user_id', auth()->id())->firstOrFail();
+        $assignments = $client->employeeAssignments()
+            ->with('employee')
+            ->latest('assigned_from')
+            ->get();
+        $fund = $salaryFundService->build($client, $request->salary_month);
+        $recentSalaryPayments = SalaryPayment::where('client_id', $client->id)
+            ->latest()
+            ->take(5)
+            ->get();
+
+        return view('client.employee-dashboard', compact(
+            'client',
+            'assignments',
+            'fund',
+            'recentSalaryPayments'
         ));
     }
 }

@@ -54,6 +54,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/export/payments', [ExportController::class, 'paymentsCsv']);
     Route::get('/admin/export/daily-reports', [ExportController::class, 'dailyReportsCsv']);
     Route::get('/admin/dashboard', [AdminDashboardController::class, 'index']);
+    Route::get('/admin/employee-dashboard', [AdminDashboardController::class, 'employeeDepartment']);
     Route::get('/admin/export/profit-history', [ExportController::class, 'profitHistoryCsv']);
     Route::get('/admin/clients/{id}/export-statement', [ExportController::class, 'clientStatementCsv']);
     Route::get('/admin/clients/{id}/statement-pdf', [ExportController::class, 'clientStatementPdf']);
@@ -112,6 +113,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
 
 Route::middleware(['auth', 'client', 'client.status'])->group(function () {
     Route::get('/client/dashboard', [ClientDashboardController::class, 'index']);
+    Route::get('/client/employee-dashboard', [ClientDashboardController::class, 'employeeDepartment']);
     Route::get('/client/statement', [ClientDashboardController::class, 'statement']);
 
     Route::get('/client/payments', [ClientPaymentController::class, 'index']);
