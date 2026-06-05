@@ -1,9 +1,9 @@
 @extends('layouts.admin')
 
 @section('content')
-    <h1>Edit Payroll</h1>
+    <h1>Edit Salary</h1>
 
-    <a class="btn" href="/admin/payroll/{{ $payroll->id }}">Back to Payroll Details</a>
+    <a class="btn" href="/admin/payroll/{{ $payroll->id }}">Back to Salary Details</a>
 
     @if ($errors->any())
         <div class="card" style="color:#ef4444; margin-top:20px;">
@@ -17,13 +17,13 @@
 
     <div class="card" style="margin-top:20px;">
         <h2>{{ $payroll->employee?->name }} - {{ $payroll->salary_month?->format('Y-m') }}</h2>
-        <p><strong>Payable Salary:</strong> BDT {{ number_format($payroll->payable_salary, 2) }}</p>
+        <p><strong>Payable Salary (BDT):</strong> BDT {{ number_format($payroll->payable_salary, 2) }}</p>
 
         <form method="POST" action="/admin/payroll/{{ $payroll->id }}/update">
             @csrf
 
             <p>
-                Paid Amount<br>
+                Paid Salary<br>
                 <input type="number" step="0.01" name="paid_amount" value="{{ old('paid_amount', $payroll->paid_amount) }}" required>
             </p>
 
@@ -42,7 +42,7 @@
                 <textarea name="note">{{ old('note', $payroll->note) }}</textarea>
             </p>
 
-            <button class="btn" type="submit">Update Payroll</button>
+            <button class="btn" type="submit">Update Salary</button>
         </form>
     </div>
 @endsection

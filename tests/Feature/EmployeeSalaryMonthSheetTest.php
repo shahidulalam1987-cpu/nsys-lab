@@ -44,7 +44,7 @@ class EmployeeSalaryMonthSheetTest extends TestCase
         $response->assertSee('BDT 3,000.00');
         $response->assertSee('BDT 100.00');
         $response->assertSee('Total Employees');
-        $response->assertSee('Total Counted Days');
+        $response->assertSee('Total Working Days');
         $response->assertSee('Total Payable Salary');
         $response->assertDontSee('Client</th>', false);
     }

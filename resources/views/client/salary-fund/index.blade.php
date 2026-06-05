@@ -24,8 +24,8 @@
             <tr>
                 <th>Employee</th>
                 <th>Monthly Salary</th>
-                <th>Counted Days</th>
-                <th>Non-Counted Days</th>
+                <th>Working Days</th>
+                <th>Non Working Days</th>
                 <th>Required Salary</th>
             </tr>
             @forelse($fund['employee_rows'] as $row)

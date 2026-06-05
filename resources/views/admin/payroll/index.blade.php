@@ -1,9 +1,11 @@
 @extends('layouts.admin')
 
 @section('content')
-    <h1>Employee Payroll</h1>
+    <h1>Salary Generate</h1>
 
-    <a class="btn" href="/admin/payroll/create">Create Payroll</a>
+    <a class="btn" href="/admin/payroll/create">Generate Salary</a>
+
+    <p>Generate salary based on employee working days for the selected month.</p>
 
     <div class="card" style="margin-top:20px;">
         <form method="GET" action="/admin/payroll">
@@ -20,7 +22,7 @@
 
             <select name="status">
                 <option value="">All Status</option>
-                @foreach(['unpaid' => 'Unpaid', 'partial' => 'Partial', 'paid' => 'Paid'] as $value => $label)
+                @foreach(['unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'] as $value => $label)
                     <option value="{{ $value }}" {{ request('status') == $value ? 'selected' : '' }}>{{ $label }}</option>
                 @endforeach
             </select>
@@ -32,19 +34,19 @@
 
     <div class="stats-grid">
         <div class="stat-card">
-            <p>Total Payable</p>
+            <p>Total Payable Salary (BDT)</p>
             <h2>BDT {{ number_format($summary['total_payable'], 2) }}</h2>
         </div>
         <div class="stat-card">
-            <p>Total Paid</p>
+            <p>Total Paid Salary</p>
             <h2>BDT {{ number_format($summary['total_paid'], 2) }}</h2>
         </div>
         <div class="stat-card">
-            <p>Total Due</p>
+            <p>Total Remaining Due</p>
             <h2>BDT {{ number_format($summary['total_due'], 2) }}</h2>
         </div>
         <div class="stat-card">
-            <p>Payroll Records</p>
+            <p>Salary Records</p>
             <h2>{{ number_format($payrolls->count()) }}</h2>
         </div>
     </div>
@@ -55,9 +57,9 @@
                 <th>Month</th>
                 <th>Employee</th>
                 <th>Client</th>
-                <th>Payable</th>
-                <th>Paid</th>
-                <th>Due</th>
+                <th>Payable Salary (BDT)</th>
+                <th>Paid Salary</th>
+                <th>Remaining Due</th>
                 <th>Status</th>
                 <th>Payment Date</th>
                 <th>Action</th>
@@ -70,7 +72,7 @@
                     <td>BDT {{ number_format($payroll->payable_salary, 2) }}</td>
                     <td>BDT {{ number_format($payroll->paid_amount, 2) }}</td>
                     <td>BDT {{ number_format(max($payroll->payable_salary - $payroll->paid_amount, 0), 2) }}</td>
-                    <td>{{ ucfirst($payroll->calculated_status) }}</td>
+                    <td>{{ ['unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'][$payroll->calculated_status] ?? ucfirst($payroll->calculated_status) }}</td>
                     <td>{{ $payroll->payment_date?->toDateString() ?: '-' }}</td>
                     <td>
                         <a href="/admin/payroll/{{ $payroll->id }}">View</a>
@@ -79,7 +81,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="9">No payroll records found.</td></tr>
+                <tr><td colspan="9">No salary records found.</td></tr>
             @endforelse
         </table>
     </div>

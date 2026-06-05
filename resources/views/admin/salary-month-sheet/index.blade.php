@@ -28,11 +28,11 @@
             <h2>{{ number_format($summary['total_employees']) }}</h2>
         </div>
         <div class="stat-card">
-            <p>Total Counted Days</p>
+            <p>Total Working Days</p>
             <h2>{{ number_format($summary['total_counted_days']) }}</h2>
         </div>
         <div class="stat-card">
-            <p>Total Payable Salary</p>
+            <p>Total Payable Salary (BDT)</p>
             <h2>BDT {{ number_format($summary['total_payable_salary'], 2) }}</h2>
         </div>
     </div>
@@ -46,10 +46,10 @@
                     <th>Employee ID</th>
                     <th>Employee Name</th>
                     <th>Month</th>
-                    <th>Counted Days</th>
-                    <th>Non Counted Days</th>
+                    <th>Working Days</th>
+                    <th>Non Working Days</th>
                     <th>Monthly Salary</th>
-                    <th>Payable Salary</th>
+                    <th>Payable Salary (BDT)</th>
                 </tr>
 
                 @forelse($rows as $row)
