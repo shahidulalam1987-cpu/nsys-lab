@@ -115,16 +115,6 @@
             box-shadow: 0 10px 30px rgba(47, 140, 255, 0.25);
         }
 
-        .sidebar-section-title {
-            margin: 22px 0 10px;
-            padding: 0 14px;
-            color: var(--cyan);
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-        }
-
         .content {
             flex: 1;
             padding: 30px;
@@ -277,13 +267,6 @@
         margin-bottom: 0;
     }
 
-    .sidebar-section-title {
-        align-self: center;
-        margin: 0 4px 0 12px;
-        padding: 0;
-        white-space: nowrap;
-    }
-
     .content {
         padding: 16px;
     }
@@ -351,14 +334,12 @@
     </div>
 
     @if($isEmployeeDepartment)
-        <div class="sidebar-section-title">Employee Department</div>
         <a class="{{ request()->is('client/employee-dashboard') ? 'active-menu' : '' }}" href="/client/employee-dashboard">Dashboard</a>
         <a class="{{ request()->is('client/employees') ? 'active-menu' : '' }}" href="/client/employees">My Employees</a>
         <a class="{{ request()->is('client/salary-fund') ? 'active-menu' : '' }}" href="/client/salary-fund">Salary Fund</a>
         <a class="{{ request()->is('client/salary-payments') ? 'active-menu' : '' }}" href="/client/salary-payments">Salary Payments</a>
         <a class="{{ request()->is('client/salary-payments/create') ? 'active-menu' : '' }}" href="/client/salary-payments/create">Submit Salary Payment</a>
     @else
-        <div class="sidebar-section-title">Boosting Department</div>
         <a class="{{ request()->is('client/dashboard') ? 'active-menu' : '' }}" href="/client/dashboard">Dashboard</a>
         <a class="{{ request()->is('client/statement') ? 'active-menu' : '' }}" href="/client/statement">Statement</a>
         <a class="{{ request()->is('client/payments') ? 'active-menu' : '' }}" href="/client/payments">Payment History</a>

@@ -115,16 +115,6 @@
             box-shadow: 0 10px 30px rgba(47, 140, 255, 0.25);
         }
 
-        .sidebar-section-title {
-            margin: 22px 0 10px;
-            padding: 0 14px;
-            color: var(--cyan);
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-        }
-
         .content {
             flex: 1;
             padding: 30px;
@@ -280,13 +270,6 @@
         margin-bottom: 0;
     }
 
-    .sidebar-section-title {
-        align-self: center;
-        margin: 0 4px 0 12px;
-        padding: 0;
-        white-space: nowrap;
-    }
-
     .content {
         padding: 16px;
     }
@@ -377,13 +360,11 @@
     <div class="layout">
         <div class="sidebar">
             @if($isEmployeeDepartment)
-                <div class="sidebar-section-title">Employee Department</div>
                 <a class="{{ request()->is('admin/employee-dashboard') ? 'active-menu' : '' }}" href="/admin/employee-dashboard">Dashboard</a>
                 <a class="{{ request()->is('admin/employees*') ? 'active-menu' : '' }}" href="/admin/employees">Employees</a>
                 <a class="{{ request()->is('admin/salary-payments') ? 'active-menu' : '' }}" href="/admin/salary-payments">Salary Payments</a>
                 <a class="{{ request()->is('admin/salary-payments/pending') ? 'active-menu' : '' }}" href="/admin/salary-payments/pending">Pending Salary Payments</a>
             @else
-                <div class="sidebar-section-title">Boosting Department</div>
                 <a class="{{ request()->is('admin/dashboard') ? 'active-menu' : '' }}" href="/admin/dashboard">Dashboard</a>
                 <a class="{{ request()->is('admin/clients*') ? 'active-menu' : '' }}" href="/admin/clients">Clients</a>
                 <a class="{{ request()->is('admin/client-users*') ? 'active-menu' : '' }}" href="/admin/client-users">Client Users</a>
