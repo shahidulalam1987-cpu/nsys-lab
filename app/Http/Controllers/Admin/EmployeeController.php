@@ -97,6 +97,37 @@ class EmployeeController extends Controller
         return back()->with('success', 'Employee confirmed successfully.');
     }
 
+    public function terminate(Employee $employee)
+    {
+        $employee->update([
+            'status' => 'terminated',
+            'last_working_date' => $employee->last_working_date ?: now()->toDateString(),
+        ]);
+
+        return redirect('/admin/employees/' . $employee->id)
+            ->with('success', 'Employee terminated successfully.');
+    }
+
+    public function destroy(Employee $employee)
+    {
+        if ($employee->assignments()->exists()
+            || $employee->salaryDays()->exists()
+            || $employee->payrolls()->exists()) {
+            return redirect('/admin/employees/' . $employee->id)
+                ->with('success', 'This employee has history. Please terminate instead.');
+        }
+
+        $user = $employee->user;
+        $employee->delete();
+
+        if ($user && $user->role === 'employee') {
+            $user->delete();
+        }
+
+        return redirect('/admin/employees')
+            ->with('success', 'Employee deleted successfully.');
+    }
+
     public function createLogin(Employee $employee)
     {
         if ($employee->user_id) {

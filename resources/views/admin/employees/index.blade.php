@@ -33,6 +33,7 @@
                 <th>Status</th>
                 <th>Login Status</th>
                 <th>Confirmation</th>
+                <th>Actions</th>
             </tr>
             @forelse($employees as $employee)
                 <tr>
@@ -60,9 +61,20 @@
                             Pending
                         @endif
                     </td>
+                    <td>
+                        <form method="POST" action="/admin/employees/{{ $employee->id }}/terminate" style="display:inline;">
+                            @csrf
+                            <button class="btn-danger" type="submit" onclick="return confirm('Terminate this employee? History and login will be preserved.');">Deactivate / Terminate</button>
+                        </form>
+
+                        <form method="POST" action="/admin/employees/{{ $employee->id }}/delete" style="display:inline;">
+                            @csrf
+                            <button class="btn-danger" type="submit" onclick="return confirm('Delete this employee? This is allowed only when no history exists.');">Delete</button>
+                        </form>
+                    </td>
                 </tr>
             @empty
-                <tr><td colspan="10">No employees found.</td></tr>
+                <tr><td colspan="11">No employees found.</td></tr>
             @endforelse
         </table>
     </div>

@@ -75,6 +75,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/employees/{id}/edit', [EmployeeController::class, 'edit']);
     Route::post('/admin/employees/{id}/update', [EmployeeController::class, 'update']);
     Route::post('/admin/employees/{id}/confirm', [EmployeeController::class, 'confirm']);
+    Route::post('/admin/employees/{employee}/terminate', [EmployeeController::class, 'terminate']);
+    Route::post('/admin/employees/{employee}/delete', [EmployeeController::class, 'destroy']);
     Route::post('/admin/employees/{employee}/assignments', [EmployeeAssignmentController::class, 'store']);
     Route::post('/admin/employee-assignments/{assignment}/update', [EmployeeAssignmentController::class, 'update']);
     Route::post('/admin/employees/{employee}/salary-days', [SalaryDayController::class, 'store']);
