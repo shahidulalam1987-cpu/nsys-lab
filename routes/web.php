@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Admin\EmployeeAssignmentController;
 use App\Http\Controllers\Admin\SalaryDayController;
 use App\Http\Controllers\Admin\SalaryPaymentController;
+use App\Http\Controllers\Admin\SalaryMonthSheetController;
 
 Route::get('/', [DashboardController::class, 'index']);
 
@@ -81,6 +82,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/salary-payments/pending', [SalaryPaymentController::class, 'pending']);
     Route::post('/admin/salary-payments/{id}/approve', [SalaryPaymentController::class, 'approve']);
     Route::post('/admin/salary-payments/{id}/reject', [SalaryPaymentController::class, 'reject']);
+    Route::get('/admin/salary-month-sheet', [SalaryMonthSheetController::class, 'index']);
 
     Route::get('/admin/clients', [ClientController::class, 'index']);
     Route::get('/admin/clients/create', [ClientController::class, 'create']);
