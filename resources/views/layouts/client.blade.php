@@ -271,6 +271,10 @@
     </div>
 
     <a class="{{ request()->is('client/dashboard') ? 'active-menu' : '' }}" href="/client/dashboard">Dashboard</a>
+    <a class="{{ request()->is('client/employees') ? 'active-menu' : '' }}" href="/client/employees">My Employees</a>
+    <a class="{{ request()->is('client/salary-fund') ? 'active-menu' : '' }}" href="/client/salary-fund">Salary Fund</a>
+    <a class="{{ request()->is('client/salary-payments') ? 'active-menu' : '' }}" href="/client/salary-payments">Salary Payments</a>
+    <a class="{{ request()->is('client/salary-payments/create') ? 'active-menu' : '' }}" href="/client/salary-payments/create">Submit Salary Payment</a>
     <a class="{{ request()->is('client/statement') ? 'active-menu' : '' }}" href="/client/statement">Statement</a>
     <a class="{{ request()->is('client/payments') ? 'active-menu' : '' }}" href="/client/payments">Payment History</a>
     <a class="{{ request()->is('client/payments/create') ? 'active-menu' : '' }}" href="/client/payments/create">Submit Payment</a>

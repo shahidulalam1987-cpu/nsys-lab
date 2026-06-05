@@ -12,15 +12,25 @@ use App\Http\Controllers\Admin\EditClientController;
 use App\Http\Controllers\Admin\ClientUserController;
 use App\Http\Controllers\Client\PaymentController as ClientPaymentController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
+use App\Http\Controllers\Client\EmployeeController as ClientEmployeeController;
+use App\Http\Controllers\Employee\DashboardController as EmployeeDashboardController;
 use App\Http\Controllers\Admin\ExportController;
 use App\Http\Controllers\Admin\InvoiceController;
 use App\Http\Controllers\Client\InvoiceController as ClientInvoiceController;
+use App\Http\Controllers\Admin\EmployeeController;
+use App\Http\Controllers\Admin\EmployeeAssignmentController;
+use App\Http\Controllers\Admin\SalaryDayController;
+use App\Http\Controllers\Admin\SalaryPaymentController;
 
 Route::get('/', [DashboardController::class, 'index']);
 
 Route::get('/dashboard', function () {
     if (auth()->user()->role === 'admin') {
         return redirect('/admin/dashboard');
+    }
+
+    if (auth()->user()->role === 'employee') {
+        return redirect('/employee/dashboard');
     }
 
     return redirect('/client/dashboard');
@@ -32,6 +42,12 @@ Route::get('/force-logout', function () {
     request()->session()->regenerateToken();
 
     return redirect('/login');
+});
+
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [\App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [\App\Http\Controllers\ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
 Route::middleware(['auth', 'admin'])->group(function () {
@@ -46,6 +62,22 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/invoices', [InvoiceController::class, 'store']);
     Route::get('/admin/invoices/{id}/pdf', [InvoiceController::class, 'downloadPdf']);
     Route::get('/admin/invoices/{id}/status/{status}', [InvoiceController::class, 'updateStatus']);
+
+    Route::get('/admin/employees', [EmployeeController::class, 'index']);
+    Route::get('/admin/employees/create', [EmployeeController::class, 'create']);
+    Route::post('/admin/employees', [EmployeeController::class, 'store']);
+    Route::get('/admin/employees/{id}', [EmployeeController::class, 'show']);
+    Route::get('/admin/employees/{id}/edit', [EmployeeController::class, 'edit']);
+    Route::post('/admin/employees/{id}/update', [EmployeeController::class, 'update']);
+    Route::post('/admin/employees/{id}/confirm', [EmployeeController::class, 'confirm']);
+    Route::post('/admin/employees/{employee}/assignments', [EmployeeAssignmentController::class, 'store']);
+    Route::post('/admin/employee-assignments/{assignment}/update', [EmployeeAssignmentController::class, 'update']);
+    Route::post('/admin/employees/{employee}/salary-days', [SalaryDayController::class, 'store']);
+
+    Route::get('/admin/salary-payments', [SalaryPaymentController::class, 'index']);
+    Route::get('/admin/salary-payments/pending', [SalaryPaymentController::class, 'pending']);
+    Route::post('/admin/salary-payments/{id}/approve', [SalaryPaymentController::class, 'approve']);
+    Route::post('/admin/salary-payments/{id}/reject', [SalaryPaymentController::class, 'reject']);
 
     Route::get('/admin/clients', [ClientController::class, 'index']);
     Route::get('/admin/clients/create', [ClientController::class, 'create']);
@@ -87,6 +119,15 @@ Route::middleware(['auth', 'client', 'client.status'])->group(function () {
     Route::post('/client/payments', [ClientPaymentController::class, 'store']);
     Route::get('/client/invoices', [ClientInvoiceController::class, 'index']);
     Route::get('/client/invoices/{id}/pdf', [ClientInvoiceController::class, 'downloadPdf']);
+    Route::get('/client/employees', [ClientEmployeeController::class, 'index']);
+    Route::get('/client/salary-fund', [ClientEmployeeController::class, 'salaryFund']);
+    Route::get('/client/salary-payments', [ClientEmployeeController::class, 'paymentHistory']);
+    Route::get('/client/salary-payments/create', [ClientEmployeeController::class, 'createPayment']);
+    Route::post('/client/salary-payments', [ClientEmployeeController::class, 'storePayment']);
+});
+
+Route::middleware(['auth', 'employee'])->group(function () {
+    Route::get('/employee/dashboard', [EmployeeDashboardController::class, 'index']);
 });
 
 require __DIR__.'/auth.php';

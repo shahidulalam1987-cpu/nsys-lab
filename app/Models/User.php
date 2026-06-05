@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    use Notifiable;
+    use HasFactory, Notifiable;
 
    protected $fillable = [
         'name',
@@ -33,5 +34,10 @@ class User extends Authenticatable
     public function client()
     {
         return $this->hasOne(\App\Models\Client::class);
+    }
+
+    public function employee()
+    {
+        return $this->hasOne(\App\Models\Employee::class);
     }
 }

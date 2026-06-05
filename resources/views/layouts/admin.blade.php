@@ -298,10 +298,13 @@
     <div class="layout">
         <div class="sidebar">
             <a class="{{ request()->is('admin/dashboard') ? 'active-menu' : '' }}" href="/admin/dashboard">Dashboard</a>
+            <a class="{{ request()->is('admin/employees*') ? 'active-menu' : '' }}" href="/admin/employees">Employees</a>
             <a class="{{ request()->is('admin/clients*') ? 'active-menu' : '' }}" href="/admin/clients">Clients</a>
             <a class="{{ request()->is('admin/client-users*') ? 'active-menu' : '' }}" href="/admin/client-users">Client Users</a>
             <a class="{{ request()->is('admin/payments') ? 'active-menu' : '' }}" href="/admin/payments">All Payments</a>
             <a class="{{ request()->is('admin/payments/pending') ? 'active-menu' : '' }}" href="/admin/payments/pending">Pending Payments</a>
+            <a class="{{ request()->is('admin/salary-payments') ? 'active-menu' : '' }}" href="/admin/salary-payments">Salary Payments</a>
+            <a class="{{ request()->is('admin/salary-payments/pending') ? 'active-menu' : '' }}" href="/admin/salary-payments/pending">Pending Salary Payments</a>
             <a class="{{ request()->is('admin/invoices*') ? 'active-menu' : '' }}" href="/admin/invoices">Invoices</a>
             <a class="{{ request()->is('admin/daily-reports*') ? 'active-menu' : '' }}" href="/admin/daily-reports">Daily Reports</a>
             <a class="{{ request()->is('admin/profit-history') ? 'active-menu' : '' }}" href="/admin/profit-history">Profit History</a>

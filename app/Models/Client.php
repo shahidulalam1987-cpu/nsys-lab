@@ -34,4 +34,19 @@ class Client extends Model
     {
         return $this->hasMany(Message::class);
     }
+
+    public function employeeAssignments()
+    {
+        return $this->hasMany(EmployeeAssignment::class);
+    }
+
+    public function salaryDays()
+    {
+        return $this->hasMany(SalaryDay::class);
+    }
+
+    public function salaryPayments()
+    {
+        return $this->hasMany(SalaryPayment::class);
+    }
 }
