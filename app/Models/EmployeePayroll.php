@@ -6,6 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class EmployeePayroll extends Model
 {
+    protected $appends = [
+        'calculated_status',
+    ];
+
     protected $fillable = [
         'employee_id',
         'client_id',
@@ -40,25 +44,33 @@ class EmployeePayroll extends Model
 
     public static function statusFor(float $payableSalary, float $paidAmount): string
     {
-        if ($paidAmount <= 0) {
+        $payableCents = self::amountToCents($payableSalary);
+        $paidCents = self::amountToCents($paidAmount);
+
+        if ($paidCents <= 0) {
             return 'unpaid';
         }
 
-        if ($paidAmount < $payableSalary) {
+        if ($paidCents < $payableCents) {
             return 'partial';
         }
 
         return 'paid';
     }
 
+    public function getCalculatedStatusAttribute(): string
+    {
+        return self::statusFor(
+            (float) ($this->attributes['payable_salary'] ?? 0),
+            (float) ($this->attributes['paid_amount'] ?? 0)
+        );
+    }
+
     public function getStatusAttribute($value): string
     {
         if (array_key_exists('payable_salary', $this->attributes)
             && array_key_exists('paid_amount', $this->attributes)) {
-            return self::statusFor(
-                (float) $this->attributes['payable_salary'],
-                (float) $this->attributes['paid_amount']
-            );
+            return $this->calculated_status;
         }
 
         return $value;
@@ -81,6 +93,11 @@ class EmployeePayroll extends Model
         }
 
         return $query;
+    }
+
+    private static function amountToCents(float $amount): int
+    {
+        return (int) round($amount * 100);
     }
 
     public function employee()

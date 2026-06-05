@@ -12,7 +12,7 @@
         <p><strong>Payable Salary:</strong> BDT {{ number_format($payroll->payable_salary, 2) }}</p>
         <p><strong>Paid Amount:</strong> BDT {{ number_format($payroll->paid_amount, 2) }}</p>
         <p><strong>Due:</strong> BDT {{ number_format(max($payroll->payable_salary - $payroll->paid_amount, 0), 2) }}</p>
-        <p><strong>Status:</strong> {{ ucfirst($payroll->status) }}</p>
+        <p><strong>Status:</strong> {{ ucfirst($payroll->calculated_status) }}</p>
         <p><strong>Payment Method:</strong> {{ $payroll->payment_method ?: '-' }}</p>
         <p><strong>Payment Date:</strong> {{ $payroll->payment_date?->toDateString() ?: '-' }}</p>
         <p><strong>Note:</strong> {{ $payroll->note ?: '-' }}</p>

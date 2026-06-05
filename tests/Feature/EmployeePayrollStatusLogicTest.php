@@ -18,6 +18,7 @@ class EmployeePayrollStatusLogicTest extends TestCase
         $this->assertSame('unpaid', EmployeePayroll::statusFor(10000, 0));
         $this->assertSame('partial', EmployeePayroll::statusFor(10000, 9999.99));
         $this->assertSame('paid', EmployeePayroll::statusFor(10000, 10000));
+        $this->assertSame('paid', EmployeePayroll::statusFor(333.33, 333.33));
         $this->assertSame('paid', EmployeePayroll::statusFor(10000, 12000));
     }
 
@@ -28,17 +29,19 @@ class EmployeePayrollStatusLogicTest extends TestCase
         $payrollId = $this->insertPayroll([
             'employee_id' => $employee->id,
             'salary_month' => '2026-06-01',
-            'payable_salary' => 10000,
-            'paid_amount' => 10000,
+            'payable_salary' => 333.33,
+            'paid_amount' => 333.33,
             'status' => 'partial',
         ]);
 
         $payroll = EmployeePayroll::findOrFail($payrollId);
         $this->assertSame('paid', $payroll->status);
+        $this->assertSame('paid', $payroll->calculated_status);
 
         $response = $this->actingAs($admin)->get('/admin/payroll/' . $payrollId);
 
         $response->assertOk();
+        $response->assertSee('BDT 333.33');
         $response->assertSee('Paid');
         $response->assertDontSee('Partial');
     }
@@ -51,8 +54,8 @@ class EmployeePayrollStatusLogicTest extends TestCase
 
         $this->insertPayroll([
             'employee_id' => $paidEmployee->id,
-            'payable_salary' => 10000,
-            'paid_amount' => 10000,
+            'payable_salary' => 333.33,
+            'paid_amount' => 333.33,
             'status' => 'partial',
         ]);
         $this->insertPayroll([
@@ -66,6 +69,7 @@ class EmployeePayrollStatusLogicTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Calculated Paid');
+        $response->assertSee('BDT 333.33');
         $response->assertDontSee('BDT 5,000.00');
     }
 

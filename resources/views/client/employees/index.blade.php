@@ -27,7 +27,7 @@
                     <td>{{ $assignment->employee?->joining_date?->toDateString() }}</td>
                     <td>{{ $assignment->employee?->confirmation_date?->toDateString() ?: '-' }}</td>
                     <td>BDT {{ number_format($assignment->employee?->monthly_salary ?? 0, 2) }}</td>
-                    <td>{{ $latestPayroll ? ucfirst($latestPayroll->status) : 'Not Generated' }}</td>
+                    <td>{{ $latestPayroll ? ucfirst($latestPayroll->calculated_status) : 'Not Generated' }}</td>
                     <td>{{ $assignment->assigned_from?->toDateString() }}</td>
                     <td>{{ $assignment->assigned_to?->toDateString() ?: '-' }}</td>
                 </tr>

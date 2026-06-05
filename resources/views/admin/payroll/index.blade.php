@@ -70,7 +70,7 @@
                     <td>BDT {{ number_format($payroll->payable_salary, 2) }}</td>
                     <td>BDT {{ number_format($payroll->paid_amount, 2) }}</td>
                     <td>BDT {{ number_format(max($payroll->payable_salary - $payroll->paid_amount, 0), 2) }}</td>
-                    <td>{{ ucfirst($payroll->status) }}</td>
+                    <td>{{ ucfirst($payroll->calculated_status) }}</td>
                     <td>{{ $payroll->payment_date?->toDateString() ?: '-' }}</td>
                     <td>
                         <a href="/admin/payroll/{{ $payroll->id }}">View</a>
