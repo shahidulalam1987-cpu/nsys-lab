@@ -21,7 +21,7 @@ class EmployeePayrollController extends Controller
         $query = EmployeePayroll::with(['employee', 'client'])
             ->when($filters['month'] ?? null, fn ($query, $month) => $query->whereDate('salary_month', $month . '-01'))
             ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
-            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status));
+            ->withCalculatedStatus($filters['status'] ?? null);
 
         $payrolls = $query->latest('salary_month')->latest()->get();
         $employees = Employee::orderBy('name')->get();
@@ -84,7 +84,7 @@ class EmployeePayrollController extends Controller
             'paid_amount' => $paidAmount,
             'payment_method' => $data['payment_method'] ?? null,
             'payment_date' => $data['payment_date'] ?? null,
-            'status' => $this->statusFor($payable['payable_salary'], $paidAmount),
+            'status' => EmployeePayroll::statusFor($payable['payable_salary'], $paidAmount),
             'note' => $data['note'] ?? null,
         ]);
 
@@ -122,7 +122,7 @@ class EmployeePayrollController extends Controller
             'paid_amount' => $paidAmount,
             'payment_method' => $data['payment_method'] ?? null,
             'payment_date' => $data['payment_date'] ?? null,
-            'status' => $this->statusFor((float) $payroll->payable_salary, $paidAmount),
+            'status' => EmployeePayroll::statusFor((float) $payroll->payable_salary, $paidAmount),
             'note' => $data['note'] ?? null,
         ]);
 
@@ -130,16 +130,4 @@ class EmployeePayrollController extends Controller
             ->with('success', 'Employee payroll updated successfully.');
     }
 
-    private function statusFor(float $payableSalary, float $paidAmount): string
-    {
-        if ($paidAmount <= 0) {
-            return 'unpaid';
-        }
-
-        if ($paidAmount < $payableSalary) {
-            return 'partial';
-        }
-
-        return 'paid';
-    }
 }
