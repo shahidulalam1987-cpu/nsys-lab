@@ -6,6 +6,10 @@
     <a class="btn" href="/admin/employees">Back to Employees</a>
     <a class="btn" href="/admin/employees/{{ $employee->id }}/edit">Edit Employee</a>
 
+    @if(! $employee->user_id)
+        <a class="btn" href="/admin/employees/{{ $employee->id }}/create-login">Create Employee Login</a>
+    @endif
+
     @if($employee->isEligibleForConfirmation())
         <form method="POST" action="/admin/employees/{{ $employee->id }}/confirm" style="display:inline;">
             @csrf
@@ -26,6 +30,7 @@
         <p><strong>Bank:</strong> {{ $employee->bank_name ?: '-' }}</p>
         <p><strong>Account:</strong> {{ $employee->account_name ?: '-' }} {{ $employee->account_number ? '(' . $employee->account_number . ')' : '' }}</p>
         <p><strong>Mobile Banking:</strong> {{ $employee->mobile_banking_info ?: '-' }}</p>
+        <p><strong>Login Email:</strong> {{ $employee->user?->email ?: 'No login linked' }}</p>
     </div>
 
     <div class="card">

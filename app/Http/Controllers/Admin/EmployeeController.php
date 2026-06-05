@@ -7,6 +7,7 @@ use App\Models\Client;
 use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class EmployeeController extends Controller
 {
@@ -94,6 +95,45 @@ class EmployeeController extends Controller
         ]);
 
         return back()->with('success', 'Employee confirmed successfully.');
+    }
+
+    public function createLogin(Employee $employee)
+    {
+        if ($employee->user_id) {
+            return redirect('/admin/employees/' . $employee->id)
+                ->with('success', 'This employee already has a linked login.');
+        }
+
+        return view('admin.employees.create-login', compact('employee'));
+    }
+
+    public function storeLogin(Request $request, Employee $employee)
+    {
+        if ($employee->user_id) {
+            return redirect('/admin/employees/' . $employee->id)
+                ->with('success', 'This employee already has a linked login.');
+        }
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'confirmed', 'min:8'],
+        ]);
+
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => Hash::make($data['password']),
+            'role' => 'employee',
+            'status' => 'active',
+        ]);
+
+        $employee->update([
+            'user_id' => $user->id,
+        ]);
+
+        return redirect('/admin/employees/' . $employee->id)
+            ->with('success', 'Employee login created and linked successfully.');
     }
 
     private function validatedEmployee(Request $request, ?int $employeeId = null): array
