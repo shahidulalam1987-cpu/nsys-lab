@@ -8,6 +8,7 @@ use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class EmployeeController extends Controller
 {
@@ -42,6 +43,7 @@ class EmployeeController extends Controller
     public function store(Request $request)
     {
         $data = $this->validatedEmployee($request);
+        $data['employee_id'] = $this->nextEmployeeId();
         $data['salary_type'] = 'monthly';
         $data['status'] = $data['status'] ?? 'probation';
 
@@ -75,7 +77,7 @@ class EmployeeController extends Controller
     public function update(Request $request, $id)
     {
         $employee = Employee::findOrFail($id);
-        $data = $this->validatedEmployee($request, $employee->id);
+        $data = $this->validatedEmployee($request);
         $employee->update($data);
 
         return redirect('/admin/employees/' . $employee->id)->with('success', 'Employee updated successfully.');
@@ -167,15 +169,14 @@ class EmployeeController extends Controller
             ->with('success', 'Employee login created and linked successfully.');
     }
 
-    private function validatedEmployee(Request $request, ?int $employeeId = null): array
+    private function validatedEmployee(Request $request): array
     {
         return $request->validate([
             'user_id' => ['nullable', 'exists:users,id'],
-            'employee_id' => ['required', 'string', 'max:100', 'unique:employees,employee_id,' . $employeeId],
             'name' => ['required', 'string', 'max:255'],
             'mobile' => ['nullable', 'string', 'max:50'],
-            'department' => ['required', 'string', 'max:255'],
-            'role' => ['required', 'string', 'max:255'],
+            'department' => ['required', Rule::in(Employee::DEPARTMENTS)],
+            'role' => ['required', Rule::in(Employee::ROLES)],
             'joining_date' => ['required', 'date'],
             'confirmation_date' => ['nullable', 'date'],
             'last_working_date' => ['nullable', 'date'],
@@ -186,5 +187,27 @@ class EmployeeController extends Controller
             'account_number' => ['nullable', 'string', 'max:255'],
             'mobile_banking_info' => ['nullable', 'string'],
         ]);
+    }
+
+    private function nextEmployeeId(): string
+    {
+        $usedNumbers = Employee::where('employee_id', 'like', 'NSYS-EM-%')
+            ->pluck('employee_id')
+            ->map(function ($employeeId) {
+                if (preg_match('/^NSYS-EM-(\d+)$/', $employeeId, $matches)) {
+                    return (int) $matches[1];
+                }
+
+                return null;
+            })
+            ->filter()
+            ->flip();
+
+        $number = 1;
+        while ($usedNumbers->has($number)) {
+            $number++;
+        }
+
+        return 'NSYS-EM-' . str_pad((string) $number, 3, '0', STR_PAD_LEFT);
     }
 }

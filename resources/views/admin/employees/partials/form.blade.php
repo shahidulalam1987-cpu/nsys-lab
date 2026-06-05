@@ -22,11 +22,31 @@
                 @endforeach
             </select>
         </p>
-        <p>Employee ID<br><input type="text" name="employee_id" value="{{ old('employee_id', $employee?->employee_id) }}" required></p>
+        <p>Employee ID<br>
+            @if($employee)
+                <input type="text" value="{{ $employee->employee_id }}" readonly>
+            @else
+                <input type="text" value="Auto Generated" readonly>
+            @endif
+        </p>
         <p>Name<br><input type="text" name="name" value="{{ old('name', $employee?->name) }}" required></p>
         <p>Mobile<br><input type="text" name="mobile" value="{{ old('mobile', $employee?->mobile) }}"></p>
-        <p>Department<br><input type="text" name="department" value="{{ old('department', $employee?->department) }}" required></p>
-        <p>Role<br><input type="text" name="role" value="{{ old('role', $employee?->role) }}" required></p>
+        <p>Department<br>
+            <select name="department" required>
+                <option value="">Select Department</option>
+                @foreach(\App\Models\Employee::DEPARTMENTS as $department)
+                    <option value="{{ $department }}" {{ old('department', $employee?->department) == $department ? 'selected' : '' }}>{{ $department }}</option>
+                @endforeach
+            </select>
+        </p>
+        <p>Role<br>
+            <select name="role" required>
+                <option value="">Select Role</option>
+                @foreach(\App\Models\Employee::ROLES as $role)
+                    <option value="{{ $role }}" {{ old('role', $employee?->role) == $role ? 'selected' : '' }}>{{ $role }}</option>
+                @endforeach
+            </select>
+        </p>
         <p>Joining Date<br><input type="date" name="joining_date" value="{{ old('joining_date', $employee?->joining_date?->toDateString()) }}" required></p>
         <p>Confirmation Date<br><input type="date" name="confirmation_date" value="{{ old('confirmation_date', $employee?->confirmation_date?->toDateString()) }}"></p>
         <p>Last Working Date<br><input type="date" name="last_working_date" value="{{ old('last_working_date', $employee?->last_working_date?->toDateString()) }}"></p>

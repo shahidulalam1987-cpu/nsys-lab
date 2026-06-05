@@ -7,6 +7,27 @@ use Illuminate\Database\Eloquent\Model;
 
 class Employee extends Model
 {
+    public const DEPARTMENTS = [
+        'Moderator',
+        'Customer Care',
+        'Sales',
+        'Creative',
+        'Management',
+        'Support',
+    ];
+
+    public const ROLES = [
+        'Trainee Moderator',
+        'Moderator',
+        'Senior Moderator',
+        'Customer Care',
+        'Sales Executive',
+        'Graphic Designer',
+        'Video Editor',
+        'Team Leader',
+        'Manager',
+    ];
+
     protected $fillable = [
         'user_id',
         'employee_id',
