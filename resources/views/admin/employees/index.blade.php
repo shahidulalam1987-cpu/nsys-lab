@@ -31,6 +31,7 @@
                 <th>Joining Date</th>
                 <th>Salary</th>
                 <th>Status</th>
+                <th>Login Status</th>
                 <th>Confirmation</th>
             </tr>
             @forelse($employees as $employee)
@@ -44,6 +45,13 @@
                     <td>BDT {{ number_format($employee->monthly_salary, 2) }}</td>
                     <td>{{ ucwords(str_replace('_', ' ', $employee->status)) }}</td>
                     <td>
+                        @if($employee->user_id)
+                            <span class="badge badge-success">Linked</span>
+                        @else
+                            <span class="badge badge-warning">Not Linked</span>
+                        @endif
+                    </td>
+                    <td>
                         @if($employee->confirmation_date)
                             {{ $employee->confirmation_date->toDateString() }}
                         @elseif($employee->isEligibleForConfirmation())
@@ -54,7 +62,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="9">No employees found.</td></tr>
+                <tr><td colspan="10">No employees found.</td></tr>
             @endforelse
         </table>
     </div>
