@@ -88,6 +88,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/salary-payments/{id}/approve', [SalaryPaymentController::class, 'approve']);
     Route::post('/admin/salary-payments/{id}/reject', [SalaryPaymentController::class, 'reject']);
     Route::get('/admin/salary-month-sheet', [SalaryMonthSheetController::class, 'index']);
+    Route::get('/admin/salary-month-sheet/export', [SalaryMonthSheetController::class, 'export']);
 
     Route::get('/admin/payroll', [EmployeePayrollController::class, 'index']);
     Route::get('/admin/payroll/create', [EmployeePayrollController::class, 'create']);

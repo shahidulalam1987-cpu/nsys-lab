@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\EmployeeAssignment;
+use App\Models\Employee;
 use Carbon\Carbon;
 
 class SalaryMonthSheetService
@@ -13,40 +13,34 @@ class SalaryMonthSheetService
         $monthEnd = $month->copy()->endOfMonth();
         $daysInMonth = $month->daysInMonth;
 
-        $assignments = EmployeeAssignment::with([
-            'client',
-            'employee.salaryDays' => function ($query) use ($month, $monthEnd) {
+        $employees = Employee::with([
+            'salaryDays' => function ($query) use ($month, $monthEnd) {
                 $query->whereBetween('date', [$month->toDateString(), $monthEnd->toDateString()]);
             },
         ])
-            ->whereDate('assigned_from', '<=', $monthEnd->toDateString())
-            ->where(function ($query) use ($month) {
-                $query->whereNull('assigned_to')
-                    ->orWhereDate('assigned_to', '>=', $month->toDateString());
+            ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->whereKey($employeeId))
+            ->whereHas('salaryDays', function ($query) use ($month, $monthEnd) {
+                $query->whereBetween('date', [$month->toDateString(), $monthEnd->toDateString()]);
             })
-            ->when($filters['client_id'] ?? null, fn ($query, $clientId) => $query->where('client_id', $clientId))
-            ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
-            ->orderBy('client_id')
             ->orderBy('employee_id')
             ->get();
 
-        $rows = $assignments
-            ->map(function (EmployeeAssignment $assignment) use ($daysInMonth) {
-                $salaryDays = $assignment->employee->salaryDays
-                    ->where('client_id', $assignment->client_id);
+        $rows = $employees
+            ->map(function (Employee $employee) use ($daysInMonth, $month) {
+                $salaryDays = $employee->salaryDays;
                 $countedDays = $salaryDays->where('is_counted', true)->count();
                 $nonCountedDays = $salaryDays->where('is_counted', false)->count();
-                $monthlySalary = (float) $assignment->employee->monthly_salary;
+                $monthlySalary = (float) $employee->monthly_salary;
                 $payableSalary = ($monthlySalary / $daysInMonth) * $countedDays;
 
                 return [
-                    'client' => $assignment->client,
-                    'employee' => $assignment->employee,
+                    'employee' => $employee,
+                    'client_id' => $salaryDays->first()?->client_id,
+                    'month' => $month,
                     'monthly_salary' => $monthlySalary,
                     'counted_days' => $countedDays,
                     'non_counted_days' => $nonCountedDays,
                     'payable_salary' => $payableSalary,
-                    'salary_status' => $countedDays > 0 ? 'Payable' : 'No Counted Days',
                 ];
             });
 
@@ -54,10 +48,9 @@ class SalaryMonthSheetService
             'month' => $month,
             'rows' => $rows,
             'summary' => [
-                'total_employees' => $rows->pluck('employee.id')->unique()->count(),
-                'total_payable_salary' => $rows->sum('payable_salary'),
+                'total_employees' => $rows->count(),
                 'total_counted_days' => $rows->sum('counted_days'),
-                'total_non_counted_days' => $rows->sum('non_counted_days'),
+                'total_payable_salary' => $rows->sum('payable_salary'),
             ],
         ];
     }
@@ -72,7 +65,7 @@ class SalaryMonthSheetService
 
         return [
             'month' => $sheet['month'],
-            'client_id' => $rows->first()['client']?->id ?? null,
+            'client_id' => $rows->first()['client_id'] ?? null,
             'payable_salary' => (float) $rows->sum('payable_salary'),
             'counted_days' => (int) $rows->sum('counted_days'),
             'non_counted_days' => (int) $rows->sum('non_counted_days'),

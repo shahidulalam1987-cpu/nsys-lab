@@ -7,15 +7,6 @@
         <form method="GET" action="/admin/salary-month-sheet">
             <input type="month" name="month" value="{{ request('month', $month->format('Y-m')) }}">
 
-            <select name="client_id">
-                <option value="">All Clients</option>
-                @foreach($clients as $client)
-                    <option value="{{ $client->id }}" {{ request('client_id') == $client->id ? 'selected' : '' }}>
-                        {{ $client->company_name }}
-                    </option>
-                @endforeach
-            </select>
-
             <select name="employee_id">
                 <option value="">All Employees</option>
                 @foreach($employees as $employee)
@@ -27,6 +18,7 @@
 
             <button class="btn" type="submit">Filter</button>
             <a href="/admin/salary-month-sheet">Reset</a>
+            <a class="btn" href="/admin/salary-month-sheet/export?{{ http_build_query(request()->only(['month', 'employee_id'])) }}">Export CSV</a>
         </form>
     </div>
 
@@ -36,58 +28,50 @@
             <h2>{{ number_format($summary['total_employees']) }}</h2>
         </div>
         <div class="stat-card">
-            <p>Total Payable Salary</p>
-            <h2>BDT {{ number_format($summary['total_payable_salary'], 2) }}</h2>
-        </div>
-        <div class="stat-card">
             <p>Total Counted Days</p>
             <h2>{{ number_format($summary['total_counted_days']) }}</h2>
         </div>
         <div class="stat-card">
-            <p>Total Non-Counted Days</p>
-            <h2>{{ number_format($summary['total_non_counted_days']) }}</h2>
+            <p>Total Payable Salary</p>
+            <h2>BDT {{ number_format($summary['total_payable_salary'], 2) }}</h2>
         </div>
     </div>
 
     <div class="card">
         <h2>{{ $month->format('F Y') }}</h2>
 
-        <table>
-            <tr>
-                <th>Client</th>
-                <th>Employee</th>
-                <th>Monthly Salary</th>
-                <th>Counted Days</th>
-                <th>Non-Counted Days</th>
-                <th>Payable Salary</th>
-                <th>Salary Status</th>
-            </tr>
+        <div class="table-wrap">
+            <table>
+                <tr>
+                    <th>Employee ID</th>
+                    <th>Employee Name</th>
+                    <th>Month</th>
+                    <th>Counted Days</th>
+                    <th>Non Counted Days</th>
+                    <th>Monthly Salary</th>
+                    <th>Payable Salary</th>
+                </tr>
 
-            @forelse($rows as $row)
-                <tr>
-                    <td>{{ $row['client']?->company_name }}</td>
-                    <td>
-                        <a href="/admin/employees/{{ $row['employee']->id }}">
-                            {{ $row['employee']->name }}
-                        </a>
-                    </td>
-                    <td>BDT {{ number_format($row['monthly_salary'], 2) }}</td>
-                    <td>{{ $row['counted_days'] }}</td>
-                    <td>{{ $row['non_counted_days'] }}</td>
-                    <td>BDT {{ number_format($row['payable_salary'], 2) }}</td>
-                    <td>
-                        @if($row['salary_status'] === 'Payable')
-                            <span class="badge badge-success">Payable</span>
-                        @else
-                            <span class="badge badge-warning">No Counted Days</span>
-                        @endif
-                    </td>
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="7">No client-employee assignments found for this month.</td>
-                </tr>
-            @endforelse
-        </table>
+                @forelse($rows as $row)
+                    <tr>
+                        <td>
+                            <a href="/admin/employees/{{ $row['employee']->id }}">
+                                {{ $row['employee']->employee_id }}
+                            </a>
+                        </td>
+                        <td>{{ $row['employee']->name }}</td>
+                        <td>{{ $row['month']->format('Y-m') }}</td>
+                        <td>{{ $row['counted_days'] }}</td>
+                        <td>{{ $row['non_counted_days'] }}</td>
+                        <td>BDT {{ number_format($row['monthly_salary'], 2) }}</td>
+                        <td>BDT {{ number_format($row['payable_salary'], 2) }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="7">No salary day records found for this month.</td>
+                    </tr>
+                @endforelse
+            </table>
+        </div>
     </div>
 @endsection
