@@ -74,6 +74,7 @@
                 <th>Status</th>
                 <th>Note</th>
                 <th>Update</th>
+                <th>Action</th>
             </tr>
             @forelse($employee->assignments->sortByDesc('assigned_from') as $assignment)
                 <tr>
@@ -94,9 +95,15 @@
                             <button type="submit">Update</button>
                         </form>
                     </td>
+                    <td>
+                        <form method="POST" action="/admin/employee-assignments/{{ $assignment->id }}/delete">
+                            @csrf
+                            <button class="btn btn-danger" type="submit" onclick="return confirm('Delete this assignment record?');">Delete</button>
+                        </form>
+                    </td>
                 </tr>
             @empty
-                <tr><td colspan="6">No assignment history found.</td></tr>
+                <tr><td colspan="7">No assignment history found.</td></tr>
             @endforelse
         </table>
     </div>
@@ -135,6 +142,7 @@
                 <th>Counted</th>
                 <th>Reason</th>
                 <th>Note</th>
+                <th>Action</th>
             </tr>
             @forelse($employee->salaryDays->sortByDesc('date')->take(20) as $day)
                 <tr>
@@ -143,9 +151,15 @@
                     <td>{{ $day->is_counted ? 'Yes' : 'No' }}</td>
                     <td>{{ ucwords(str_replace('_', ' ', $day->reason)) }}</td>
                     <td>{{ $day->note ?: '-' }}</td>
+                    <td>
+                        <form method="POST" action="/admin/salary-days/{{ $day->id }}/delete">
+                            @csrf
+                            <button class="btn btn-danger" type="submit" onclick="return confirm('Delete this salary day record?');">Delete</button>
+                        </form>
+                    </td>
                 </tr>
             @empty
-                <tr><td colspan="5">No salary days found.</td></tr>
+                <tr><td colspan="6">No salary days found.</td></tr>
             @endforelse
         </table>
     </div>

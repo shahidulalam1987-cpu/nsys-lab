@@ -48,4 +48,14 @@ class EmployeeAssignmentController extends Controller
 
         return back()->with('success', 'Assignment updated successfully.');
     }
+
+    public function destroy(EmployeeAssignment $assignment)
+    {
+        $employeeId = $assignment->employee_id;
+
+        $assignment->delete();
+
+        return redirect('/admin/employees/' . $employeeId)
+            ->with('success', 'Assignment deleted successfully.');
+    }
 }

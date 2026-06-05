@@ -29,4 +29,14 @@ class SalaryDayController extends Controller
 
         return back()->with('success', 'Salary day saved successfully.');
     }
+
+    public function destroy(SalaryDay $salaryDay)
+    {
+        $employeeId = $salaryDay->employee_id;
+
+        $salaryDay->delete();
+
+        return redirect('/admin/employees/' . $employeeId)
+            ->with('success', 'Salary day deleted successfully.');
+    }
 }

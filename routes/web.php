@@ -79,7 +79,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/employees/{employee}/delete', [EmployeeController::class, 'destroy']);
     Route::post('/admin/employees/{employee}/assignments', [EmployeeAssignmentController::class, 'store']);
     Route::post('/admin/employee-assignments/{assignment}/update', [EmployeeAssignmentController::class, 'update']);
+    Route::post('/admin/employee-assignments/{assignment}/delete', [EmployeeAssignmentController::class, 'destroy']);
     Route::post('/admin/employees/{employee}/salary-days', [SalaryDayController::class, 'store']);
+    Route::post('/admin/salary-days/{salaryDay}/delete', [SalaryDayController::class, 'destroy']);
 
     Route::get('/admin/salary-payments', [SalaryPaymentController::class, 'index']);
     Route::get('/admin/salary-payments/pending', [SalaryPaymentController::class, 'pending']);
