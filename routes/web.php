@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\EmployeeAssignmentController;
 use App\Http\Controllers\Admin\SalaryDayController;
 use App\Http\Controllers\Admin\SalaryPaymentController;
 use App\Http\Controllers\Admin\SalaryMonthSheetController;
+use App\Http\Controllers\Admin\EmployeePayrollController;
 
 Route::get('/', [DashboardController::class, 'index']);
 
@@ -83,6 +84,13 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/salary-payments/{id}/approve', [SalaryPaymentController::class, 'approve']);
     Route::post('/admin/salary-payments/{id}/reject', [SalaryPaymentController::class, 'reject']);
     Route::get('/admin/salary-month-sheet', [SalaryMonthSheetController::class, 'index']);
+
+    Route::get('/admin/payroll', [EmployeePayrollController::class, 'index']);
+    Route::get('/admin/payroll/create', [EmployeePayrollController::class, 'create']);
+    Route::post('/admin/payroll', [EmployeePayrollController::class, 'store']);
+    Route::get('/admin/payroll/{id}', [EmployeePayrollController::class, 'show']);
+    Route::get('/admin/payroll/{id}/edit', [EmployeePayrollController::class, 'edit']);
+    Route::post('/admin/payroll/{id}/update', [EmployeePayrollController::class, 'update']);
 
     Route::get('/admin/clients', [ClientController::class, 'index']);
     Route::get('/admin/clients/create', [ClientController::class, 'create']);

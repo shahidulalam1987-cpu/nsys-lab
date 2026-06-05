@@ -14,7 +14,10 @@ class EmployeeController extends Controller
     {
         $client = Client::where('user_id', auth()->id())->firstOrFail();
         $assignments = $client->employeeAssignments()
-            ->with('employee')
+            ->with(['employee.payrolls' => function ($query) use ($client) {
+                $query->where('client_id', $client->id)
+                    ->latest('salary_month');
+            }])
             ->latest('assigned_from')
             ->get();
 

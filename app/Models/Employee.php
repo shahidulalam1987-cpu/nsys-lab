@@ -56,6 +56,11 @@ class Employee extends Model
         return $this->hasMany(SalaryDay::class);
     }
 
+    public function payrolls()
+    {
+        return $this->hasMany(EmployeePayroll::class);
+    }
+
     public function isEligibleForConfirmation(): bool
     {
         return $this->status === 'probation'

@@ -39,4 +39,26 @@
             @endforelse
         </table>
     </div>
+
+    <div class="card">
+        <h2>My Payroll History</h2>
+        <table>
+            <tr>
+                <th>Month</th>
+                <th>Payable Salary</th>
+                <th>Paid Amount</th>
+                <th>Status</th>
+            </tr>
+            @forelse($payrolls as $payroll)
+                <tr>
+                    <td>{{ $payroll->salary_month?->format('Y-m') }}</td>
+                    <td>BDT {{ number_format($payroll->payable_salary, 2) }}</td>
+                    <td>BDT {{ number_format($payroll->paid_amount, 2) }}</td>
+                    <td>{{ ucfirst($payroll->status) }}</td>
+                </tr>
+            @empty
+                <tr><td colspan="4">No payroll history found.</td></tr>
+            @endforelse
+        </table>
+    </div>
 @endsection
