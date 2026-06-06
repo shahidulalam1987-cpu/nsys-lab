@@ -20,7 +20,7 @@
     <div class="card" style="margin-top:20px;">
         <h2>Salary Information</h2>
 
-        <form method="POST" action="/admin/payroll" id="salary-generate-form">
+        <form method="POST" action="/admin/payroll" id="salary-generate-form" enctype="multipart/form-data">
             @csrf
 
             <p>Employee<br>
@@ -64,9 +64,18 @@
             <p>Payable Salary (BDT)<br><input type="text" id="payable_salary_display" value="BDT 0.00" readonly></p>
             <p>Due<br><input type="text" id="due_display" value="BDT 0.00" readonly></p>
 
-            <p>Paid Salary<br><input type="number" step="0.01" min="0" name="paid_amount" id="paid_amount" value="{{ old('paid_amount', 0) }}" required></p>
-            <p>Payment Method<br><input type="text" name="payment_method" value="{{ old('payment_method') }}"></p>
-            <p>Payment Date<br><input type="date" name="payment_date" value="{{ old('payment_date') }}"></p>
+            <p>Payment Status<br>
+                <select name="payment_status" id="payment_status" required>
+                    @foreach(['upcoming' => 'Upcoming', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'] as $value => $label)
+                        <option value="{{ $value }}" {{ old('payment_status', 'upcoming') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </p>
+            <p>Paid Salary<br><input type="number" step="0.01" min="0" name="paid_amount" id="paid_amount" value="{{ old('paid_amount', 0) }}"></p>
+            <p>Payment Method<br><input type="text" name="payment_method" id="payment_method" value="{{ old('payment_method') }}"></p>
+            <p>Payment Date<br><input type="date" name="payment_date" id="payment_date" value="{{ old('payment_date') }}"></p>
+            <p>Transaction ID / Reference<br><input type="text" name="transaction_id" value="{{ old('transaction_id') }}"></p>
+            <p>Payment Proof Screenshot<br><input type="file" name="payment_proof" id="payment_proof" accept="image/*"></p>
             <p>Note<br><textarea name="note">{{ old('note') }}</textarea></p>
 
             <p>Date To Date is the default salary creation flow.</p>
@@ -82,7 +91,11 @@
         const fromDate = document.getElementById('from_date');
         const toDate = document.getElementById('to_date');
         const workingDays = document.getElementById('working_days');
+        const paymentStatus = document.getElementById('payment_status');
         const paidAmount = document.getElementById('paid_amount');
+        const paymentMethod = document.getElementById('payment_method');
+        const paymentDate = document.getElementById('payment_date');
+        const paymentProof = document.getElementById('payment_proof');
         const monthlySalaryDisplay = document.getElementById('monthly_salary_display');
         const monthDaysDisplay = document.getElementById('month_days_display');
         const dailySalaryDisplay = document.getElementById('daily_salary_display');
@@ -117,17 +130,22 @@
             const monthlySalary = Number(selected?.dataset.salary || 0);
             const monthDays = daysInMonth(fromDate.value);
             const dailySalary = monthDays > 0 ? monthlySalary / monthDays : 0;
-            const payableSalary = dailySalary * Number(workingDays.value || 0);
+            const payableSalary = monthDays > 0 ? (monthlySalary * Number(workingDays.value || 0)) / monthDays : 0;
             const due = Math.max(payableSalary - Number(paidAmount.value || 0), 0);
+            const needsPaymentDetails = ['partial', 'paid'].includes(paymentStatus.value);
 
             monthlySalaryDisplay.value = money(monthlySalary);
             monthDaysDisplay.value = monthDays;
             dailySalaryDisplay.value = money(dailySalary);
             payableSalaryDisplay.value = money(payableSalary);
             dueDisplay.value = money(due);
+            paidAmount.required = needsPaymentDetails;
+            paymentMethod.required = needsPaymentDetails;
+            paymentDate.required = needsPaymentDetails;
+            paymentProof.required = false;
         }
 
-        [employeeSelect, calculationType, salaryMonth, fromDate, toDate, workingDays, paidAmount].forEach((field) => {
+        [employeeSelect, calculationType, salaryMonth, fromDate, toDate, workingDays, paymentStatus, paidAmount].forEach((field) => {
             field.addEventListener('input', calculateSalary);
             field.addEventListener('change', calculateSalary);
         });

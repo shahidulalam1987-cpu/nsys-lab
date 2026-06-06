@@ -22,22 +22,44 @@
         <p><strong>Non Working Days:</strong> {{ $payroll->non_working_days ?? '-' }}</p>
         <p><strong>Payable Salary (BDT):</strong> BDT {{ number_format($payroll->payable_salary, 2) }}</p>
 
-        <form method="POST" action="/admin/payroll/{{ $payroll->id }}/update">
+        <form method="POST" action="/admin/payroll/{{ $payroll->id }}/update" enctype="multipart/form-data">
             @csrf
 
             <p>
+                Payment Status<br>
+                <select name="payment_status" id="payment_status" required>
+                    @foreach(['upcoming' => 'Upcoming', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'] as $value => $label)
+                        <option value="{{ $value }}" {{ old('payment_status', $payroll->calculated_status) === $value ? 'selected' : '' }}>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </p>
+
+            <p>
                 Paid Salary<br>
-                <input type="number" step="0.01" name="paid_amount" value="{{ old('paid_amount', $payroll->paid_amount) }}" required>
+                <input type="number" step="0.01" min="0" name="paid_amount" id="paid_amount" value="{{ old('paid_amount', $payroll->paid_amount) }}">
             </p>
 
             <p>
                 Payment Method<br>
-                <input type="text" name="payment_method" value="{{ old('payment_method', $payroll->payment_method) }}">
+                <input type="text" name="payment_method" id="payment_method" value="{{ old('payment_method', $payroll->payment_method) }}">
             </p>
 
             <p>
                 Payment Date<br>
-                <input type="date" name="payment_date" value="{{ old('payment_date', $payroll->payment_date?->toDateString()) }}">
+                <input type="date" name="payment_date" id="payment_date" value="{{ old('payment_date', $payroll->payment_date?->toDateString()) }}">
+            </p>
+
+            <p>
+                Transaction ID / Reference<br>
+                <input type="text" name="transaction_id" value="{{ old('transaction_id', $payroll->transaction_id) }}">
+            </p>
+
+            <p>
+                Payment Proof Screenshot<br>
+                <input type="file" name="payment_proof" accept="image/*">
+                @if($payroll->payment_proof)
+                    <br><a href="/storage/{{ $payroll->payment_proof }}" target="_blank">View current proof</a>
+                @endif
             </p>
 
             <p>
@@ -48,4 +70,21 @@
             <button class="btn" type="submit">Update Salary</button>
         </form>
     </div>
+
+    <script>
+        const paymentStatus = document.getElementById('payment_status');
+        const paidAmount = document.getElementById('paid_amount');
+        const paymentMethod = document.getElementById('payment_method');
+        const paymentDate = document.getElementById('payment_date');
+
+        function syncPaymentRequirements() {
+            const needsPaymentDetails = ['partial', 'paid'].includes(paymentStatus.value);
+            paidAmount.required = needsPaymentDetails;
+            paymentMethod.required = needsPaymentDetails;
+            paymentDate.required = needsPaymentDetails;
+        }
+
+        paymentStatus.addEventListener('change', syncPaymentRequirements);
+        syncPaymentRequirements();
+    </script>
 @endsection

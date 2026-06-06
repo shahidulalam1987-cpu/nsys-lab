@@ -6,6 +6,8 @@ use App\Models\Client;
 use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class EmployeePayrollDateRangeTest extends TestCase
@@ -99,6 +101,103 @@ class EmployeePayrollDateRangeTest extends TestCase
         $payroll = $employee->payrolls()->orderByDesc('id')->first();
 
         $this->assertSame(1333.33, (float) $payroll->payable_salary);
+    }
+
+    public function test_admin_can_create_upcoming_salary_without_payment_details(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $employee = $this->employee([
+            'monthly_salary' => 10000,
+        ]);
+
+        $response = $this->actingAs($admin)->post('/admin/payroll', [
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'calculation_type' => 'date_to_date',
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-30',
+            'working_days' => 30,
+            'non_working_days' => 0,
+            'payment_status' => 'upcoming',
+            'paid_amount' => 0,
+        ]);
+
+        $payroll = $employee->payrolls()->first();
+
+        $response->assertRedirect('/admin/payroll/' . $payroll->id);
+        $this->assertSame('upcoming', $payroll->calculated_status);
+        $this->assertSame(10000.0, (float) $payroll->payable_salary);
+        $this->assertDatabaseHas('employee_payrolls', [
+            'id' => $payroll->id,
+            'payment_status' => 'upcoming',
+            'paid_amount' => 0,
+            'payment_method' => null,
+            'payment_date' => null,
+        ]);
+    }
+
+    public function test_admin_can_mark_upcoming_salary_paid_with_payment_proof(): void
+    {
+        Storage::fake('public');
+
+        $admin = $this->user('admin');
+        $employee = $this->employee();
+        $payroll = $employee->payrolls()->create([
+            'calculation_type' => 'date_to_date',
+            'salary_period_from' => '2026-06-01',
+            'salary_period_to' => '2026-06-30',
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-30',
+            'working_days' => 30,
+            'non_working_days' => 0,
+            'month_days' => 30,
+            'daily_salary' => 1000,
+            'salary_month' => '2026-06-01',
+            'payable_salary' => 30000,
+            'paid_amount' => 0,
+            'payment_status' => 'upcoming',
+            'status' => 'unpaid',
+        ]);
+
+        $response = $this->actingAs($admin)->post('/admin/payroll/' . $payroll->id . '/update', [
+            'payment_status' => 'paid',
+            'paid_amount' => 30000,
+            'payment_method' => 'Bank Transfer',
+            'payment_date' => '2026-06-30',
+            'transaction_id' => 'TXN-123',
+            'payment_proof' => UploadedFile::fake()->image('salary-proof.jpg'),
+            'note' => 'Salary paid',
+        ]);
+
+        $response->assertRedirect('/admin/payroll/' . $payroll->id);
+        $payroll->refresh();
+
+        $this->assertSame('paid', $payroll->calculated_status);
+        $this->assertSame('TXN-123', $payroll->transaction_id);
+        $this->assertNotNull($payroll->payment_proof);
+        Storage::disk('public')->assertExists($payroll->payment_proof);
+    }
+
+    public function test_paid_salary_status_requires_payment_details(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $employee = $this->employee();
+
+        $response = $this->actingAs($admin)->post('/admin/payroll', [
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'calculation_type' => 'date_to_date',
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-30',
+            'working_days' => 30,
+            'non_working_days' => 0,
+            'payment_status' => 'paid',
+            'paid_amount' => 30000,
+        ]);
+
+        $response->assertSessionHasErrors(['payment_method', 'payment_date']);
     }
 
     public function test_admin_can_generate_monthly_cycle_salary_from_optional_salary_days(): void

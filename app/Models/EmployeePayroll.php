@@ -29,6 +29,9 @@ class EmployeePayroll extends Model
         'payment_method',
         'payment_date',
         'status',
+        'payment_status',
+        'payment_proof',
+        'transaction_id',
         'note',
     ];
 
@@ -53,6 +56,11 @@ class EmployeePayroll extends Model
     protected static function booted(): void
     {
         static::saving(function (EmployeePayroll $payroll) {
+            $payroll->attributes['payment_status'] = self::paymentStatusFor(
+                $payroll->attributes['payment_status'] ?? null,
+                (float) ($payroll->payable_salary ?? 0),
+                (float) ($payroll->paid_amount ?? 0)
+            );
             $payroll->attributes['status'] = self::statusFor(
                 (float) ($payroll->payable_salary ?? 0),
                 (float) ($payroll->paid_amount ?? 0)
@@ -76,9 +84,19 @@ class EmployeePayroll extends Model
         return 'paid';
     }
 
+    public static function paymentStatusFor(?string $selectedStatus, float $payableSalary, float $paidAmount): string
+    {
+        if ($selectedStatus === 'upcoming') {
+            return 'upcoming';
+        }
+
+        return self::statusFor($payableSalary, $paidAmount);
+    }
+
     public function getCalculatedStatusAttribute(): string
     {
-        return self::statusFor(
+        return self::paymentStatusFor(
+            $this->attributes['payment_status'] ?? null,
             (float) ($this->attributes['payable_salary'] ?? 0),
             (float) ($this->attributes['paid_amount'] ?? 0)
         );
@@ -116,18 +134,40 @@ class EmployeePayroll extends Model
 
     public function scopeWithCalculatedStatus($query, ?string $status)
     {
+        if ($status === 'upcoming') {
+            return $query->where('payment_status', 'upcoming');
+        }
+
         if ($status === 'unpaid') {
-            return $query->where('paid_amount', '<=', 0);
+            return $query->where(function ($query) {
+                $query->where('payment_status', 'unpaid')
+                    ->orWhere(function ($query) {
+                        $query->whereNull('payment_status')
+                            ->where('paid_amount', '<=', 0);
+                    });
+            });
         }
 
         if ($status === 'partial') {
-            return $query->where('paid_amount', '>', 0)
-                ->whereColumn('paid_amount', '<', 'payable_salary');
+            return $query->where(function ($query) {
+                $query->where('payment_status', 'partial')
+                    ->orWhere(function ($query) {
+                        $query->whereNull('payment_status')
+                            ->where('paid_amount', '>', 0)
+                            ->whereColumn('paid_amount', '<', 'payable_salary');
+                    });
+            });
         }
 
         if ($status === 'paid') {
-            return $query->where('paid_amount', '>', 0)
-                ->whereColumn('paid_amount', '>=', 'payable_salary');
+            return $query->where(function ($query) {
+                $query->where('payment_status', 'paid')
+                    ->orWhere(function ($query) {
+                        $query->whereNull('payment_status')
+                            ->where('paid_amount', '>', 0)
+                            ->whereColumn('paid_amount', '>=', 'payable_salary');
+                    });
+            });
         }
 
         return $query;

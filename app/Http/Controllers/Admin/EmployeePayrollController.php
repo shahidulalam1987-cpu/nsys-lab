@@ -9,6 +9,7 @@ use App\Models\EmployeePayroll;
 use App\Models\SalaryDay;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class EmployeePayrollController extends Controller
@@ -18,7 +19,7 @@ class EmployeePayrollController extends Controller
         $filters = $request->validate([
             'month' => ['nullable', 'date_format:Y-m'],
             'employee_id' => ['nullable', 'exists:employees,id'],
-            'status' => ['nullable', 'in:unpaid,partial,paid'],
+            'status' => ['nullable', 'in:upcoming,unpaid,partial,paid'],
         ]);
 
         $query = EmployeePayroll::with(['employee', 'client'])
@@ -60,15 +61,24 @@ class EmployeePayrollController extends Controller
             'to_date' => ['nullable', 'required_if:calculation_type,date_to_date', 'date', 'after_or_equal:from_date'],
             'working_days' => ['nullable', 'required_if:calculation_type,date_to_date', 'integer', 'min:0', 'max:31'],
             'non_working_days' => ['nullable', 'integer', 'min:0', 'max:31'],
-            'paid_amount' => ['required', 'numeric', 'min:0'],
-            'payment_method' => ['nullable', 'string', 'max:255'],
-            'payment_date' => ['nullable', 'date'],
+            'payment_status' => ['nullable', Rule::in(['upcoming', 'unpaid', 'partial', 'paid'])],
+            'paid_amount' => ['nullable', 'numeric', 'min:0'],
+            'payment_method' => ['nullable', 'required_if:payment_status,partial,paid', 'string', 'max:255'],
+            'payment_date' => ['nullable', 'required_if:payment_status,partial,paid', 'date'],
+            'payment_proof' => ['nullable', 'image', 'max:4096'],
+            'transaction_id' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string'],
         ]);
 
         $employee = Employee::findOrFail($data['employee_id']);
         $calculation = $this->calculatePayroll($employee, $data);
-        $paidAmount = (float) $data['paid_amount'];
+        $paidAmount = (float) ($data['paid_amount'] ?? 0);
+        $requestedPaymentStatus = $data['payment_status'] ?? EmployeePayroll::statusFor($calculation['payable_salary'], $paidAmount);
+        $paymentStatus = EmployeePayroll::paymentStatusFor($requestedPaymentStatus, $calculation['payable_salary'], $paidAmount);
+
+        if (array_key_exists('payment_status', $data)) {
+            $this->validatePaymentWorkflow($request, $requestedPaymentStatus, $paidAmount);
+        }
 
         $payroll = EmployeePayroll::create([
             'employee_id' => $data['employee_id'],
@@ -87,6 +97,9 @@ class EmployeePayrollController extends Controller
             'paid_amount' => $paidAmount,
             'payment_method' => $data['payment_method'] ?? null,
             'payment_date' => $data['payment_date'] ?? null,
+            'payment_status' => $paymentStatus,
+            'payment_proof' => $request->file('payment_proof')?->store('employee-payroll-proofs', 'public'),
+            'transaction_id' => $data['transaction_id'] ?? null,
             'status' => EmployeePayroll::statusFor($calculation['payable_salary'], $paidAmount),
             'note' => $data['note'] ?? null,
         ]);
@@ -113,18 +126,35 @@ class EmployeePayrollController extends Controller
     {
         $payroll = EmployeePayroll::findOrFail($id);
         $data = $request->validate([
-            'paid_amount' => ['required', 'numeric', 'min:0'],
-            'payment_method' => ['nullable', 'string', 'max:255'],
-            'payment_date' => ['nullable', 'date'],
+            'payment_status' => ['required', Rule::in(['upcoming', 'unpaid', 'partial', 'paid'])],
+            'paid_amount' => ['nullable', 'numeric', 'min:0'],
+            'payment_method' => ['nullable', 'required_if:payment_status,partial,paid', 'string', 'max:255'],
+            'payment_date' => ['nullable', 'required_if:payment_status,partial,paid', 'date'],
+            'payment_proof' => ['nullable', 'image', 'max:4096'],
+            'transaction_id' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string'],
         ]);
 
-        $paidAmount = (float) $data['paid_amount'];
+        $paidAmount = (float) ($data['paid_amount'] ?? 0);
+        $this->validatePaymentWorkflow($request, $data['payment_status'], $paidAmount);
+
+        $paymentProof = $payroll->payment_proof;
+
+        if ($request->hasFile('payment_proof')) {
+            if ($paymentProof) {
+                Storage::disk('public')->delete($paymentProof);
+            }
+
+            $paymentProof = $request->file('payment_proof')->store('employee-payroll-proofs', 'public');
+        }
 
         $payroll->update([
             'paid_amount' => $paidAmount,
             'payment_method' => $data['payment_method'] ?? null,
             'payment_date' => $data['payment_date'] ?? null,
+            'payment_status' => EmployeePayroll::paymentStatusFor($data['payment_status'], (float) $payroll->payable_salary, $paidAmount),
+            'payment_proof' => $paymentProof,
+            'transaction_id' => $data['transaction_id'] ?? null,
             'status' => EmployeePayroll::statusFor((float) $payroll->payable_salary, $paidAmount),
             'note' => $data['note'] ?? null,
         ]);
@@ -188,6 +218,23 @@ class EmployeePayrollController extends Controller
             'daily_salary' => $dailySalary,
             'payable_salary' => $payableSalary,
         ];
+    }
+
+    private function validatePaymentWorkflow(Request $request, string $paymentStatus, float $paidAmount): void
+    {
+        if (! in_array($paymentStatus, ['partial', 'paid'], true)) {
+            return;
+        }
+
+        $request->validate([
+            'paid_amount' => ['required', 'numeric', 'gt:0'],
+            'payment_method' => ['required', 'string', 'max:255'],
+            'payment_date' => ['required', 'date'],
+        ]);
+
+        if ($paidAmount <= 0) {
+            abort(422, 'Paid Salary is required for paid salary status.');
+        }
     }
 
 }

@@ -22,7 +22,7 @@
 
             <select name="status">
                 <option value="">All Status</option>
-                @foreach(['unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'] as $value => $label)
+                @foreach(['upcoming' => 'Upcoming', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'] as $value => $label)
                     <option value="{{ $value }}" {{ request('status') == $value ? 'selected' : '' }}>{{ $label }}</option>
                 @endforeach
             </select>
@@ -61,8 +61,9 @@
                 <th>Payable Salary (BDT)</th>
                 <th>Paid Salary</th>
                 <th>Remaining Due</th>
-                <th>Status</th>
+                <th>Payment Status</th>
                 <th>Payment Date</th>
+                <th>Proof</th>
                 <th>Action</th>
             </tr>
             @forelse($payrolls as $payroll)
@@ -80,8 +81,15 @@
                     <td>BDT {{ number_format($payroll->payable_salary, 2) }}</td>
                     <td>BDT {{ number_format($payroll->paid_amount, 2) }}</td>
                     <td>BDT {{ number_format(max($payroll->payable_salary - $payroll->paid_amount, 0), 2) }}</td>
-                    <td>{{ ['unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'][$payroll->calculated_status] ?? ucfirst($payroll->calculated_status) }}</td>
+                    <td>{{ ['upcoming' => 'Upcoming', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'][$payroll->calculated_status] ?? ucfirst($payroll->calculated_status) }}</td>
                     <td>{{ $payroll->payment_date?->toDateString() ?: '-' }}</td>
+                    <td>
+                        @if($payroll->payment_proof)
+                            <a href="/storage/{{ $payroll->payment_proof }}" target="_blank">View Proof</a>
+                        @else
+                            -
+                        @endif
+                    </td>
                     <td>
                         <a href="/admin/payroll/{{ $payroll->id }}">View</a>
                         |
@@ -94,7 +102,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="10">No salary records found.</td></tr>
+                <tr><td colspan="11">No salary records found.</td></tr>
             @endforelse
         </table>
     </div>
