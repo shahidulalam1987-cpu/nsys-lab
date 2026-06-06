@@ -54,12 +54,10 @@
     <div class="card">
         <table>
             <tr>
-                <th>Salary Period</th>
-                <th>Month</th>
+                <th>Month / Period</th>
                 <th>Employee</th>
                 <th>Client</th>
                 <th>Working Days</th>
-                <th>Non Working Days</th>
                 <th>Payable Salary (BDT)</th>
                 <th>Paid Salary</th>
                 <th>Remaining Due</th>
@@ -70,11 +68,9 @@
             @forelse($payrolls as $payroll)
                 <tr>
                     <td>{{ $payroll->salary_period }}</td>
-                    <td>{{ $payroll->salary_month?->format('Y-m') }}</td>
                     <td>{{ $payroll->employee?->name }}</td>
                     <td>{{ $payroll->client?->company_name ?: '-' }}</td>
                     <td>{{ $payroll->working_days ?? '-' }}</td>
-                    <td>{{ $payroll->non_working_days ?? '-' }}</td>
                     <td>BDT {{ number_format($payroll->payable_salary, 2) }}</td>
                     <td>BDT {{ number_format($payroll->paid_amount, 2) }}</td>
                     <td>BDT {{ number_format(max($payroll->payable_salary - $payroll->paid_amount, 0), 2) }}</td>
@@ -87,7 +83,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="12">No salary records found.</td></tr>
+                <tr><td colspan="10">No salary records found.</td></tr>
             @endforelse
         </table>
     </div>

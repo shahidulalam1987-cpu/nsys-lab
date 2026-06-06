@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\Employee;
 use App\Models\EmployeePayroll;
+use App\Models\SalaryDay;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class EmployeePayrollController extends Controller
 {
@@ -52,10 +54,12 @@ class EmployeePayrollController extends Controller
         $data = $request->validate([
             'employee_id' => ['required', 'exists:employees,id'],
             'client_id' => ['required', 'exists:clients,id'],
-            'from_date' => ['required', 'date'],
-            'to_date' => ['required', 'date', 'after_or_equal:from_date'],
-            'working_days' => ['required', 'integer', 'min:0', 'max:31'],
-            'non_working_days' => ['required', 'integer', 'min:0', 'max:31'],
+            'calculation_type' => ['required', Rule::in(['date_to_date', 'monthly_cycle'])],
+            'salary_month' => ['nullable', 'required_if:calculation_type,monthly_cycle', 'date_format:Y-m'],
+            'from_date' => ['nullable', 'required_if:calculation_type,date_to_date', 'date'],
+            'to_date' => ['nullable', 'required_if:calculation_type,date_to_date', 'date', 'after_or_equal:from_date'],
+            'working_days' => ['nullable', 'required_if:calculation_type,date_to_date', 'integer', 'min:0', 'max:31'],
+            'non_working_days' => ['nullable', 'integer', 'min:0', 'max:31'],
             'paid_amount' => ['required', 'numeric', 'min:0'],
             'payment_method' => ['nullable', 'string', 'max:255'],
             'payment_date' => ['nullable', 'date'],
@@ -63,25 +67,27 @@ class EmployeePayrollController extends Controller
         ]);
 
         $employee = Employee::findOrFail($data['employee_id']);
-        $fromDate = Carbon::parse($data['from_date']);
-        $monthDays = $fromDate->daysInMonth;
-        $dailySalary = (float) $employee->monthly_salary / $monthDays;
-        $payableSalary = $dailySalary * (int) $data['working_days'];
+        $calculation = $this->calculatePayroll($employee, $data);
         $paidAmount = (float) $data['paid_amount'];
 
         $payroll = EmployeePayroll::create([
             'employee_id' => $data['employee_id'],
             'client_id' => $data['client_id'],
-            'from_date' => $fromDate->toDateString(),
-            'to_date' => Carbon::parse($data['to_date'])->toDateString(),
-            'working_days' => (int) $data['working_days'],
-            'non_working_days' => (int) $data['non_working_days'],
-            'salary_month' => $fromDate->copy()->startOfMonth()->toDateString(),
-            'payable_salary' => $payableSalary,
+            'calculation_type' => $data['calculation_type'],
+            'salary_period_from' => $calculation['from_date']->toDateString(),
+            'salary_period_to' => $calculation['to_date']->toDateString(),
+            'from_date' => $calculation['from_date']->toDateString(),
+            'to_date' => $calculation['to_date']->toDateString(),
+            'working_days' => $calculation['working_days'],
+            'non_working_days' => $calculation['non_working_days'],
+            'month_days' => $calculation['month_days'],
+            'daily_salary' => $calculation['daily_salary'],
+            'salary_month' => $calculation['salary_month']->toDateString(),
+            'payable_salary' => $calculation['payable_salary'],
             'paid_amount' => $paidAmount,
             'payment_method' => $data['payment_method'] ?? null,
             'payment_date' => $data['payment_date'] ?? null,
-            'status' => EmployeePayroll::statusFor($payableSalary, $paidAmount),
+            'status' => EmployeePayroll::statusFor($calculation['payable_salary'], $paidAmount),
             'note' => $data['note'] ?? null,
         ]);
 
@@ -125,6 +131,54 @@ class EmployeePayrollController extends Controller
 
         return redirect('/admin/payroll/' . $payroll->id)
             ->with('success', 'Employee payroll updated successfully.');
+    }
+
+    private function calculatePayroll(Employee $employee, array $data): array
+    {
+        if ($data['calculation_type'] === 'monthly_cycle') {
+            if (empty($data['salary_month'])) {
+                abort(422, 'Salary month is required for monthly cycle salary.');
+            }
+
+            $salaryMonth = Carbon::createFromFormat('Y-m', $data['salary_month'])->startOfMonth();
+            $fromDate = $salaryMonth->copy();
+            $toDate = $salaryMonth->copy()->endOfMonth();
+            $auditDays = SalaryDay::where('employee_id', $employee->id)
+                ->where('client_id', $data['client_id'])
+                ->whereBetween('date', [$fromDate->toDateString(), $toDate->toDateString()])
+                ->get();
+            $workingDays = $data['working_days'] !== null
+                ? (int) $data['working_days']
+                : $auditDays->where('is_counted', true)->count();
+            $nonWorkingDays = $data['non_working_days'] !== null
+                ? (int) $data['non_working_days']
+                : $auditDays->where('is_counted', false)->count();
+        } else {
+            if (empty($data['from_date']) || empty($data['to_date']) || $data['working_days'] === null) {
+                abort(422, 'From Date, To Date, and Working Days are required for Date To Date salary.');
+            }
+
+            $fromDate = Carbon::parse($data['from_date']);
+            $toDate = Carbon::parse($data['to_date']);
+            $salaryMonth = $fromDate->copy()->startOfMonth();
+            $workingDays = (int) $data['working_days'];
+            $nonWorkingDays = (int) ($data['non_working_days'] ?? 0);
+        }
+
+        $monthDays = $fromDate->daysInMonth;
+        $dailySalary = round((float) $employee->monthly_salary / $monthDays, 2);
+        $payableSalary = round($dailySalary * $workingDays, 2);
+
+        return [
+            'from_date' => $fromDate,
+            'to_date' => $toDate,
+            'salary_month' => $salaryMonth,
+            'working_days' => $workingDays,
+            'non_working_days' => $nonWorkingDays,
+            'month_days' => $monthDays,
+            'daily_salary' => $dailySalary,
+            'payable_salary' => $payableSalary,
+        ];
     }
 
 }

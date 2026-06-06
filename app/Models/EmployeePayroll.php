@@ -14,10 +14,15 @@ class EmployeePayroll extends Model
     protected $fillable = [
         'employee_id',
         'client_id',
+        'calculation_type',
+        'salary_period_from',
+        'salary_period_to',
         'from_date',
         'to_date',
         'working_days',
         'non_working_days',
+        'month_days',
+        'daily_salary',
         'salary_month',
         'payable_salary',
         'paid_amount',
@@ -32,9 +37,13 @@ class EmployeePayroll extends Model
         return [
             'from_date' => 'date',
             'to_date' => 'date',
+            'salary_period_from' => 'date',
+            'salary_period_to' => 'date',
             'salary_month' => 'date',
             'working_days' => 'integer',
             'non_working_days' => 'integer',
+            'month_days' => 'integer',
+            'daily_salary' => 'decimal:2',
             'payable_salary' => 'decimal:2',
             'paid_amount' => 'decimal:2',
             'payment_date' => 'date',
@@ -77,11 +86,22 @@ class EmployeePayroll extends Model
 
     public function getSalaryPeriodAttribute(): string
     {
+        if ($this->salary_period_from && $this->salary_period_to) {
+            return $this->salary_period_from->toDateString() . ' to ' . $this->salary_period_to->toDateString();
+        }
+
         if ($this->from_date && $this->to_date) {
             return $this->from_date->toDateString() . ' to ' . $this->to_date->toDateString();
         }
 
         return $this->salary_month?->format('Y-m') ?? '-';
+    }
+
+    public function calculationTypeLabel(): string
+    {
+        return $this->calculation_type === 'monthly_cycle'
+            ? 'Monthly Cycle'
+            : 'Date To Date';
     }
 
     public function getStatusAttribute($value): string

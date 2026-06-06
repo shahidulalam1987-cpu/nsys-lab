@@ -23,6 +23,7 @@ class EmployeePayrollDateRangeTest extends TestCase
         $response = $this->actingAs($admin)->post('/admin/payroll', [
             'employee_id' => $employee->id,
             'client_id' => $client->id,
+            'calculation_type' => 'date_to_date',
             'from_date' => '2026-06-01',
             'to_date' => '2026-06-10',
             'working_days' => 10,
@@ -40,19 +41,69 @@ class EmployeePayrollDateRangeTest extends TestCase
 
         $this->assertSame('2026-06-01', $payroll->from_date->toDateString());
         $this->assertSame('2026-06-10', $payroll->to_date->toDateString());
+        $this->assertSame('2026-06-01', $payroll->salary_period_from->toDateString());
+        $this->assertSame('2026-06-10', $payroll->salary_period_to->toDateString());
         $this->assertSame('2026-06-01', $payroll->salary_month->toDateString());
         $this->assertSame('partial', $payroll->calculated_status);
         $this->assertSame(10000.0, (float) $payroll->payable_salary);
+        $this->assertSame(30, $payroll->month_days);
+        $this->assertSame(1000.0, (float) $payroll->daily_salary);
 
         $this->assertDatabaseHas('employee_payrolls', [
             'employee_id' => $employee->id,
             'client_id' => $client->id,
+            'calculation_type' => 'date_to_date',
             'working_days' => 10,
             'non_working_days' => 0,
             'payable_salary' => 10000,
             'paid_amount' => 5000,
             'status' => 'partial',
         ]);
+    }
+
+    public function test_admin_can_generate_monthly_cycle_salary_from_optional_salary_days(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $employee = $this->employee([
+            'monthly_salary' => 30000,
+        ]);
+        $employee->salaryDays()->create([
+            'client_id' => $client->id,
+            'date' => '2026-06-01',
+            'is_counted' => true,
+            'reason' => 'active_working',
+        ]);
+        $employee->salaryDays()->create([
+            'client_id' => $client->id,
+            'date' => '2026-06-02',
+            'is_counted' => false,
+            'reason' => 'client_issue',
+        ]);
+
+        $response = $this->actingAs($admin)->post('/admin/payroll', [
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'calculation_type' => 'monthly_cycle',
+            'salary_month' => '2026-06',
+            'working_days' => null,
+            'non_working_days' => null,
+            'paid_amount' => 0,
+            'payment_method' => null,
+            'payment_date' => null,
+            'note' => 'Monthly cycle salary',
+        ]);
+
+        $payroll = $employee->payrolls()->first();
+
+        $response->assertRedirect('/admin/payroll/' . $payroll->id);
+        $this->assertSame('monthly_cycle', $payroll->calculation_type);
+        $this->assertSame('2026-06-01', $payroll->salary_period_from->toDateString());
+        $this->assertSame('2026-06-30', $payroll->salary_period_to->toDateString());
+        $this->assertSame(1, $payroll->working_days);
+        $this->assertSame(1, $payroll->non_working_days);
+        $this->assertSame(1000.0, (float) $payroll->payable_salary);
+        $this->assertSame('unpaid', $payroll->calculated_status);
     }
 
     public function test_salary_generate_pages_show_date_range_and_due_status(): void
@@ -65,10 +116,15 @@ class EmployeePayrollDateRangeTest extends TestCase
         ]);
         $payroll = $employee->payrolls()->create([
             'client_id' => $client->id,
+            'calculation_type' => 'date_to_date',
+            'salary_period_from' => '2026-06-01',
+            'salary_period_to' => '2026-06-10',
             'from_date' => '2026-06-01',
             'to_date' => '2026-06-10',
             'working_days' => 10,
             'non_working_days' => 0,
+            'month_days' => 30,
+            'daily_salary' => 1000,
             'salary_month' => '2026-06-01',
             'payable_salary' => 10000,
             'paid_amount' => 5000,
@@ -84,8 +140,10 @@ class EmployeePayrollDateRangeTest extends TestCase
         $listResponse->assertSee('2026-06-01 to 2026-06-10');
         $listResponse->assertSee('Partially Paid');
         $showResponse->assertOk();
+        $showResponse->assertSee('Date To Date');
         $showResponse->assertSee('Salary Period');
         $showResponse->assertSee('2026-06-01 to 2026-06-10');
+        $showResponse->assertSee('Daily Salary');
         $showResponse->assertSee('BDT 5,000.00');
     }
 
@@ -96,10 +154,15 @@ class EmployeePayrollDateRangeTest extends TestCase
             'user_id' => $employeeUser->id,
         ]);
         $employee->payrolls()->create([
+            'calculation_type' => 'date_to_date',
+            'salary_period_from' => '2026-06-01',
+            'salary_period_to' => '2026-06-10',
             'from_date' => '2026-06-01',
             'to_date' => '2026-06-10',
             'working_days' => 10,
             'non_working_days' => 0,
+            'month_days' => 30,
+            'daily_salary' => 1000,
             'salary_month' => '2026-06-01',
             'payable_salary' => 10000,
             'paid_amount' => 10000,
