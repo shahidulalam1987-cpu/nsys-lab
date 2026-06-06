@@ -174,8 +174,9 @@ class EmployeePayrollController extends Controller
         }
 
         $monthDays = $fromDate->daysInMonth;
-        $dailySalary = round((float) $employee->monthly_salary / $monthDays, 2);
-        $payableSalary = round($dailySalary * $workingDays, 2);
+        $monthlySalary = (float) $employee->monthly_salary;
+        $dailySalary = round($monthlySalary / $monthDays, 2);
+        $payableSalary = round(($monthlySalary * $workingDays) / $monthDays, 2);
 
         return [
             'from_date' => $fromDate,

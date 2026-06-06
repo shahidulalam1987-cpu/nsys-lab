@@ -31,7 +31,7 @@ class SalaryMonthSheetService
                 $countedDays = $salaryDays->where('is_counted', true)->count();
                 $nonCountedDays = $salaryDays->where('is_counted', false)->count();
                 $monthlySalary = (float) $employee->monthly_salary;
-                $payableSalary = ($monthlySalary / $daysInMonth) * $countedDays;
+                $payableSalary = round(($monthlySalary * $countedDays) / $daysInMonth, 2);
 
                 return [
                     'employee' => $employee,

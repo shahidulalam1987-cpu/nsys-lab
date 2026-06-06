@@ -49,6 +49,32 @@ class EmployeeSalaryMonthSheetTest extends TestCase
         $response->assertDontSee('Client</th>', false);
     }
 
+    public function test_salary_month_sheet_rounds_only_after_final_payable_calculation(): void
+    {
+        $admin = $this->admin();
+        $client = $this->client();
+        $employee = $this->employee([
+            'employee_id' => 'NSYS-EM-012',
+            'name' => 'Rounded Sheet Employee',
+            'monthly_salary' => 10000,
+        ]);
+
+        for ($day = 1; $day <= 30; $day++) {
+            $employee->salaryDays()->create([
+                'client_id' => $client->id,
+                'date' => '2026-06-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT),
+                'is_counted' => true,
+                'reason' => 'active_working',
+            ]);
+        }
+
+        $response = $this->actingAs($admin)->get('/admin/salary-month-sheet?month=2026-06');
+
+        $response->assertOk();
+        $response->assertSee('BDT 10,000.00');
+        $response->assertDontSee('BDT 9,999.90');
+    }
+
     public function test_employee_filter_limits_salary_month_sheet_rows(): void
     {
         $admin = $this->admin();

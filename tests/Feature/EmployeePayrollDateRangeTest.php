@@ -61,6 +61,46 @@ class EmployeePayrollDateRangeTest extends TestCase
         ]);
     }
 
+    public function test_payable_salary_rounds_only_after_final_date_range_calculation(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $employee = $this->employee([
+            'monthly_salary' => 10000,
+        ]);
+
+        $this->actingAs($admin)->post('/admin/payroll', [
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'calculation_type' => 'date_to_date',
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-30',
+            'working_days' => 30,
+            'non_working_days' => 0,
+            'paid_amount' => 10000,
+        ]);
+
+        $payroll = $employee->payrolls()->first();
+
+        $this->assertSame(10000.0, (float) $payroll->payable_salary);
+        $this->assertSame('paid', $payroll->calculated_status);
+
+        $this->actingAs($admin)->post('/admin/payroll', [
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'calculation_type' => 'date_to_date',
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-04',
+            'working_days' => 4,
+            'non_working_days' => 0,
+            'paid_amount' => 0,
+        ]);
+
+        $payroll = $employee->payrolls()->orderByDesc('id')->first();
+
+        $this->assertSame(1333.33, (float) $payroll->payable_salary);
+    }
+
     public function test_admin_can_generate_monthly_cycle_salary_from_optional_salary_days(): void
     {
         $admin = $this->user('admin');
