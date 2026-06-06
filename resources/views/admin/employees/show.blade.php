@@ -77,6 +77,30 @@
             box-sizing: border-box;
         }
 
+        .employee-profile-photo {
+            align-items: center;
+            background: #111827;
+            border: 1px solid #243044;
+            border-radius: 10px;
+            display: flex;
+            height: 112px;
+            justify-content: center;
+            overflow: hidden;
+            width: 112px;
+        }
+
+        .employee-profile-photo img {
+            height: 100%;
+            object-fit: cover;
+            width: 100%;
+        }
+
+        .employee-avatar-placeholder {
+            color: #dbeafe;
+            font-size: 32px;
+            font-weight: 700;
+        }
+
         @media (max-width: 900px) {
             .employee-grid,
             .employee-info-grid {
@@ -84,6 +108,21 @@
             }
         }
     </style>
+
+    @php
+        $initials = collect(explode(' ', $employee->name))
+            ->filter()
+            ->map(fn ($part) => strtoupper(substr($part, 0, 1)))
+            ->take(2)
+            ->implode('');
+        $documentFields = [
+            'nid_front_file' => 'NID Front',
+            'nid_back_file' => 'NID Back',
+            'cv_file' => 'CV',
+            'appointment_letter_file' => 'Appointment Letter',
+            'agreement_file' => 'Agreement',
+        ];
+    @endphp
 
     <div class="employee-actions">
         <a class="btn" href="/admin/employees">Back to Employees</a>
@@ -128,8 +167,14 @@
         <div class="employee-grid">
             <div class="card" style="margin-top:0;">
                 <h2>Basic Information</h2>
+                <div class="employee-profile-photo" style="margin-bottom:16px;">
+                    @if($employee->profile_photo)
+                        <img src="{{ \Illuminate\Support\Facades\Storage::url($employee->profile_photo) }}" alt="{{ $employee->name }}">
+                    @else
+                        <div class="employee-avatar-placeholder">{{ $initials ?: 'EM' }}</div>
+                    @endif
+                </div>
                 <div class="employee-info-grid">
-                    <p><strong>Profile Photo:</strong> Photo upload not added yet</p>
                     <p><strong>Employee ID:</strong> {{ $employee->employee_id }}</p>
                     <p><strong>Full Name:</strong> {{ $employee->name }}</p>
                     <p><strong>Mobile:</strong> {{ $employee->mobile ?: '-' }}</p>
@@ -273,11 +318,12 @@
             <div class="employee-info-grid">
                 <p><strong>Login Status:</strong> {{ $employee->user_id ? 'Login Linked' : 'No Login Linked' }}</p>
                 <p><strong>Login Email:</strong> {{ $employee->user?->email ?: '-' }}</p>
-                <p><strong>Password Reset:</strong> Password reset button not added yet</p>
             </div>
 
             @if(! $employee->user_id)
                 <p style="margin-top:16px;"><a class="btn" href="/admin/employees/{{ $employee->id }}/create-login">Create Employee Login</a></p>
+            @else
+                <p style="margin-top:16px;"><a class="btn" href="/admin/employees/{{ $employee->id }}/reset-login-password">Reset Password</a></p>
             @endif
         </div>
     </div>
@@ -285,12 +331,27 @@
     <div class="employee-tab-panel" data-tab-panel="documents">
         <div class="card" style="margin-top:0;">
             <h2>Documents</h2>
-            <div class="employee-info-grid">
-                <p><strong>NID Front:</strong> Upload not added yet</p>
-                <p><strong>NID Back:</strong> Upload not added yet</p>
-                <p><strong>CV:</strong> Upload not added yet</p>
-                <p><strong>Appointment Letter:</strong> Upload not added yet</p>
-                <p><strong>Agreement:</strong> Upload not added yet</p>
+            <div class="table-wrap">
+                <table>
+                    <tr>
+                        <th>Document</th>
+                        <th>Status</th>
+                        <th>File</th>
+                    </tr>
+                    @foreach($documentFields as $field => $label)
+                        <tr>
+                            <td>{{ $label }}</td>
+                            <td>{{ $employee->{$field} ? 'Uploaded' : 'Not Uploaded' }}</td>
+                            <td>
+                                @if($employee->{$field})
+                                    <a href="{{ \Illuminate\Support\Facades\Storage::url($employee->{$field}) }}" target="_blank">View / Download</a>
+                                @else
+                                    -
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </table>
             </div>
         </div>
     </div>

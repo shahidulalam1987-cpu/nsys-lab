@@ -9,7 +9,7 @@
 @endif
 
 <div class="card" style="margin-top:20px;">
-    <form method="POST" action="{{ $action }}">
+    <form method="POST" action="{{ $action }}" enctype="multipart/form-data">
         @csrf
 
         <h2>Basic Information</h2>
@@ -34,6 +34,12 @@
                     <option value="{{ $value }}" {{ old('gender', $employee?->gender) == $value ? 'selected' : '' }}>{{ $label }}</option>
                 @endforeach
             </select>
+        </p>
+        <p>Profile Photo<br>
+            <input type="file" name="profile_photo" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+            @if($employee?->profile_photo)
+                <br><a href="{{ \Illuminate\Support\Facades\Storage::url($employee->profile_photo) }}" target="_blank">View current photo</a>
+            @endif
         </p>
 
         <h2>Login Information</h2>
@@ -98,6 +104,38 @@
             </select>
         </p>
         <p>Mobile Banking Info<br><textarea name="mobile_banking_info">{{ old('mobile_banking_info', $employee?->mobile_banking_info) }}</textarea></p>
+
+        <h2>Employee Documents</h2>
+        <p>NID Front<br>
+            <input type="file" name="nid_front_file" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf">
+            @if($employee?->nid_front_file)
+                <br><a href="{{ \Illuminate\Support\Facades\Storage::url($employee->nid_front_file) }}" target="_blank">View current file</a>
+            @endif
+        </p>
+        <p>NID Back<br>
+            <input type="file" name="nid_back_file" accept=".jpg,.jpeg,.png,.webp,.pdf,image/jpeg,image/png,image/webp,application/pdf">
+            @if($employee?->nid_back_file)
+                <br><a href="{{ \Illuminate\Support\Facades\Storage::url($employee->nid_back_file) }}" target="_blank">View current file</a>
+            @endif
+        </p>
+        <p>CV<br>
+            <input type="file" name="cv_file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/webp">
+            @if($employee?->cv_file)
+                <br><a href="{{ \Illuminate\Support\Facades\Storage::url($employee->cv_file) }}" target="_blank">View current file</a>
+            @endif
+        </p>
+        <p>Appointment Letter<br>
+            <input type="file" name="appointment_letter_file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/webp">
+            @if($employee?->appointment_letter_file)
+                <br><a href="{{ \Illuminate\Support\Facades\Storage::url($employee->appointment_letter_file) }}" target="_blank">View current file</a>
+            @endif
+        </p>
+        <p>Agreement<br>
+            <input type="file" name="agreement_file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/webp">
+            @if($employee?->agreement_file)
+                <br><a href="{{ \Illuminate\Support\Facades\Storage::url($employee->agreement_file) }}" target="_blank">View current file</a>
+            @endif
+        </p>
 
         <h2>Admin Notes</h2>
         <p>Admin Note<br><textarea name="admin_note">{{ old('admin_note', $employee?->admin_note) }}</textarea></p>

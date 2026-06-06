@@ -8,6 +8,7 @@ use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class EmployeeController extends Controller
@@ -54,10 +55,12 @@ class EmployeeController extends Controller
     public function store(Request $request)
     {
         $data = $this->validatedEmployee($request);
-        $data['employee_id'] = $this->nextEmployeeId();
+        $employeeId = $this->nextEmployeeId();
+        $data['employee_id'] = $employeeId;
         $data['salary_type'] = 'monthly';
         $data['status'] = $data['status'] ?? 'probation';
         $data['salary_day'] = $data['salary_day'] ?? $this->salaryDayFromConfirmation($data['confirmation_date'] ?? null);
+        $this->storeEmployeeFiles($request, $data, $employeeId);
 
         Employee::create($data);
 
@@ -92,6 +95,7 @@ class EmployeeController extends Controller
         $employee = Employee::findOrFail($id);
         $data = $this->validatedEmployee($request);
         $data['salary_day'] = $data['salary_day'] ?? $this->salaryDayFromConfirmation($data['confirmation_date'] ?? null);
+        $this->storeEmployeeFiles($request, $data, $employee->employee_id, $employee);
         $employee->update($data);
 
         return redirect('/admin/employees/' . $employee->id)->with('success', 'Employee updated successfully.');
@@ -184,6 +188,35 @@ class EmployeeController extends Controller
             ->with('success', 'Employee login created and linked successfully.');
     }
 
+    public function resetLoginPassword(Employee $employee)
+    {
+        if (! $employee->user_id) {
+            return redirect('/admin/employees/' . $employee->id)
+                ->with('success', 'This employee has no linked login. Please create login first.');
+        }
+
+        return view('admin.employees.reset-login-password', compact('employee'));
+    }
+
+    public function updateLoginPassword(Request $request, Employee $employee)
+    {
+        if (! $employee->user_id) {
+            return redirect('/admin/employees/' . $employee->id)
+                ->with('success', 'This employee has no linked login. Please create login first.');
+        }
+
+        $data = $request->validate([
+            'password' => ['required', 'confirmed', 'min:8'],
+        ]);
+
+        $employee->user->update([
+            'password' => Hash::make($data['password']),
+        ]);
+
+        return redirect('/admin/employees/' . $employee->id)
+            ->with('success', 'Employee login password reset successfully.');
+    }
+
     private function validatedEmployee(Request $request): array
     {
         return $request->validate([
@@ -195,6 +228,12 @@ class EmployeeController extends Controller
             'nid_number' => ['nullable', 'string', 'max:100'],
             'date_of_birth' => ['nullable', 'date'],
             'gender' => ['nullable', 'in:male,female,other'],
+            'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'nid_front_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+            'nid_back_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+            'cv_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png,webp', 'max:5120'],
+            'appointment_letter_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png,webp', 'max:5120'],
+            'agreement_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png,webp', 'max:5120'],
             'department' => ['required', Rule::in(Employee::DEPARTMENTS)],
             'role' => ['required', Rule::in(Employee::ROLES)],
             'joining_date' => ['required', 'date'],
@@ -214,6 +253,31 @@ class EmployeeController extends Controller
             'mobile_banking_info' => ['nullable', 'string'],
             'admin_note' => ['nullable', 'string'],
         ]);
+    }
+
+    private function storeEmployeeFiles(Request $request, array &$data, string $employeeId, ?Employee $employee = null): void
+    {
+        $fileFields = [
+            'profile_photo',
+            'nid_front_file',
+            'nid_back_file',
+            'cv_file',
+            'appointment_letter_file',
+            'agreement_file',
+        ];
+
+        foreach ($fileFields as $field) {
+            if (! $request->hasFile($field)) {
+                unset($data[$field]);
+                continue;
+            }
+
+            if ($employee?->{$field}) {
+                Storage::disk('public')->delete($employee->{$field});
+            }
+
+            $data[$field] = $request->file($field)->store('employees/' . $employeeId, 'public');
+        }
     }
 
     private function nextEmployeeId(): string

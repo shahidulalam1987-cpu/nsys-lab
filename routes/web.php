@@ -71,6 +71,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/employees', [EmployeeController::class, 'store']);
     Route::get('/admin/employees/{employee}/create-login', [EmployeeController::class, 'createLogin']);
     Route::post('/admin/employees/{employee}/create-login', [EmployeeController::class, 'storeLogin']);
+    Route::get('/admin/employees/{employee}/reset-login-password', [EmployeeController::class, 'resetLoginPassword']);
+    Route::post('/admin/employees/{employee}/reset-login-password', [EmployeeController::class, 'updateLoginPassword']);
     Route::get('/admin/employees/{id}', [EmployeeController::class, 'show']);
     Route::get('/admin/employees/{id}/edit', [EmployeeController::class, 'edit']);
     Route::post('/admin/employees/{id}/update', [EmployeeController::class, 'update']);
