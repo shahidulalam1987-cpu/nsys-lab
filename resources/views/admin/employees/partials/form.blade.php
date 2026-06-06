@@ -70,7 +70,7 @@
         <p>Joining Date<br><input type="date" name="joining_date" value="{{ old('joining_date', $employee?->joining_date?->toDateString()) }}" required></p>
         <p>Confirmation Date<br><input type="date" name="confirmation_date" value="{{ old('confirmation_date', $employee?->confirmation_date?->toDateString()) }}"></p>
         <p>Last Working Date<br><input type="date" name="last_working_date" value="{{ old('last_working_date', $employee?->last_working_date?->toDateString()) }}"></p>
-        <p>Salary Day / Salary Cycle Day<br><input type="number" min="1" max="31" name="salary_day" value="{{ old('salary_day', $employee?->salary_day) }}" placeholder="Auto from confirmation date if blank"></p>
+        <p>Salary Cycle Day<br><input type="number" min="1" max="31" name="salary_day" value="{{ old('salary_day', $employee?->salary_day) }}" placeholder="Auto from confirmation date if blank"></p>
         <p>Status<br>
             <select name="status" required>
                 @foreach(\App\Models\Employee::STATUSES as $value => $label)

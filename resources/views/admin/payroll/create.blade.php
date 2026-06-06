@@ -5,7 +5,7 @@
 
     <a class="btn" href="/admin/payroll">Back to Salary Generate</a>
 
-    <p>Generate salary by date range or monthly cycle. Salary Day records are optional audit records only.</p>
+    <p>Generate salary by date range or monthly cycle from this page.</p>
 
     @if ($errors->any())
         <div class="card" style="color:#ef4444; margin-top:20px;">
@@ -69,7 +69,7 @@
             <p>Payment Date<br><input type="date" name="payment_date" value="{{ old('payment_date') }}"></p>
             <p>Note<br><textarea name="note">{{ old('note') }}</textarea></p>
 
-            <p>Date To Date is the default. Monthly Cycle can use optional Salary Day audit records if Working Days is left blank.</p>
+            <p>Date To Date is the default salary creation flow.</p>
 
             <button class="btn" type="submit">Save Salary</button>
         </form>

@@ -53,7 +53,7 @@
         <p><strong>Role:</strong> {{ $employee->role }}</p>
         <p><strong>Joining Date:</strong> {{ $employee->joining_date?->toDateString() }}</p>
         <p><strong>Confirmation Date:</strong> {{ $employee->confirmation_date?->toDateString() ?: '-' }}</p>
-        <p><strong>Salary Day / Salary Cycle Day:</strong> {{ $employee->salary_day ?: '-' }}</p>
+        <p><strong>Salary Cycle Day:</strong> {{ $employee->salary_day ?: '-' }}</p>
         <p><strong>Next Salary Date:</strong> {{ $employee->nextSalaryDate()?->toDateString() ?: '-' }}</p>
         <p><strong>Monthly Salary:</strong> BDT {{ number_format($employee->monthly_salary, 2) }}</p>
         <p><strong>Current Status:</strong> {{ $employee->statusLabel() }}</p>
@@ -162,64 +162,6 @@
                     </tr>
                 @empty
                     <tr><td colspan="6">No assignment history found.</td></tr>
-                @endforelse
-            </table>
-        </div>
-    </div>
-
-    <div class="card">
-        <h2>Add Salary Day</h2>
-        <form method="POST" action="/admin/employees/{{ $employee->id }}/salary-days">
-            @csrf
-            <select name="client_id" required>
-                <option value="">Select Client</option>
-                @foreach($clients as $client)
-                    <option value="{{ $client->id }}">{{ $client->company_name }}</option>
-                @endforeach
-            </select>
-            <input type="date" name="date" required>
-            <select name="is_counted" required>
-                <option value="1">Working Day</option>
-                <option value="0">Non Working Day</option>
-            </select>
-            <select name="reason" required>
-                @foreach(\App\Models\SalaryDay::REASONS as $reason)
-                    <option value="{{ $reason }}">{{ ucwords(str_replace('_', ' ', $reason)) }}</option>
-                @endforeach
-            </select>
-            <input type="text" name="note" placeholder="Note">
-            <button class="btn" type="submit">Save Salary Day</button>
-        </form>
-    </div>
-
-    <div class="card">
-        <h2>Recent Salary Days</h2>
-        <div class="table-wrap">
-            <table>
-                <tr>
-                    <th>Date</th>
-                    <th>Client</th>
-                    <th>Day Type</th>
-                    <th>Reason</th>
-                    <th>Note</th>
-                    <th>Action</th>
-                </tr>
-                @forelse($employee->salaryDays->sortByDesc('date')->take(20) as $day)
-                    <tr>
-                        <td>{{ $day->date?->toDateString() }}</td>
-                        <td>{{ $day->client?->company_name }}</td>
-                        <td>{{ $day->is_counted ? 'Working Day' : 'Non Working Day' }}</td>
-                        <td>{{ ucwords(str_replace('_', ' ', $day->reason)) }}</td>
-                        <td>{{ $day->note ?: '-' }}</td>
-                        <td>
-                            <form method="POST" action="/admin/salary-days/{{ $day->id }}/delete">
-                                @csrf
-                                <button class="btn btn-danger" type="submit" onclick="return confirm('Delete this salary day record?');">Delete</button>
-                            </form>
-                        </td>
-                    </tr>
-                @empty
-                    <tr><td colspan="6">No salary days found.</td></tr>
                 @endforelse
             </table>
         </div>
