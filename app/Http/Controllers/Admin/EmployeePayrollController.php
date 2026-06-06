@@ -60,6 +60,20 @@ class EmployeePayrollController extends Controller
             'to_date' => ['nullable', 'required_if:calculation_type,date_to_date', 'date', 'after_or_equal:from_date'],
             'working_days' => ['nullable', 'integer', 'min:0', 'max:31'],
             'non_working_days' => ['nullable', 'integer', 'min:0', 'max:31'],
+            'salary_day_adjustments' => ['nullable', 'array'],
+            'salary_day_adjustments.*.date' => ['required_with:salary_day_adjustments', 'date'],
+            'salary_day_adjustments.*.day_type' => ['required_with:salary_day_adjustments', Rule::in(['working', 'non_working'])],
+            'salary_day_adjustments.*.reason' => ['required_with:salary_day_adjustments', Rule::in([
+                'active_working',
+                'client_issue',
+                'boosting_off',
+                'business_closed',
+                'agency_hold',
+                'on_leave',
+                'sick_leave',
+                'other',
+            ])],
+            'salary_day_adjustments.*.note' => ['nullable', 'string', 'max:500'],
             'payment_status' => ['nullable', Rule::in(['upcoming', 'unpaid', 'partial', 'paid'])],
             'paid_amount' => ['nullable', 'numeric', 'min:0'],
             'payment_method' => ['nullable', 'required_if:payment_status,partial,paid', 'string', 'max:255'],
@@ -91,6 +105,7 @@ class EmployeePayrollController extends Controller
             'non_working_days' => $calculation['non_working_days'],
             'month_days' => $calculation['month_days'],
             'daily_salary' => $calculation['daily_salary'],
+            'salary_day_adjustments' => $calculation['salary_day_adjustments'],
             'salary_month' => $calculation['salary_month']->toDateString(),
             'payable_salary' => $calculation['payable_salary'],
             'paid_amount' => $paidAmount,
@@ -197,10 +212,19 @@ class EmployeePayrollController extends Controller
             $fromDate = Carbon::parse($data['from_date']);
             $toDate = Carbon::parse($data['to_date']);
             $salaryMonth = $fromDate->copy()->startOfMonth();
-            $workingDays = $submittedWorkingDays !== null
-                ? (int) $submittedWorkingDays
-                : $fromDate->diffInDays($toDate) + 1;
-            $nonWorkingDays = (int) ($submittedNonWorkingDays ?? 0);
+            $adjustments = $this->normalizeSalaryDayAdjustments($data['salary_day_adjustments'] ?? [], $fromDate, $toDate);
+
+            if ($adjustments !== []) {
+                $nonWorkingDays = collect($adjustments)
+                    ->where('day_type', 'non_working')
+                    ->count();
+                $workingDays = count($adjustments) - $nonWorkingDays;
+            } else {
+                $workingDays = $submittedWorkingDays !== null
+                    ? (int) $submittedWorkingDays
+                    : ((int) $fromDate->diffInDays($toDate)) + 1;
+                $nonWorkingDays = (int) ($submittedNonWorkingDays ?? 0);
+            }
         }
 
         $monthDays = $fromDate->daysInMonth;
@@ -216,8 +240,58 @@ class EmployeePayrollController extends Controller
             'non_working_days' => $nonWorkingDays,
             'month_days' => $monthDays,
             'daily_salary' => $dailySalary,
+            'salary_day_adjustments' => $adjustments ?? null,
             'payable_salary' => $payableSalary,
         ];
+    }
+
+    private function normalizeSalaryDayAdjustments(array $adjustments, Carbon $fromDate, Carbon $toDate): array
+    {
+        if ($adjustments === []) {
+            return [];
+        }
+
+        $allowedReasons = [
+            'active_working',
+            'client_issue',
+            'boosting_off',
+            'business_closed',
+            'agency_hold',
+            'on_leave',
+            'sick_leave',
+            'other',
+        ];
+        $normalized = [];
+
+        foreach ($adjustments as $adjustment) {
+            if (empty($adjustment['date'])) {
+                continue;
+            }
+
+            $date = Carbon::parse($adjustment['date'])->startOfDay();
+
+            if ($date->lt($fromDate->copy()->startOfDay()) || $date->gt($toDate->copy()->startOfDay())) {
+                continue;
+            }
+
+            $dayType = ($adjustment['day_type'] ?? 'working') === 'non_working'
+                ? 'non_working'
+                : 'working';
+            $reason = in_array($adjustment['reason'] ?? 'active_working', $allowedReasons, true)
+                ? $adjustment['reason']
+                : 'active_working';
+
+            $normalized[$date->toDateString()] = [
+                'date' => $date->toDateString(),
+                'day_type' => $dayType,
+                'reason' => $reason,
+                'note' => trim((string) ($adjustment['note'] ?? '')),
+            ];
+        }
+
+        ksort($normalized);
+
+        return array_values($normalized);
     }
 
     private function validatePaymentWorkflow(Request $request, string $paymentStatus, float $paidAmount): void

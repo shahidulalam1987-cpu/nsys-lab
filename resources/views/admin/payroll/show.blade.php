@@ -32,4 +32,26 @@
         </p>
         <p><strong>Note:</strong> {{ $payroll->note ?: '-' }}</p>
     </div>
+
+    @if(! empty($payroll->salary_day_adjustments))
+        <div class="card" style="margin-top:20px;">
+            <h2>Date-wise Adjustment</h2>
+            <table>
+                <tr>
+                    <th>Date</th>
+                    <th>Day Type</th>
+                    <th>Reason</th>
+                    <th>Note</th>
+                </tr>
+                @foreach($payroll->salary_day_adjustments as $adjustment)
+                    <tr>
+                        <td>{{ $adjustment['date'] ?? '-' }}</td>
+                        <td>{{ ($adjustment['day_type'] ?? 'working') === 'non_working' ? 'Non Working' : 'Working' }}</td>
+                        <td>{{ ucwords(str_replace('_', ' ', $adjustment['reason'] ?? 'active_working')) }}</td>
+                        <td>{{ $adjustment['note'] ?? '-' }}</td>
+                    </tr>
+                @endforeach
+            </table>
+        </div>
+    @endif
 @endsection

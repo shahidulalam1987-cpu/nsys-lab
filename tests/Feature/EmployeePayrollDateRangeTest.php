@@ -129,6 +129,66 @@ class EmployeePayrollDateRangeTest extends TestCase
         $this->assertSame(6000.0, (float) $payroll->payable_salary);
     }
 
+    public function test_date_range_salary_uses_date_wise_non_working_adjustments(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $employee = $this->employee([
+            'monthly_salary' => 30000,
+        ]);
+
+        $adjustments = collect(range(1, 10))
+            ->mapWithKeys(function (int $day) {
+                $date = '2026-06-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
+                $isNonWorking = in_array($day, [3, 7], true);
+
+                return [
+                    $day => [
+                        'date' => $date,
+                        'day_type' => $isNonWorking ? 'non_working' : 'working',
+                        'reason' => match ($day) {
+                            3 => 'client_issue',
+                            7 => 'boosting_off',
+                            default => 'active_working',
+                        },
+                        'note' => $isNonWorking ? 'Office note ' . $day : '',
+                    ],
+                ];
+            })
+            ->values()
+            ->all();
+
+        $response = $this->actingAs($admin)->post('/admin/payroll', [
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'calculation_type' => 'date_to_date',
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-10',
+            'salary_day_adjustments' => $adjustments,
+            'payment_status' => 'upcoming',
+            'paid_amount' => 0,
+        ]);
+
+        $payroll = $employee->payrolls()->first();
+
+        $response->assertRedirect('/admin/payroll/' . $payroll->id);
+        $payroll->refresh();
+
+        $this->assertSame(8, $payroll->working_days);
+        $this->assertSame(2, $payroll->non_working_days);
+        $this->assertSame(8000.0, (float) $payroll->payable_salary);
+        $this->assertCount(10, $payroll->salary_day_adjustments);
+        $this->assertSame('client_issue', $payroll->salary_day_adjustments[2]['reason']);
+        $this->assertSame('boosting_off', $payroll->salary_day_adjustments[6]['reason']);
+
+        $showResponse = $this->actingAs($admin)->get('/admin/payroll/' . $payroll->id);
+
+        $showResponse->assertOk();
+        $showResponse->assertSee('Date-wise Adjustment');
+        $showResponse->assertSee('Client Issue');
+        $showResponse->assertSee('Boosting Off');
+    }
+
     public function test_monthly_cycle_salary_defaults_working_days_to_actual_month_days_without_salary_days(): void
     {
         $admin = $this->user('admin');

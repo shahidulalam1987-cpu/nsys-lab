@@ -64,6 +64,23 @@
             <p>Payable Salary (BDT)<br><input type="text" id="payable_salary_display" value="BDT 0.00" readonly></p>
             <p>Due<br><input type="text" id="due_display" value="BDT 0.00" readonly></p>
 
+            <div id="date_adjustment_card" style="margin-top:20px;">
+                <h2>Date-wise Adjustment</h2>
+                <p>Mark dates as Non Working when needed. Salary will update automatically.</p>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Day Type</th>
+                            <th>Reason</th>
+                            <th>Note</th>
+                        </tr>
+                    </thead>
+                    <tbody id="date_adjustment_rows"></tbody>
+                </table>
+            </div>
+
             <p>Payment Status<br>
                 <select name="payment_status" id="payment_status" required>
                     @foreach(['upcoming' => 'Upcoming', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'] as $value => $label)
@@ -91,6 +108,9 @@
         const fromDate = document.getElementById('from_date');
         const toDate = document.getElementById('to_date');
         const workingDays = document.getElementById('working_days');
+        const nonWorkingDays = document.getElementById('non_working_days');
+        const dateAdjustmentCard = document.getElementById('date_adjustment_card');
+        const dateAdjustmentRows = document.getElementById('date_adjustment_rows');
         const paymentStatus = document.getElementById('payment_status');
         const paidAmount = document.getElementById('paid_amount');
         const paymentMethod = document.getElementById('payment_method');
@@ -134,6 +154,40 @@
             return Math.floor((end - start) / 86400000) + 1;
         }
 
+        const reasonOptions = {
+            active_working: 'Active Working',
+            client_issue: 'Client Issue',
+            boosting_off: 'Boosting OFF',
+            business_closed: 'Business Closed',
+            agency_hold: 'Agency Hold',
+            on_leave: 'On Leave',
+            sick_leave: 'Sick Leave',
+            other: 'Other',
+        };
+
+        function dateRange(startValue, endValue) {
+            if (!startValue || !endValue) {
+                return [];
+            }
+
+            const start = new Date(startValue + 'T00:00:00');
+            const end = new Date(endValue + 'T00:00:00');
+
+            if (end < start) {
+                return [];
+            }
+
+            const dates = [];
+            const current = new Date(start);
+
+            while (current <= end) {
+                dates.push(formatDate(current));
+                current.setDate(current.getDate() + 1);
+            }
+
+            return dates;
+        }
+
         function syncMonthlyCycleDates() {
             if (calculationType.value !== 'monthly_cycle' || !salaryMonth.value) {
                 return;
@@ -149,14 +203,77 @@
         function syncWorkingDays() {
             if (calculationType.value === 'monthly_cycle') {
                 workingDays.value = daysInMonth(fromDate.value);
+                nonWorkingDays.value = Number(nonWorkingDays.value || 0);
                 return;
             }
 
-            const calculatedWorkingDays = inclusiveDaysBetween(fromDate.value, toDate.value);
+            const calculatedWorkingDays = dateAdjustmentRows.children.length > 0
+                ? Array.from(dateAdjustmentRows.querySelectorAll('.day-type')).filter((field) => field.value === 'working').length
+                : inclusiveDaysBetween(fromDate.value, toDate.value);
+            const calculatedNonWorkingDays = dateAdjustmentRows.children.length > 0
+                ? Array.from(dateAdjustmentRows.querySelectorAll('.day-type')).filter((field) => field.value === 'non_working').length
+                : 0;
 
             if (calculatedWorkingDays > 0) {
                 workingDays.value = calculatedWorkingDays;
             }
+
+            nonWorkingDays.value = calculatedNonWorkingDays;
+        }
+
+        function renderDateAdjustments() {
+            dateAdjustmentRows.innerHTML = '';
+
+            if (calculationType.value !== 'date_to_date') {
+                dateAdjustmentCard.style.display = 'none';
+                return;
+            }
+
+            const dates = dateRange(fromDate.value, toDate.value);
+            dateAdjustmentCard.style.display = dates.length > 0 ? 'block' : 'none';
+
+            dates.forEach((date, index) => {
+                const row = document.createElement('tr');
+                const reasonSelectOptions = Object.entries(reasonOptions).map(([value, label]) => {
+                    return `<option value="${value}" ${value === 'active_working' ? 'selected' : ''}>${label}</option>`;
+                }).join('');
+
+                row.innerHTML = `
+                    <td>
+                        ${date}
+                        <input type="hidden" name="salary_day_adjustments[${index}][date]" value="${date}">
+                    </td>
+                    <td>
+                        <select name="salary_day_adjustments[${index}][day_type]" class="day-type">
+                            <option value="working" selected>Working</option>
+                            <option value="non_working">Non Working</option>
+                        </select>
+                    </td>
+                    <td>
+                        <select name="salary_day_adjustments[${index}][reason]" class="day-reason">
+                            ${reasonSelectOptions}
+                        </select>
+                    </td>
+                    <td>
+                        <input type="text" name="salary_day_adjustments[${index}][note]" placeholder="Optional note">
+                    </td>
+                `;
+
+                dateAdjustmentRows.appendChild(row);
+            });
+
+            dateAdjustmentRows.querySelectorAll('.day-type').forEach((field) => {
+                field.addEventListener('change', () => {
+                    const reason = field.closest('tr').querySelector('.day-reason');
+
+                    if (field.value === 'working') {
+                        reason.value = 'active_working';
+                    }
+
+                    syncWorkingDays();
+                    calculateSalary();
+                });
+            });
         }
 
         function calculateSalary() {
@@ -181,6 +298,7 @@
 
         function syncDatesAndSalary() {
             syncMonthlyCycleDates();
+            renderDateAdjustments();
             syncWorkingDays();
             calculateSalary();
         }
