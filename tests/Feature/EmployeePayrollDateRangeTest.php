@@ -137,6 +137,7 @@ class EmployeePayrollDateRangeTest extends TestCase
         $showResponse = $this->actingAs($admin)->get('/admin/payroll/' . $payroll->id);
 
         $listResponse->assertOk();
+        $listResponse->assertSee('/admin/employees/' . $employee->id, false);
         $listResponse->assertSee('2026-06-01 to 2026-06-10');
         $listResponse->assertSee('Partially Paid');
         $showResponse->assertOk();
@@ -145,6 +146,45 @@ class EmployeePayrollDateRangeTest extends TestCase
         $showResponse->assertSee('2026-06-01 to 2026-06-10');
         $showResponse->assertSee('Daily Salary');
         $showResponse->assertSee('BDT 5,000.00');
+    }
+
+    public function test_admin_can_delete_salary_record_without_deleting_employee_or_client(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $employee = $this->employee([
+            'name' => 'Delete Salary Employee',
+        ]);
+        $payroll = $employee->payrolls()->create([
+            'client_id' => $client->id,
+            'calculation_type' => 'date_to_date',
+            'salary_period_from' => '2026-06-01',
+            'salary_period_to' => '2026-06-10',
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-10',
+            'working_days' => 10,
+            'non_working_days' => 0,
+            'month_days' => 30,
+            'daily_salary' => 1000,
+            'salary_month' => '2026-06-01',
+            'payable_salary' => 10000,
+            'paid_amount' => 5000,
+            'status' => 'partial',
+        ]);
+
+        $response = $this->actingAs($admin)->post('/admin/payroll/' . $payroll->id . '/delete');
+
+        $response->assertRedirect('/admin/payroll');
+        $response->assertSessionHas('success', 'Salary record deleted successfully.');
+        $this->assertDatabaseMissing('employee_payrolls', [
+            'id' => $payroll->id,
+        ]);
+        $this->assertDatabaseHas('employees', [
+            'id' => $employee->id,
+        ]);
+        $this->assertDatabaseHas('clients', [
+            'id' => $client->id,
+        ]);
     }
 
     public function test_employee_dashboard_salary_history_shows_date_range(): void

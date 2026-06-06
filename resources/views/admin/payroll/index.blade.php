@@ -68,7 +68,13 @@
             @forelse($payrolls as $payroll)
                 <tr>
                     <td>{{ $payroll->salary_period }}</td>
-                    <td>{{ $payroll->employee?->name }}</td>
+                    <td>
+                        @if($payroll->employee)
+                            <a href="/admin/employees/{{ $payroll->employee->id }}">{{ $payroll->employee->name }}</a>
+                        @else
+                            -
+                        @endif
+                    </td>
                     <td>{{ $payroll->client?->company_name ?: '-' }}</td>
                     <td>{{ $payroll->working_days ?? '-' }}</td>
                     <td>BDT {{ number_format($payroll->payable_salary, 2) }}</td>
@@ -80,6 +86,11 @@
                         <a href="/admin/payroll/{{ $payroll->id }}">View</a>
                         |
                         <a href="/admin/payroll/{{ $payroll->id }}/edit">Edit</a>
+                        |
+                        <form method="POST" action="/admin/payroll/{{ $payroll->id }}/delete" style="display:inline;">
+                            @csrf
+                            <button class="btn btn-danger" type="submit" onclick="return confirm('Delete this salary record?');">Delete</button>
+                        </form>
                     </td>
                 </tr>
             @empty

@@ -96,6 +96,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/payroll/{id}', [EmployeePayrollController::class, 'show']);
     Route::get('/admin/payroll/{id}/edit', [EmployeePayrollController::class, 'edit']);
     Route::post('/admin/payroll/{id}/update', [EmployeePayrollController::class, 'update']);
+    Route::post('/admin/payroll/{payroll}/delete', [EmployeePayrollController::class, 'destroy']);
 
     Route::get('/admin/clients', [ClientController::class, 'index']);
     Route::get('/admin/clients/create', [ClientController::class, 'create']);

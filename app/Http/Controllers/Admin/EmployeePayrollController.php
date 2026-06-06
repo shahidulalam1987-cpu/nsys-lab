@@ -133,6 +133,14 @@ class EmployeePayrollController extends Controller
             ->with('success', 'Employee payroll updated successfully.');
     }
 
+    public function destroy(EmployeePayroll $payroll)
+    {
+        $payroll->delete();
+
+        return redirect('/admin/payroll')
+            ->with('success', 'Salary record deleted successfully.');
+    }
+
     private function calculatePayroll(Employee $employee, array $data): array
     {
         if ($data['calculation_type'] === 'monthly_cycle') {
