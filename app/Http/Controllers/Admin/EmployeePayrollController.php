@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\Employee;
 use App\Models\EmployeePayroll;
-use App\Models\SalaryDay;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -59,7 +58,7 @@ class EmployeePayrollController extends Controller
             'salary_month' => ['nullable', 'required_if:calculation_type,monthly_cycle', 'date_format:Y-m'],
             'from_date' => ['nullable', 'required_if:calculation_type,date_to_date', 'date'],
             'to_date' => ['nullable', 'required_if:calculation_type,date_to_date', 'date', 'after_or_equal:from_date'],
-            'working_days' => ['nullable', 'required_if:calculation_type,date_to_date', 'integer', 'min:0', 'max:31'],
+            'working_days' => ['nullable', 'integer', 'min:0', 'max:31'],
             'non_working_days' => ['nullable', 'integer', 'min:0', 'max:31'],
             'payment_status' => ['nullable', Rule::in(['upcoming', 'unpaid', 'partial', 'paid'])],
             'paid_amount' => ['nullable', 'numeric', 'min:0'],
@@ -173,6 +172,9 @@ class EmployeePayrollController extends Controller
 
     private function calculatePayroll(Employee $employee, array $data): array
     {
+        $submittedWorkingDays = $data['working_days'] ?? null;
+        $submittedNonWorkingDays = $data['non_working_days'] ?? null;
+
         if ($data['calculation_type'] === 'monthly_cycle') {
             if (empty($data['salary_month'])) {
                 abort(422, 'Salary month is required for monthly cycle salary.');
@@ -181,26 +183,24 @@ class EmployeePayrollController extends Controller
             $salaryMonth = Carbon::createFromFormat('Y-m', $data['salary_month'])->startOfMonth();
             $fromDate = $salaryMonth->copy();
             $toDate = $salaryMonth->copy()->endOfMonth();
-            $auditDays = SalaryDay::where('employee_id', $employee->id)
-                ->where('client_id', $data['client_id'])
-                ->whereBetween('date', [$fromDate->toDateString(), $toDate->toDateString()])
-                ->get();
-            $workingDays = $data['working_days'] !== null
-                ? (int) $data['working_days']
-                : $auditDays->where('is_counted', true)->count();
-            $nonWorkingDays = $data['non_working_days'] !== null
-                ? (int) $data['non_working_days']
-                : $auditDays->where('is_counted', false)->count();
+            $workingDays = $submittedWorkingDays !== null
+                ? (int) $submittedWorkingDays
+                : $fromDate->daysInMonth;
+            $nonWorkingDays = $submittedNonWorkingDays !== null
+                ? (int) $submittedNonWorkingDays
+                : 0;
         } else {
-            if (empty($data['from_date']) || empty($data['to_date']) || $data['working_days'] === null) {
-                abort(422, 'From Date, To Date, and Working Days are required for Date To Date salary.');
+            if (empty($data['from_date']) || empty($data['to_date'])) {
+                abort(422, 'From Date and To Date are required for Date To Date salary.');
             }
 
             $fromDate = Carbon::parse($data['from_date']);
             $toDate = Carbon::parse($data['to_date']);
             $salaryMonth = $fromDate->copy()->startOfMonth();
-            $workingDays = (int) $data['working_days'];
-            $nonWorkingDays = (int) ($data['non_working_days'] ?? 0);
+            $workingDays = $submittedWorkingDays !== null
+                ? (int) $submittedWorkingDays
+                : $fromDate->diffInDays($toDate) + 1;
+            $nonWorkingDays = (int) ($submittedNonWorkingDays ?? 0);
         }
 
         $monthDays = $fromDate->daysInMonth;

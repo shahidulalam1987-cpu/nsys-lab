@@ -111,6 +111,29 @@
             return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
         }
 
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+
+            return `${year}-${month}-${day}`;
+        }
+
+        function inclusiveDaysBetween(startValue, endValue) {
+            if (!startValue || !endValue) {
+                return 0;
+            }
+
+            const start = new Date(startValue + 'T00:00:00');
+            const end = new Date(endValue + 'T00:00:00');
+
+            if (end < start) {
+                return 0;
+            }
+
+            return Math.floor((end - start) / 86400000) + 1;
+        }
+
         function syncMonthlyCycleDates() {
             if (calculationType.value !== 'monthly_cycle' || !salaryMonth.value) {
                 return;
@@ -120,12 +143,23 @@
             const parts = salaryMonth.value.split('-');
             const endDate = new Date(Number(parts[0]), Number(parts[1]), 0);
             fromDate.value = start;
-            toDate.value = endDate.toISOString().slice(0, 10);
+            toDate.value = formatDate(endDate);
+        }
+
+        function syncWorkingDays() {
+            if (calculationType.value === 'monthly_cycle') {
+                workingDays.value = daysInMonth(fromDate.value);
+                return;
+            }
+
+            const calculatedWorkingDays = inclusiveDaysBetween(fromDate.value, toDate.value);
+
+            if (calculatedWorkingDays > 0) {
+                workingDays.value = calculatedWorkingDays;
+            }
         }
 
         function calculateSalary() {
-            syncMonthlyCycleDates();
-
             const selected = employeeSelect.options[employeeSelect.selectedIndex];
             const monthlySalary = Number(selected?.dataset.salary || 0);
             const monthDays = daysInMonth(fromDate.value);
@@ -145,11 +179,26 @@
             paymentProof.required = false;
         }
 
-        [employeeSelect, calculationType, salaryMonth, fromDate, toDate, workingDays, paymentStatus, paidAmount].forEach((field) => {
+        function syncDatesAndSalary() {
+            syncMonthlyCycleDates();
+            syncWorkingDays();
+            calculateSalary();
+        }
+
+        [calculationType, salaryMonth, fromDate, toDate].forEach((field) => {
+            field.addEventListener('input', syncDatesAndSalary);
+            field.addEventListener('change', syncDatesAndSalary);
+        });
+
+        [employeeSelect, workingDays, paymentStatus, paidAmount].forEach((field) => {
             field.addEventListener('input', calculateSalary);
             field.addEventListener('change', calculateSalary);
         });
 
-        calculateSalary();
+        @if(old('working_days') === null)
+            syncDatesAndSalary();
+        @else
+            calculateSalary();
+        @endif
     </script>
 @endsection
