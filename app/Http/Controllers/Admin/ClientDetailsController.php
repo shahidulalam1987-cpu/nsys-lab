@@ -20,13 +20,31 @@ class ClientDetailsController extends Controller
             ->where('client_id', $client->id)
             ->latest()
             ->get();
+        $employeeAssignments = $client->employeeAssignments()
+            ->with('employee')
+            ->latest('assigned_from')
+            ->get();
+        $assignedEmployees = $employeeAssignments
+            ->pluck('employee')
+            ->filter()
+            ->unique('id');
+        $employeeSummary = [
+            'total' => $assignedEmployees->count(),
+            'active' => $assignedEmployees->where('status', 'active')->count(),
+            'probation' => $assignedEmployees->where('status', 'probation')->count(),
+            'on_leave' => $assignedEmployees->where('status', 'on_leave')->count(),
+            'inactive' => $assignedEmployees->where('status', 'inactive')->count(),
+            'terminated' => $assignedEmployees->where('status', 'terminated')->count(),
+        ];
 
         return view('admin.clients.show', compact(
             'client',
             'ledger',
             'summary',
             'reports',
-            'payments'
+            'payments',
+            'employeeAssignments',
+            'employeeSummary'
         ));
     }
 }

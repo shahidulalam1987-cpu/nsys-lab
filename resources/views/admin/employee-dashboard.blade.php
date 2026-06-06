@@ -43,7 +43,7 @@
                     <td><a href="/admin/employees/{{ $employee->id }}">{{ $employee->employee_id }}</a></td>
                     <td>{{ $employee->name }}</td>
                     <td>{{ $employee->role }}</td>
-                    <td>{{ ucwords(str_replace('_', ' ', $employee->status)) }}</td>
+                    <td>{{ $employee->statusLabel() }}</td>
                     <td>{{ $employee->joining_date?->toDateString() }}</td>
                 </tr>
             @empty

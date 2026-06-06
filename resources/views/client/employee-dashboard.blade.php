@@ -45,7 +45,7 @@
                 <tr>
                     <td>{{ $assignment->employee?->name }}</td>
                     <td>{{ $assignment->employee?->role }}</td>
-                    <td>{{ ucwords(str_replace('_', ' ', $assignment->employee?->status)) }}</td>
+                    <td>{{ $assignment->employee?->statusLabel() }}</td>
                     <td>{{ $assignment->assigned_from?->toDateString() }}</td>
                     <td>{{ $assignment->assigned_to?->toDateString() ?: '-' }}</td>
                 </tr>

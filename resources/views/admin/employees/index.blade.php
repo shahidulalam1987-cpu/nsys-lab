@@ -5,12 +5,21 @@
 
     <a class="btn" href="/admin/employees/create">Add Employee</a>
 
+    <div class="stats-grid">
+        <div class="stat-card"><p>Total Employees</p><h2>{{ number_format($summary['total']) }}</h2></div>
+        <div class="stat-card"><p>Active</p><h2>{{ number_format($summary['active']) }}</h2></div>
+        <div class="stat-card"><p>Probation</p><h2>{{ number_format($summary['probation']) }}</h2></div>
+        <div class="stat-card"><p>On Leave</p><h2>{{ number_format($summary['on_leave']) }}</h2></div>
+        <div class="stat-card"><p>Inactive</p><h2>{{ number_format($summary['inactive']) }}</h2></div>
+        <div class="stat-card"><p>Terminated</p><h2>{{ number_format($summary['terminated']) }}</h2></div>
+    </div>
+
     <div class="card" style="margin-top:20px;">
         <form method="GET" action="/admin/employees">
             <input type="text" name="search" placeholder="Employee ID, name, mobile" value="{{ request('search') }}">
             <select name="status">
-                <option value="">All Status</option>
-                @foreach(['probation' => 'Probation', 'active' => 'Active', 'on_leave' => 'On Leave', 'suspended' => 'Suspended', 'terminated' => 'Terminated'] as $value => $label)
+                <option value="">All Employees</option>
+                @foreach(\App\Models\Employee::STATUS_FILTERS as $value => $label)
                     <option value="{{ $value }}" {{ request('status') == $value ? 'selected' : '' }}>{{ $label }}</option>
                 @endforeach
             </select>
@@ -18,6 +27,12 @@
             <a href="/admin/employees">Reset</a>
         </form>
         <p>Total Employees Found: {{ $employees->count() }}</p>
+        <p>
+            <a href="/admin/employees">All Employees</a>
+            @foreach(\App\Models\Employee::STATUS_FILTERS as $value => $label)
+                | <a href="/admin/employees?status={{ $value }}">{{ $label }}</a>
+            @endforeach
+        </p>
     </div>
 
     <div class="card">
@@ -44,7 +59,7 @@
                     <td>{{ $employee->role }}</td>
                     <td>{{ $employee->joining_date?->toDateString() }}</td>
                     <td>BDT {{ number_format($employee->monthly_salary, 2) }}</td>
-                    <td>{{ ucwords(str_replace('_', ' ', $employee->status)) }}</td>
+                    <td>{{ $employee->statusLabel() }}</td>
                     <td>
                         @if($employee->user_id)
                             <span class="badge badge-success">Linked</span>

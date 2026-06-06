@@ -29,8 +29,19 @@ class EmployeeController extends Controller
         }
 
         $employees = $query->latest()->get();
+        $statusCounts = Employee::selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+        $summary = [
+            'total' => Employee::count(),
+            'active' => (int) ($statusCounts['active'] ?? 0),
+            'probation' => (int) ($statusCounts['probation'] ?? 0),
+            'on_leave' => (int) ($statusCounts['on_leave'] ?? 0),
+            'inactive' => (int) ($statusCounts['inactive'] ?? 0),
+            'terminated' => (int) ($statusCounts['terminated'] ?? 0),
+        ];
 
-        return view('admin.employees.index', compact('employees'));
+        return view('admin.employees.index', compact('employees', 'summary'));
     }
 
     public function create()
@@ -46,6 +57,7 @@ class EmployeeController extends Controller
         $data['employee_id'] = $this->nextEmployeeId();
         $data['salary_type'] = 'monthly';
         $data['status'] = $data['status'] ?? 'probation';
+        $data['salary_day'] = $data['salary_day'] ?? $this->salaryDayFromConfirmation($data['confirmation_date'] ?? null);
 
         Employee::create($data);
 
@@ -54,10 +66,11 @@ class EmployeeController extends Controller
 
     public function show($id)
     {
-        $employee = Employee::with(['user', 'assignments.client', 'salaryDays.client'])->findOrFail($id);
+        $employee = Employee::with(['user', 'assignments.client', 'salaryDays.client', 'payrolls.client'])->findOrFail($id);
         $clients = Client::orderBy('company_name')->get();
+        $salarySummary = $this->salarySummary($employee);
 
-        return view('admin.employees.show', compact('employee', 'clients'));
+        return view('admin.employees.show', compact('employee', 'clients', 'salarySummary'));
     }
 
     public function edit($id)
@@ -78,6 +91,7 @@ class EmployeeController extends Controller
     {
         $employee = Employee::findOrFail($id);
         $data = $this->validatedEmployee($request);
+        $data['salary_day'] = $data['salary_day'] ?? $this->salaryDayFromConfirmation($data['confirmation_date'] ?? null);
         $employee->update($data);
 
         return redirect('/admin/employees/' . $employee->id)->with('success', 'Employee updated successfully.');
@@ -94,6 +108,7 @@ class EmployeeController extends Controller
         $employee->update([
             'status' => 'active',
             'confirmation_date' => now()->toDateString(),
+            'salary_day' => $employee->salary_day ?: (int) now()->format('j'),
         ]);
 
         return back()->with('success', 'Employee confirmed successfully.');
@@ -175,17 +190,29 @@ class EmployeeController extends Controller
             'user_id' => ['nullable', 'exists:users,id'],
             'name' => ['required', 'string', 'max:255'],
             'mobile' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'address' => ['nullable', 'string'],
+            'nid_number' => ['nullable', 'string', 'max:100'],
+            'date_of_birth' => ['nullable', 'date'],
+            'gender' => ['nullable', 'in:male,female,other'],
             'department' => ['required', Rule::in(Employee::DEPARTMENTS)],
             'role' => ['required', Rule::in(Employee::ROLES)],
             'joining_date' => ['required', 'date'],
             'confirmation_date' => ['nullable', 'date'],
             'last_working_date' => ['nullable', 'date'],
-            'status' => ['required', 'in:probation,active,on_leave,suspended,terminated'],
+            'status' => ['required', Rule::in(array_keys(Employee::STATUSES))],
+            'salary_day' => ['nullable', 'integer', 'min:1', 'max:31'],
             'monthly_salary' => ['required', 'numeric', 'min:0'],
             'bank_name' => ['nullable', 'string', 'max:255'],
             'account_name' => ['nullable', 'string', 'max:255'],
             'account_number' => ['nullable', 'string', 'max:255'],
+            'branch_name' => ['nullable', 'string', 'max:255'],
+            'bkash_number' => ['nullable', 'string', 'max:50'],
+            'nagad_number' => ['nullable', 'string', 'max:50'],
+            'rocket_number' => ['nullable', 'string', 'max:50'],
+            'preferred_payment_method' => ['nullable', 'in:bank,bkash,nagad,rocket,cash'],
             'mobile_banking_info' => ['nullable', 'string'],
+            'admin_note' => ['nullable', 'string'],
         ]);
     }
 
@@ -209,5 +236,32 @@ class EmployeeController extends Controller
         }
 
         return 'NSYS-EM-' . str_pad((string) $number, 3, '0', STR_PAD_LEFT);
+    }
+
+    private function salaryDayFromConfirmation(?string $confirmationDate): ?int
+    {
+        if (! $confirmationDate) {
+            return null;
+        }
+
+        return (int) date('j', strtotime($confirmationDate));
+    }
+
+    private function salarySummary(Employee $employee): array
+    {
+        $payrolls = $employee->payrolls;
+        $lastPayment = $payrolls
+            ->filter(fn ($payroll) => (float) $payroll->paid_amount > 0)
+            ->sortByDesc(fn ($payroll) => $payroll->payment_date ?: $payroll->created_at)
+            ->first();
+
+        return [
+            'working_days' => $employee->salaryDays->where('is_counted', true)->count(),
+            'non_working_days' => $employee->salaryDays->where('is_counted', false)->count(),
+            'total_payable_salary' => (float) $payrolls->sum('payable_salary'),
+            'total_paid_salary' => (float) $payrolls->sum('paid_amount'),
+            'current_salary_due' => $payrolls->sum(fn ($payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
+            'last_salary_payment' => $lastPayment,
+        ];
     }
 }

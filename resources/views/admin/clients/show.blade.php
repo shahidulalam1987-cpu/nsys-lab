@@ -57,6 +57,55 @@
     </div>
 
     <div class="card">
+        <h2>Employee Department Summary</h2>
+
+        <div class="stats-grid">
+            <div class="stat-card"><p>Total Assigned</p><h2>{{ number_format($employeeSummary['total']) }}</h2></div>
+            <div class="stat-card"><p>Active</p><h2>{{ number_format($employeeSummary['active']) }}</h2></div>
+            <div class="stat-card"><p>Probation</p><h2>{{ number_format($employeeSummary['probation']) }}</h2></div>
+            <div class="stat-card"><p>On Leave</p><h2>{{ number_format($employeeSummary['on_leave']) }}</h2></div>
+            <div class="stat-card"><p>Inactive</p><h2>{{ number_format($employeeSummary['inactive']) }}</h2></div>
+            <div class="stat-card"><p>Terminated</p><h2>{{ number_format($employeeSummary['terminated']) }}</h2></div>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <tr>
+                    <th>Employee ID</th>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Assigned From</th>
+                    <th>Assigned To</th>
+                    <th>Monthly Salary</th>
+                </tr>
+
+                @forelse($employeeAssignments as $assignment)
+                    <tr>
+                        <td>
+                            @if($assignment->employee)
+                                <a href="/admin/employees/{{ $assignment->employee->id }}">{{ $assignment->employee->employee_id }}</a>
+                            @else
+                                -
+                            @endif
+                        </td>
+                        <td>{{ $assignment->employee?->name ?: '-' }}</td>
+                        <td>{{ $assignment->employee?->role ?: '-' }}</td>
+                        <td>{{ $assignment->employee?->statusLabel() ?: '-' }}</td>
+                        <td>{{ $assignment->assigned_from?->toDateString() }}</td>
+                        <td>{{ $assignment->assigned_to?->toDateString() ?: '-' }}</td>
+                        <td>BDT {{ number_format($assignment->employee?->monthly_salary ?? 0, 2) }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="7">No assigned employees found for this client.</td>
+                    </tr>
+                @endforelse
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
         <h2>Ledger</h2>
 
         <table>
