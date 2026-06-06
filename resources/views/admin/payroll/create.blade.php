@@ -17,87 +17,160 @@
         </div>
     @endif
 
+    <style>
+        .salary-form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px 16px;
+        }
+
+        .salary-section {
+            border: 1px solid #243044;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+            background: rgba(15, 23, 42, 0.35);
+        }
+
+        .salary-section h2 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            font-size: 18px;
+        }
+
+        .salary-field {
+            margin: 0;
+        }
+
+        .salary-field.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .salary-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 18px;
+        }
+
+        .date-adjustment-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .date-adjustment-header h2 {
+            margin-bottom: 0;
+        }
+
+        #date_adjustment_body {
+            margin-top: 12px;
+            overflow-x: auto;
+        }
+    </style>
+
     <div class="card" style="margin-top:20px;">
         <h2>Salary Information</h2>
 
         <form method="POST" action="/admin/payroll" id="salary-generate-form" enctype="multipart/form-data">
             @csrf
 
-            <p>Employee<br>
-                <select name="employee_id" id="employee_id" required>
-                    <option value="" data-salary="0">Select Employee</option>
-                    @foreach($employees as $employee)
-                        <option value="{{ $employee->id }}" data-salary="{{ (float) $employee->monthly_salary }}" {{ old('employee_id') == $employee->id ? 'selected' : '' }}>
-                            {{ $employee->name }} ({{ $employee->employee_id }}) - BDT {{ number_format($employee->monthly_salary, 2) }}
-                        </option>
-                    @endforeach
-                </select>
-            </p>
+            <div class="salary-section">
+                <h2>Salary Setup</h2>
+                <div class="salary-form-grid">
+                    <p class="salary-field">Employee<br>
+                        <select name="employee_id" id="employee_id" required>
+                            <option value="" data-salary="0">Select Employee</option>
+                            @foreach($employees as $employee)
+                                <option value="{{ $employee->id }}" data-salary="{{ (float) $employee->monthly_salary }}" {{ old('employee_id') == $employee->id ? 'selected' : '' }}>
+                                    {{ $employee->name }} ({{ $employee->employee_id }}) - BDT {{ number_format($employee->monthly_salary, 2) }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </p>
 
-            <p>Client<br>
-                <select name="client_id" required>
-                    <option value="">Select Client</option>
-                    @foreach($clients as $client)
-                        <option value="{{ $client->id }}" {{ old('client_id') == $client->id ? 'selected' : '' }}>
-                            {{ $client->company_name }}
-                        </option>
-                    @endforeach
-                </select>
-            </p>
+                    <p class="salary-field">Client<br>
+                        <select name="client_id" required>
+                            <option value="">Select Client</option>
+                            @foreach($clients as $client)
+                                <option value="{{ $client->id }}" {{ old('client_id') == $client->id ? 'selected' : '' }}>
+                                    {{ $client->company_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </p>
 
-            <p>Calculation Type<br>
-                <select name="calculation_type" id="calculation_type" required>
-                    <option value="date_to_date" {{ old('calculation_type', 'date_to_date') === 'date_to_date' ? 'selected' : '' }}>Date To Date</option>
-                    <option value="monthly_cycle" {{ old('calculation_type') === 'monthly_cycle' ? 'selected' : '' }}>Monthly Cycle</option>
-                </select>
-            </p>
+                    <p class="salary-field">Calculation Type<br>
+                        <select name="calculation_type" id="calculation_type" required>
+                            <option value="date_to_date" {{ old('calculation_type', 'date_to_date') === 'date_to_date' ? 'selected' : '' }}>Date To Date</option>
+                            <option value="monthly_cycle" {{ old('calculation_type') === 'monthly_cycle' ? 'selected' : '' }}>Monthly Cycle</option>
+                        </select>
+                    </p>
 
-            <p>Salary Month<br><input type="month" name="salary_month" id="salary_month" value="{{ old('salary_month', now()->format('Y-m')) }}"></p>
-            <p>From Date<br><input type="date" name="from_date" id="from_date" value="{{ old('from_date', now()->startOfMonth()->toDateString()) }}"></p>
-            <p>To Date<br><input type="date" name="to_date" id="to_date" value="{{ old('to_date', now()->toDateString()) }}"></p>
-            <p>Working Days<br><input type="number" min="0" max="31" name="working_days" id="working_days" value="{{ old('working_days') }}" placeholder="Required for Date To Date"></p>
-            <p>Non Working Days<br><input type="number" min="0" max="31" name="non_working_days" id="non_working_days" value="{{ old('non_working_days', 0) }}"></p>
-
-            <p>Monthly Salary<br><input type="text" id="monthly_salary_display" value="BDT 0.00" readonly></p>
-            <p>Month Days<br><input type="text" id="month_days_display" value="0" readonly></p>
-            <p>Daily Salary<br><input type="text" id="daily_salary_display" value="BDT 0.00" readonly></p>
-            <p>Payable Salary (BDT)<br><input type="text" id="payable_salary_display" value="BDT 0.00" readonly></p>
-            <p>Due<br><input type="text" id="due_display" value="BDT 0.00" readonly></p>
-
-            <div id="date_adjustment_card" style="margin-top:20px;">
-                <h2>Date-wise Adjustment</h2>
-                <p>Mark dates as Non Working when needed. Salary will update automatically.</p>
-
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Day Type</th>
-                            <th>Reason</th>
-                            <th>Note</th>
-                        </tr>
-                    </thead>
-                    <tbody id="date_adjustment_rows"></tbody>
-                </table>
+                    <p class="salary-field">Salary Month<br><input type="month" name="salary_month" id="salary_month" value="{{ old('salary_month', now()->format('Y-m')) }}"></p>
+                    <p class="salary-field">From Date<br><input type="date" name="from_date" id="from_date" value="{{ old('from_date', now()->startOfMonth()->toDateString()) }}"></p>
+                    <p class="salary-field">To Date<br><input type="date" name="to_date" id="to_date" value="{{ old('to_date', now()->toDateString()) }}"></p>
+                </div>
             </div>
 
-            <p>Payment Status<br>
-                <select name="payment_status" id="payment_status" required>
-                    @foreach(['upcoming' => 'Upcoming', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'] as $value => $label)
-                        <option value="{{ $value }}" {{ old('payment_status', 'upcoming') === $value ? 'selected' : '' }}>{{ $label }}</option>
-                    @endforeach
-                </select>
-            </p>
-            <p>Paid Salary<br><input type="number" step="0.01" min="0" name="paid_amount" id="paid_amount" value="{{ old('paid_amount', 0) }}"></p>
-            <p>Payment Method<br><input type="text" name="payment_method" id="payment_method" value="{{ old('payment_method') }}"></p>
-            <p>Payment Date<br><input type="date" name="payment_date" id="payment_date" value="{{ old('payment_date') }}"></p>
-            <p>Transaction ID / Reference<br><input type="text" name="transaction_id" value="{{ old('transaction_id') }}"></p>
-            <p>Payment Proof Screenshot<br><input type="file" name="payment_proof" id="payment_proof" accept="image/*"></p>
-            <p>Note<br><textarea name="note">{{ old('note') }}</textarea></p>
+            <div class="salary-section">
+                <h2>Calculation Summary</h2>
+                <div class="salary-form-grid">
+                    <p class="salary-field">Working Days<br><input type="number" min="0" max="31" name="working_days" id="working_days" value="{{ old('working_days') }}"></p>
+                    <p class="salary-field">Non Working Days<br><input type="number" min="0" max="31" name="non_working_days" id="non_working_days" value="{{ old('non_working_days', 0) }}"></p>
+                    <p class="salary-field">Monthly Salary<br><input type="text" id="monthly_salary_display" value="BDT 0.00" readonly></p>
+                    <p class="salary-field">Month Days<br><input type="text" id="month_days_display" value="0" readonly></p>
+                    <p class="salary-field">Daily Salary<br><input type="text" id="daily_salary_display" value="BDT 0.00" readonly></p>
+                    <p class="salary-field">Payable Salary (BDT)<br><input type="text" id="payable_salary_display" value="BDT 0.00" readonly></p>
+                    <p class="salary-field">Due<br><input type="text" id="due_display" value="BDT 0.00" readonly></p>
+                </div>
+            </div>
 
-            <p>Date To Date is the default salary creation flow.</p>
+            <div class="salary-section" id="date_adjustment_card">
+                <div class="date-adjustment-header">
+                    <h2>Date-wise Adjustment</h2>
+                    <button class="btn" type="button" id="date_adjustment_toggle">Show Date Adjustments</button>
+                </div>
+                <p>Mark dates as Non Working when needed. Salary will update automatically.</p>
 
-            <button class="btn" type="submit">Save Salary</button>
+                <div id="date_adjustment_body">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Day Type</th>
+                                <th>Reason</th>
+                                <th>Note</th>
+                            </tr>
+                        </thead>
+                        <tbody id="date_adjustment_rows"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="salary-section">
+                <h2>Payment Information</h2>
+                <div class="salary-form-grid">
+                    <p class="salary-field">Payment Status<br>
+                        <select name="payment_status" id="payment_status" required>
+                            @foreach(['upcoming' => 'Upcoming', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'] as $value => $label)
+                                <option value="{{ $value }}" {{ old('payment_status', 'upcoming') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </p>
+                    <p class="salary-field">Paid Salary<br><input type="number" step="0.01" min="0" name="paid_amount" id="paid_amount" value="{{ old('paid_amount', 0) }}"></p>
+                    <p class="salary-field">Payment Method<br><input type="text" name="payment_method" id="payment_method" value="{{ old('payment_method') }}"></p>
+                    <p class="salary-field">Payment Date<br><input type="date" name="payment_date" id="payment_date" value="{{ old('payment_date') }}"></p>
+                    <p class="salary-field">Transaction ID / Reference<br><input type="text" name="transaction_id" value="{{ old('transaction_id') }}"></p>
+                    <p class="salary-field">Payment Proof<br><input type="file" name="payment_proof" id="payment_proof" accept="image/*"></p>
+                    <p class="salary-field full-width">Note<br><textarea name="note">{{ old('note') }}</textarea></p>
+                </div>
+            </div>
+
+            <div class="salary-actions">
+                <button class="btn" type="submit">Save Salary</button>
+            </div>
         </form>
     </div>
 
@@ -110,6 +183,8 @@
         const workingDays = document.getElementById('working_days');
         const nonWorkingDays = document.getElementById('non_working_days');
         const dateAdjustmentCard = document.getElementById('date_adjustment_card');
+        const dateAdjustmentBody = document.getElementById('date_adjustment_body');
+        const dateAdjustmentToggle = document.getElementById('date_adjustment_toggle');
         const dateAdjustmentRows = document.getElementById('date_adjustment_rows');
         const paymentStatus = document.getElementById('payment_status');
         const paidAmount = document.getElementById('paid_amount');
@@ -121,6 +196,7 @@
         const dailySalaryDisplay = document.getElementById('daily_salary_display');
         const payableSalaryDisplay = document.getElementById('payable_salary_display');
         const dueDisplay = document.getElementById('due_display');
+        let dateAdjustmentsExpanded = true;
 
         function money(amount) {
             return 'BDT ' + amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -200,6 +276,12 @@
             toDate.value = formatDate(endDate);
         }
 
+        function setDateAdjustmentExpanded(expanded) {
+            dateAdjustmentsExpanded = expanded;
+            dateAdjustmentBody.style.display = expanded ? 'block' : 'none';
+            dateAdjustmentToggle.textContent = expanded ? 'Hide Date Adjustments' : 'Show Date Adjustments';
+        }
+
         function syncWorkingDays() {
             if (calculationType.value === 'monthly_cycle') {
                 workingDays.value = daysInMonth(fromDate.value);
@@ -231,6 +313,7 @@
 
             const dates = dateRange(fromDate.value, toDate.value);
             dateAdjustmentCard.style.display = dates.length > 0 ? 'block' : 'none';
+            setDateAdjustmentExpanded(dates.length <= 5);
 
             dates.forEach((date, index) => {
                 const row = document.createElement('tr');
@@ -303,6 +386,10 @@
             calculateSalary();
         }
 
+        dateAdjustmentToggle.addEventListener('click', () => {
+            setDateAdjustmentExpanded(!dateAdjustmentsExpanded);
+        });
+
         [calculationType, salaryMonth, fromDate, toDate].forEach((field) => {
             field.addEventListener('input', syncDatesAndSalary);
             field.addEventListener('change', syncDatesAndSalary);
@@ -313,10 +400,11 @@
             field.addEventListener('change', calculateSalary);
         });
 
+        syncMonthlyCycleDates();
+        renderDateAdjustments();
         @if(old('working_days') === null)
-            syncDatesAndSalary();
-        @else
-            calculateSalary();
+            syncWorkingDays();
         @endif
+        calculateSalary();
     </script>
 @endsection
