@@ -22,6 +22,19 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 12px 16px;
+            align-items: end;
+        }
+
+        .salary-setup-grid {
+            grid-template-columns: minmax(320px, 2fr) minmax(220px, 1fr) minmax(180px, 1fr);
+        }
+
+        .calculation-grid {
+            grid-template-columns: repeat(4, minmax(160px, 1fr));
+        }
+
+        .payment-grid {
+            grid-template-columns: repeat(5, minmax(150px, 1fr));
         }
 
         .salary-section {
@@ -39,11 +52,43 @@
         }
 
         .salary-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
             margin: 0;
+            min-width: 0;
         }
 
         .salary-field.full-width {
             grid-column: 1 / -1;
+        }
+
+        .salary-field.proof-field {
+            grid-column: span 2;
+        }
+
+        .salary-field.note-field {
+            grid-column: span 3;
+        }
+
+        .salary-field input,
+        .salary-field select,
+        .salary-field textarea {
+            width: 100%;
+            min-width: 0;
+            min-height: 42px;
+            box-sizing: border-box;
+        }
+
+        .salary-field textarea {
+            min-height: 42px;
+            resize: vertical;
+        }
+
+        .salary-field input[readonly] {
+            color: #dbeafe;
+            background: #111827;
+            border-color: #334155;
         }
 
         .salary-actions {
@@ -68,6 +113,63 @@
             margin-top: 12px;
             overflow-x: auto;
         }
+
+        #date_adjustment_body table {
+            min-width: 760px;
+        }
+
+        #date_adjustment_body th,
+        #date_adjustment_body td {
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        #date_adjustment_body td:nth-child(4) {
+            min-width: 220px;
+            white-space: normal;
+        }
+
+        #date_adjustment_body input,
+        #date_adjustment_body select {
+            width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 1180px) {
+            .salary-setup-grid,
+            .calculation-grid,
+            .payment-grid {
+                grid-template-columns: repeat(2, minmax(220px, 1fr));
+            }
+
+            .salary-field.proof-field,
+            .salary-field.note-field {
+                grid-column: 1 / -1;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .salary-form-grid,
+            .salary-setup-grid,
+            .calculation-grid,
+            .payment-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .date-adjustment-header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .salary-actions {
+                justify-content: stretch;
+            }
+
+            .salary-actions .btn {
+                width: 100%;
+            }
+        }
     </style>
 
     <div class="card" style="margin-top:20px;">
@@ -78,7 +180,7 @@
 
             <div class="salary-section">
                 <h2>Salary Setup</h2>
-                <div class="salary-form-grid">
+                <div class="salary-form-grid salary-setup-grid">
                     <p class="salary-field">Employee<br>
                         <select name="employee_id" id="employee_id" required>
                             <option value="" data-salary="0">Select Employee</option>
@@ -116,7 +218,7 @@
 
             <div class="salary-section">
                 <h2>Calculation Summary</h2>
-                <div class="salary-form-grid">
+                <div class="salary-form-grid calculation-grid">
                     <p class="salary-field">Working Days<br><input type="number" min="0" max="31" name="working_days" id="working_days" value="{{ old('working_days') }}"></p>
                     <p class="salary-field">Non Working Days<br><input type="number" min="0" max="31" name="non_working_days" id="non_working_days" value="{{ old('non_working_days', 0) }}"></p>
                     <p class="salary-field">Monthly Salary<br><input type="text" id="monthly_salary_display" value="BDT 0.00" readonly></p>
@@ -151,7 +253,7 @@
 
             <div class="salary-section">
                 <h2>Payment Information</h2>
-                <div class="salary-form-grid">
+                <div class="salary-form-grid payment-grid">
                     <p class="salary-field">Payment Status<br>
                         <select name="payment_status" id="payment_status" required>
                             @foreach(['upcoming' => 'Upcoming', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'] as $value => $label)
@@ -163,8 +265,8 @@
                     <p class="salary-field">Payment Method<br><input type="text" name="payment_method" id="payment_method" value="{{ old('payment_method') }}"></p>
                     <p class="salary-field">Payment Date<br><input type="date" name="payment_date" id="payment_date" value="{{ old('payment_date') }}"></p>
                     <p class="salary-field">Transaction ID / Reference<br><input type="text" name="transaction_id" value="{{ old('transaction_id') }}"></p>
-                    <p class="salary-field">Payment Proof<br><input type="file" name="payment_proof" id="payment_proof" accept="image/*"></p>
-                    <p class="salary-field full-width">Note<br><textarea name="note">{{ old('note') }}</textarea></p>
+                    <p class="salary-field proof-field">Payment Proof<br><input type="file" name="payment_proof" id="payment_proof" accept="image/*"></p>
+                    <p class="salary-field note-field">Note<br><textarea name="note">{{ old('note') }}</textarea></p>
                 </div>
             </div>
 
