@@ -8,11 +8,16 @@ class EmployeePayroll extends Model
 {
     protected $appends = [
         'calculated_status',
+        'salary_period',
     ];
 
     protected $fillable = [
         'employee_id',
         'client_id',
+        'from_date',
+        'to_date',
+        'working_days',
+        'non_working_days',
         'salary_month',
         'payable_salary',
         'paid_amount',
@@ -25,7 +30,11 @@ class EmployeePayroll extends Model
     protected function casts(): array
     {
         return [
+            'from_date' => 'date',
+            'to_date' => 'date',
             'salary_month' => 'date',
+            'working_days' => 'integer',
+            'non_working_days' => 'integer',
             'payable_salary' => 'decimal:2',
             'paid_amount' => 'decimal:2',
             'payment_date' => 'date',
@@ -64,6 +73,15 @@ class EmployeePayroll extends Model
             (float) ($this->attributes['payable_salary'] ?? 0),
             (float) ($this->attributes['paid_amount'] ?? 0)
         );
+    }
+
+    public function getSalaryPeriodAttribute(): string
+    {
+        if ($this->from_date && $this->to_date) {
+            return $this->from_date->toDateString() . ' to ' . $this->to_date->toDateString();
+        }
+
+        return $this->salary_month?->format('Y-m') ?? '-';
     }
 
     public function getStatusAttribute($value): string

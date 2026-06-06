@@ -44,6 +44,7 @@
         <h2>My Salary History</h2>
         <table>
             <tr>
+                <th>Salary Period</th>
                 <th>Month</th>
                 <th>Payable Salary (BDT)</th>
                 <th>Paid Salary</th>
@@ -51,13 +52,14 @@
             </tr>
             @forelse($payrolls as $payroll)
                 <tr>
+                    <td>{{ $payroll->salary_period }}</td>
                     <td>{{ $payroll->salary_month?->format('Y-m') }}</td>
                     <td>BDT {{ number_format($payroll->payable_salary, 2) }}</td>
                     <td>BDT {{ number_format($payroll->paid_amount, 2) }}</td>
                     <td>{{ ['unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'][$payroll->calculated_status] ?? ucfirst($payroll->calculated_status) }}</td>
                 </tr>
             @empty
-                <tr><td colspan="4">No salary history found.</td></tr>
+                <tr><td colspan="5">No salary history found.</td></tr>
             @endforelse
         </table>
     </div>

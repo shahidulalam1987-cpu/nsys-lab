@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Client;
 use App\Models\Employee;
 use App\Models\EmployeePayroll;
-use App\Services\SalaryMonthSheetService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class EmployeePayrollController extends Controller
@@ -38,53 +39,49 @@ class EmployeePayrollController extends Controller
         ]);
     }
 
-    public function create(Request $request, SalaryMonthSheetService $salaryMonthSheetService)
+    public function create()
     {
-        $filters = $request->validate([
-            'employee_id' => ['nullable', 'exists:employees,id'],
-            'month' => ['nullable', 'date_format:Y-m'],
-        ]);
-
         $employees = Employee::orderBy('name')->get();
-        $selectedEmployee = isset($filters['employee_id'])
-            ? Employee::find($filters['employee_id'])
-            : null;
-        $selectedMonth = $filters['month'] ?? now()->format('Y-m');
-        $payable = $selectedEmployee
-            ? $salaryMonthSheetService->employeePayable($selectedEmployee->id, $selectedMonth)
-            : null;
+        $clients = Client::orderBy('company_name')->get();
 
-        return view('admin.payroll.create', compact(
-            'employees',
-            'selectedEmployee',
-            'selectedMonth',
-            'payable'
-        ));
+        return view('admin.payroll.create', compact('employees', 'clients'));
     }
 
-    public function store(Request $request, SalaryMonthSheetService $salaryMonthSheetService)
+    public function store(Request $request)
     {
         $data = $request->validate([
             'employee_id' => ['required', 'exists:employees,id'],
-            'salary_month' => ['required', 'date_format:Y-m'],
+            'client_id' => ['required', 'exists:clients,id'],
+            'from_date' => ['required', 'date'],
+            'to_date' => ['required', 'date', 'after_or_equal:from_date'],
+            'working_days' => ['required', 'integer', 'min:0', 'max:31'],
+            'non_working_days' => ['required', 'integer', 'min:0', 'max:31'],
             'paid_amount' => ['required', 'numeric', 'min:0'],
             'payment_method' => ['nullable', 'string', 'max:255'],
             'payment_date' => ['nullable', 'date'],
             'note' => ['nullable', 'string'],
         ]);
 
-        $payable = $salaryMonthSheetService->employeePayable($data['employee_id'], $data['salary_month']);
+        $employee = Employee::findOrFail($data['employee_id']);
+        $fromDate = Carbon::parse($data['from_date']);
+        $monthDays = $fromDate->daysInMonth;
+        $dailySalary = (float) $employee->monthly_salary / $monthDays;
+        $payableSalary = $dailySalary * (int) $data['working_days'];
         $paidAmount = (float) $data['paid_amount'];
 
         $payroll = EmployeePayroll::create([
             'employee_id' => $data['employee_id'],
-            'client_id' => $payable['client_id'],
-            'salary_month' => $payable['month']->toDateString(),
-            'payable_salary' => $payable['payable_salary'],
+            'client_id' => $data['client_id'],
+            'from_date' => $fromDate->toDateString(),
+            'to_date' => Carbon::parse($data['to_date'])->toDateString(),
+            'working_days' => (int) $data['working_days'],
+            'non_working_days' => (int) $data['non_working_days'],
+            'salary_month' => $fromDate->copy()->startOfMonth()->toDateString(),
+            'payable_salary' => $payableSalary,
             'paid_amount' => $paidAmount,
             'payment_method' => $data['payment_method'] ?? null,
             'payment_date' => $data['payment_date'] ?? null,
-            'status' => EmployeePayroll::statusFor($payable['payable_salary'], $paidAmount),
+            'status' => EmployeePayroll::statusFor($payableSalary, $paidAmount),
             'note' => $data['note'] ?? null,
         ]);
 
