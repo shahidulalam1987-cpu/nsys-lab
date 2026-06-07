@@ -1,9 +1,9 @@
 @extends('layouts.admin')
 
 @section('content')
-    <h1>Salary Payments</h1>
+    <h1>Client Payment History</h1>
 
-    <a class="btn" href="/admin/salary-payments/pending">Pending Salary Payments</a>
+    <a class="btn" href="/admin/salary-payments/pending">Pending Client Payments</a>
 
     <div class="card" style="margin-top:20px;">
         <form method="GET" action="/admin/salary-payments">

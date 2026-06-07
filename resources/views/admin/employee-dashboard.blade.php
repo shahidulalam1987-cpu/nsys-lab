@@ -17,15 +17,15 @@
             <h2>{{ number_format($probationEmployees) }}</h2>
         </div>
         <div class="stat-card">
-            <p>Pending Salary Payments</p>
+            <p>Pending Client Payments</p>
             <h2>BDT {{ number_format($pendingSalaryPayments, 2) }}</h2>
         </div>
     </div>
 
     <div class="card">
         <a class="btn" href="/admin/employees">Employees</a>
-        <a class="btn" href="/admin/salary-payments">Salary Payments</a>
-        <a class="btn" href="/admin/salary-payments/pending">Pending Salary Payments</a>
+        <a class="btn" href="/admin/salary-payments">Client Payment History</a>
+        <a class="btn" href="/admin/salary-payments/pending">Pending Client Payments</a>
     </div>
 
     <div class="card">
@@ -53,7 +53,7 @@
     </div>
 
     <div class="card">
-        <h2>Recent Salary Payments</h2>
+        <h2>Recent Client Payments</h2>
         <table>
             <tr>
                 <th>Client</th>
@@ -71,7 +71,7 @@
                     <td>{{ $payment->created_at }}</td>
                 </tr>
             @empty
-                <tr><td colspan="5">No salary payments found.</td></tr>
+                <tr><td colspan="5">No client payments found.</td></tr>
             @endforelse
         </table>
     </div>
