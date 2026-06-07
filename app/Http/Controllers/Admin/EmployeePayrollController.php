@@ -23,16 +23,21 @@ class EmployeePayrollController extends Controller
 
         $query = EmployeePayroll::with(['employee', 'client'])
             ->when($filters['month'] ?? null, fn ($query, $month) => $query->whereDate('salary_month', $month . '-01'))
-            ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
-            ->withCalculatedStatus($filters['status'] ?? null);
+            ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId));
 
-        $payrolls = $query->latest('salary_month')->latest()->get();
+        $payrolls = $query->latest('salary_month')
+            ->latest()
+            ->get()
+            ->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter($filters['status'] ?? null))
+            ->values();
         $employees = Employee::orderBy('name')->get();
+        $cycleEmployees = $this->cycleEmployeesForStatus($filters['status'] ?? null);
 
         return view('admin.payroll.index', [
             'filters' => $filters,
             'payrolls' => $payrolls,
             'employees' => $employees,
+            'cycleEmployees' => $cycleEmployees,
             'summary' => [
                 'total_payable' => $payrolls->sum('payable_salary'),
                 'total_paid' => $payrolls->sum('paid_amount'),
@@ -309,6 +314,44 @@ class EmployeePayrollController extends Controller
         if ($paidAmount <= 0) {
             abort(422, 'Paid Salary is required for paid salary status.');
         }
+    }
+
+    private function cycleEmployeesForStatus(?string $status)
+    {
+        if (! in_array($status, ['upcoming', 'due'], true)) {
+            return collect();
+        }
+
+        $today = now()->startOfDay();
+
+        return Employee::with('payrolls')
+            ->orderBy('name')
+            ->get()
+            ->filter(function (Employee $employee) use ($status, $today) {
+                $cycleDate = $status === 'upcoming'
+                    ? $employee->nextSalaryDate()
+                    : $employee->currentSalaryDueDate($today);
+
+                if (! $cycleDate) {
+                    return false;
+                }
+
+                $cycleMonth = $cycleDate->copy()->startOfMonth()->toDateString();
+                $hasGeneratedSalary = $employee->payrolls->contains(
+                    fn (EmployeePayroll $payroll) => $payroll->salary_month?->copy()->startOfMonth()->toDateString() === $cycleMonth
+                );
+
+                if ($hasGeneratedSalary) {
+                    return false;
+                }
+
+                if ($status === 'upcoming') {
+                    return $cycleDate->betweenIncluded($today, $today->copy()->addDays(5));
+                }
+
+                return $cycleDate->lt($today);
+            })
+            ->values();
     }
 
 }

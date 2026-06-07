@@ -13,10 +13,11 @@ class SalaryMonthSheetService
         $rows = EmployeePayroll::with(['employee', 'client'])
             ->whereDate('salary_month', $month->toDateString())
             ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
-            ->withCalculatedStatus($filters['status'] ?? null)
             ->latest('salary_month')
             ->latest()
-            ->get();
+            ->get()
+            ->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter($filters['status'] ?? null))
+            ->values();
 
         return [
             'month' => $month,

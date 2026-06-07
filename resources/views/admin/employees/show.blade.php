@@ -193,10 +193,11 @@
                     <p><strong>Role:</strong> {{ $employee->role }}</p>
                     <p><strong>Joining Date:</strong> {{ $employee->joining_date?->toDateString() }}</p>
                     <p><strong>Confirmation Date:</strong> {{ $employee->confirmation_date?->toDateString() ?: '-' }}</p>
-                    <p><strong>Salary Cycle Day:</strong> {{ $employee->salary_day ?: '-' }}</p>
+                    <p><strong>Salary Day:</strong> {{ $employee->salaryCycleDay() ?: '-' }}</p>
                     <p><strong>Next Salary Date:</strong> {{ $employee->nextSalaryDate()?->toDateString() ?: '-' }}</p>
                     <p><strong>Monthly Salary:</strong> BDT {{ number_format($employee->monthly_salary, 2) }}</p>
                     <p><strong>Current Status:</strong> {{ $employee->statusLabel() }}</p>
+                    <p><strong>Current Salary Status:</strong> {{ $employee->salaryStatusLabel() }}</p>
                     <p><strong>Last Working Date:</strong> {{ $employee->last_working_date?->toDateString() ?: '-' }}</p>
                 </div>
             </div>
@@ -213,6 +214,7 @@
                 <p><strong>Total Payable Salary:</strong> BDT {{ number_format($salarySummary['total_payable_salary'], 2) }}</p>
                 <p><strong>Total Paid Salary:</strong> BDT {{ number_format($salarySummary['total_paid_salary'], 2) }}</p>
                 <p><strong>Current Salary Due:</strong> BDT {{ number_format($salarySummary['current_salary_due'], 2) }}</p>
+                <p><strong>Current Salary Status:</strong> {{ $employee->salaryStatusLabel() }}</p>
                 <p>
                     <strong>Last Salary Payment:</strong>
                     @if($salarySummary['last_salary_payment'])

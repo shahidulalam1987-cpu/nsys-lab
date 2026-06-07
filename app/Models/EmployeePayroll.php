@@ -97,11 +97,17 @@ class EmployeePayroll extends Model
 
     public function getCalculatedStatusAttribute(): string
     {
-        return self::paymentStatusFor(
+        $status = self::paymentStatusFor(
             $this->attributes['payment_status'] ?? null,
             (float) ($this->attributes['payable_salary'] ?? 0),
             (float) ($this->attributes['paid_amount'] ?? 0)
         );
+
+        if (in_array($status, ['paid', 'partial'], true)) {
+            return $status;
+        }
+
+        return $this->salaryCycleStatusForZeroPayment($status);
     }
 
     public function getSalaryPeriodAttribute(): string
@@ -181,6 +187,77 @@ class EmployeePayroll extends Model
         }
 
         return $query;
+    }
+
+    public function matchesStatusFilter(?string $status): bool
+    {
+        if (! $status) {
+            return true;
+        }
+
+        if ($status === 'due') {
+            return in_array($this->calculated_status, ['unpaid', 'partial'], true)
+                || (float) $this->paid_amount < (float) $this->payable_salary;
+        }
+
+        if ($status === 'upcoming') {
+            return $this->calculated_status === 'upcoming'
+                && $this->isWithinUpcomingSalaryWindow();
+        }
+
+        return $this->calculated_status === $status;
+    }
+
+    private function salaryCycleStatusForZeroPayment(string $fallbackStatus): string
+    {
+        $employee = $this->relationLoaded('employee')
+            ? $this->employee
+            : $this->employee()->first();
+
+        if (! $employee) {
+            return $fallbackStatus;
+        }
+
+        $salaryMonth = $this->salary_month?->copy()->startOfMonth()
+            ?: $this->salary_period_to?->copy()->startOfMonth()
+            ?: now()->startOfMonth();
+        $dueDate = $employee->salaryDateForMonth($salaryMonth);
+
+        if (! $dueDate) {
+            return $fallbackStatus;
+        }
+
+        $today = now()->startOfDay();
+
+        if ($dueDate->lt($today)) {
+            return 'unpaid';
+        }
+
+        return 'upcoming';
+    }
+
+    private function isWithinUpcomingSalaryWindow(): bool
+    {
+        $employee = $this->relationLoaded('employee')
+            ? $this->employee
+            : $this->employee()->first();
+
+        if (! $employee) {
+            return true;
+        }
+
+        $salaryMonth = $this->salary_month?->copy()->startOfMonth()
+            ?: $this->salary_period_to?->copy()->startOfMonth()
+            ?: now()->startOfMonth();
+        $dueDate = $employee->salaryDateForMonth($salaryMonth);
+
+        if (! $dueDate) {
+            return true;
+        }
+
+        $today = now()->startOfDay();
+
+        return $dueDate->betweenIncluded($today, $today->copy()->addDays(5));
     }
 
     private static function amountToCents(float $amount): int

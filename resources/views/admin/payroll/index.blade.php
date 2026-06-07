@@ -106,4 +106,39 @@
             @endforelse
         </table>
     </div>
+
+    @if(($cycleEmployees ?? collect())->isNotEmpty())
+        <div class="card">
+            <h2>Salary Cycle Employees</h2>
+            <p>Employees shown here match the selected salary cycle status but do not have a generated salary record for this cycle yet.</p>
+
+            <table>
+                <tr>
+                    <th>Employee</th>
+                    <th>Salary Day</th>
+                    <th>Salary Date</th>
+                    <th>Current Salary Status</th>
+                    <th>Action</th>
+                </tr>
+                @foreach($cycleEmployees as $cycleEmployee)
+                    <tr>
+                        <td>
+                            <a href="/admin/employees/{{ $cycleEmployee->id }}">{{ $cycleEmployee->employee_id }}</a><br>
+                            {{ $cycleEmployee->name }}
+                        </td>
+                        <td>{{ $cycleEmployee->salaryCycleDay() ?: '-' }}</td>
+                        <td>
+                            @if(request('status') === 'due')
+                                {{ $cycleEmployee->currentSalaryDueDate()?->toDateString() ?: '-' }}
+                            @else
+                                {{ $cycleEmployee->nextSalaryDate()?->toDateString() ?: '-' }}
+                            @endif
+                        </td>
+                        <td>{{ $cycleEmployee->salaryStatusLabel() }}</td>
+                        <td><a class="btn" href="/admin/payroll/create">Generate Salary</a></td>
+                    </tr>
+                @endforeach
+            </table>
+        </div>
+    @endif
 @endsection

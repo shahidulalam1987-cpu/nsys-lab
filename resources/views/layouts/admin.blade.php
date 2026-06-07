@@ -383,8 +383,11 @@
             @if($isEmployeeDepartment)
                 <div class="sidebar-section-title">Employee</div>
                 <a class="{{ request()->is('admin/employees*') ? 'active-menu' : '' }}" href="/admin/employees">Employee List</a>
-                <a class="{{ request()->is('admin/payroll*') ? 'active-menu' : '' }}" href="/admin/payroll">Salary Generate</a>
+                <a class="{{ request()->is('admin/payroll*') && ! request()->filled('status') ? 'active-menu' : '' }}" href="/admin/payroll">Salary Generate</a>
                 <a class="{{ request()->is('admin/salary-month-sheet*') ? 'active-menu' : '' }}" href="/admin/salary-month-sheet">Salary Report</a>
+                <a class="{{ request()->is('admin/payroll') && request('status') === 'upcoming' ? 'active-menu' : '' }}" href="/admin/payroll?status=upcoming">Upcoming Salary</a>
+                <a class="{{ request()->is('admin/payroll') && request('status') === 'paid' ? 'active-menu' : '' }}" href="/admin/payroll?status=paid">Paid Salary</a>
+                <a class="{{ request()->is('admin/payroll') && request('status') === 'due' ? 'active-menu' : '' }}" href="/admin/payroll?status=due">Unpaid Salary</a>
                 <a class="{{ request()->is('admin/salary-payments') ? 'active-menu' : '' }}" href="/admin/salary-payments">Salary Payments</a>
 
                 <div class="sidebar-section-title">Client Fund</div>

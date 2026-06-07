@@ -131,7 +131,7 @@ class Employee extends Model
 
     public function nextSalaryDate(): ?Carbon
     {
-        if (! $this->salary_day) {
+        if (! $this->salaryCycleDay()) {
             return null;
         }
 
@@ -145,10 +145,87 @@ class Employee extends Model
         return $date;
     }
 
-    private function salaryDateForMonth(Carbon $month): Carbon
+    public function currentSalaryDueDate(?Carbon $today = null): ?Carbon
     {
-        $day = min((int) $this->salary_day, $month->daysInMonth);
+        if (! $this->salaryCycleDay()) {
+            return null;
+        }
+
+        return $this->salaryDateForMonth(($today ?: now())->copy());
+    }
+
+    public function salaryCycleDay(): ?int
+    {
+        if ($this->salary_day) {
+            return (int) $this->salary_day;
+        }
+
+        return $this->confirmation_date ? (int) $this->confirmation_date->format('j') : null;
+    }
+
+    public function salaryCycleStatus(?Carbon $today = null): string
+    {
+        $today = ($today ?: now())->copy()->startOfDay();
+        $payroll = $this->payrollForSalaryMonth($this->currentSalaryDueDate($today)?->copy()->startOfMonth());
+
+        if ($payroll) {
+            $paymentStatus = EmployeePayroll::statusFor((float) $payroll->payable_salary, (float) $payroll->paid_amount);
+
+            if (in_array($paymentStatus, ['paid', 'partial'], true)) {
+                return $paymentStatus;
+            }
+        }
+
+        $dueDate = $this->currentSalaryDueDate($today);
+
+        if (! $dueDate) {
+            return $payroll?->calculated_status ?? 'upcoming';
+        }
+
+        if ($dueDate->lt($today)) {
+            return 'unpaid';
+        }
+
+        return 'upcoming';
+    }
+
+    public function salaryStatusLabel(?Carbon $today = null): string
+    {
+        return [
+            'upcoming' => 'Upcoming',
+            'unpaid' => 'Unpaid',
+            'partial' => 'Partially Paid',
+            'paid' => 'Paid',
+        ][$this->salaryCycleStatus($today)] ?? 'Upcoming';
+    }
+
+    public function salaryDateForMonth(Carbon $month): ?Carbon
+    {
+        if (! $this->salaryCycleDay()) {
+            return null;
+        }
+
+        $day = min($this->salaryCycleDay(), $month->daysInMonth);
 
         return $month->startOfMonth()->addDays($day - 1);
+    }
+
+    private function payrollForSalaryMonth(?Carbon $month): ?EmployeePayroll
+    {
+        if (! $month) {
+            return null;
+        }
+
+        if ($this->relationLoaded('payrolls')) {
+            return $this->payrolls
+                ->filter(fn (EmployeePayroll $payroll) => $payroll->salary_month?->toDateString() === $month->toDateString())
+                ->sortByDesc('id')
+                ->first();
+        }
+
+        return $this->payrolls()
+            ->whereDate('salary_month', $month->toDateString())
+            ->latest()
+            ->first();
     }
 }
