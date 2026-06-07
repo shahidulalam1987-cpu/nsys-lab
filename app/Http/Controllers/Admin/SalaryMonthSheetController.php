@@ -14,6 +14,7 @@ class SalaryMonthSheetController extends Controller
         $filters = $request->validate([
             'month' => ['nullable', 'date_format:Y-m'],
             'employee_id' => ['nullable', 'exists:employees,id'],
+            'status' => ['nullable', 'in:upcoming,unpaid,partial,paid'],
         ]);
 
         $sheet = $salaryMonthSheetService->build($filters);
@@ -34,33 +35,38 @@ class SalaryMonthSheetController extends Controller
         $filters = $request->validate([
             'month' => ['nullable', 'date_format:Y-m'],
             'employee_id' => ['nullable', 'exists:employees,id'],
+            'status' => ['nullable', 'in:upcoming,unpaid,partial,paid'],
         ]);
 
         $sheet = $salaryMonthSheetService->build($filters);
-        $fileName = 'employee-salary-month-sheet-' . $sheet['month']->format('Y-m') . '.csv';
+        $fileName = 'employee-salary-report-' . $sheet['month']->format('Y-m') . '.csv';
 
         return response()->streamDownload(function () use ($sheet) {
             $handle = fopen('php://output', 'w');
 
             fputcsv($handle, [
-                'Employee ID',
-                'Employee Name',
-                'Month',
-                'Counted Days',
-                'Non Counted Days',
-                'Monthly Salary',
+                'Employee',
+                'Client',
+                'Salary Period',
+                'Working Days',
                 'Payable Salary',
+                'Paid Salary',
+                'Remaining Due',
+                'Status',
+                'Payment Date',
             ]);
 
-            foreach ($sheet['rows'] as $row) {
+            foreach ($sheet['rows'] as $payroll) {
                 fputcsv($handle, [
-                    $row['employee']->employee_id,
-                    $row['employee']->name,
-                    $row['month']->format('Y-m'),
-                    $row['counted_days'],
-                    $row['non_counted_days'],
-                    number_format($row['monthly_salary'], 2, '.', ''),
-                    number_format($row['payable_salary'], 2, '.', ''),
+                    trim(($payroll->employee?->employee_id ?: '-') . ' ' . ($payroll->employee?->name ?: '')),
+                    $payroll->client?->company_name ?: '-',
+                    $payroll->salary_period,
+                    $payroll->working_days ?? 0,
+                    number_format($payroll->payable_salary, 2, '.', ''),
+                    number_format($payroll->paid_amount, 2, '.', ''),
+                    number_format(max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0), 2, '.', ''),
+                    ['upcoming' => 'Upcoming', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'][$payroll->calculated_status] ?? ucfirst($payroll->calculated_status),
+                    $payroll->payment_date?->toDateString() ?: '-',
                 ]);
             }
 

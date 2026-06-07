@@ -364,7 +364,7 @@
             @if($isEmployeeDepartment)
                 <a class="{{ request()->is('admin/employee-dashboard') ? 'active-menu' : '' }}" href="/admin/employee-dashboard">Dashboard</a>
                 <a class="{{ request()->is('admin/employees*') ? 'active-menu' : '' }}" href="/admin/employees">Employees</a>
-                <a class="{{ request()->is('admin/salary-month-sheet') ? 'active-menu' : '' }}" href="/admin/salary-month-sheet">Salary Month Sheet</a>
+                <a class="{{ request()->is('admin/salary-month-sheet') ? 'active-menu' : '' }}" href="/admin/salary-month-sheet">Salary Report</a>
                 <a class="{{ request()->is('admin/payroll*') ? 'active-menu' : '' }}" href="/admin/payroll">Salary Generate</a>
                 <a class="{{ request()->is('admin/salary-payments') ? 'active-menu' : '' }}" href="/admin/salary-payments">Salary Payments</a>
                 <a class="{{ request()->is('admin/salary-payments/pending') ? 'active-menu' : '' }}" href="/admin/salary-payments/pending">Pending Salary Payments</a>

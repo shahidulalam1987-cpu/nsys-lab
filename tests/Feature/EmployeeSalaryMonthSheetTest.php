@@ -12,14 +12,53 @@ class EmployeeSalaryMonthSheetTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_can_view_employee_salary_month_sheet_summary(): void
+    public function test_admin_can_view_salary_report_from_generated_salary_records(): void
     {
         $admin = $this->admin();
         $client = $this->client();
         $employee = $this->employee([
             'employee_id' => 'NSYS-EM-010',
-            'name' => 'Sheet Employee',
-            'monthly_salary' => 3000,
+            'name' => 'Report Employee',
+            'monthly_salary' => 30000,
+        ]);
+
+        $this->payroll($employee, $client, [
+            'salary_period_from' => '2026-06-01',
+            'salary_period_to' => '2026-06-10',
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-10',
+            'working_days' => 8,
+            'non_working_days' => 2,
+            'payable_salary' => 8000,
+            'paid_amount' => 3000,
+            'status' => 'partial',
+            'payment_date' => '2026-06-10',
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/salary-month-sheet?month=2026-06');
+
+        $response->assertOk();
+        $response->assertSee('Salary Report');
+        $response->assertSee('NSYS-EM-010');
+        $response->assertSee('Report Employee');
+        $response->assertSee('Sheet Client');
+        $response->assertSee('2026-06-01 to 2026-06-10');
+        $response->assertSee('BDT 8,000.00');
+        $response->assertSee('BDT 3,000.00');
+        $response->assertSee('BDT 5,000.00');
+        $response->assertSee('Partially Paid');
+        $response->assertSee('Total Salary Records');
+        $response->assertSee('Total Payable Salary');
+        $response->assertSee('Total Paid Salary');
+        $response->assertSee('Total Remaining Due');
+    }
+
+    public function test_salary_report_ignores_salary_day_records_without_generated_salary(): void
+    {
+        $admin = $this->admin();
+        $client = $this->client();
+        $employee = $this->employee([
+            'name' => 'Only Salary Day Employee',
         ]);
 
         $employee->salaryDays()->create([
@@ -28,102 +67,86 @@ class EmployeeSalaryMonthSheetTest extends TestCase
             'is_counted' => true,
             'reason' => 'active_working',
         ]);
-        $employee->salaryDays()->create([
-            'client_id' => $client->id,
-            'date' => '2026-06-02',
-            'is_counted' => false,
-            'reason' => 'client_issue',
-        ]);
 
         $response = $this->actingAs($admin)->get('/admin/salary-month-sheet?month=2026-06');
 
         $response->assertOk();
-        $response->assertSee('NSYS-EM-010');
-        $response->assertSee('Sheet Employee');
-        $response->assertSee('2026-06');
-        $response->assertSee('BDT 3,000.00');
-        $response->assertSee('BDT 100.00');
-        $response->assertSee('Total Employees');
-        $response->assertSee('Total Working Days');
-        $response->assertSee('Total Payable Salary');
-        $response->assertDontSee('Client</th>', false);
+        $response->assertSee('No generated salary records found for this month.');
+        $response->assertDontSee('<br>Only Salary Day Employee', false);
     }
 
-    public function test_salary_month_sheet_rounds_only_after_final_payable_calculation(): void
-    {
-        $admin = $this->admin();
-        $client = $this->client();
-        $employee = $this->employee([
-            'employee_id' => 'NSYS-EM-012',
-            'name' => 'Rounded Sheet Employee',
-            'monthly_salary' => 10000,
-        ]);
-
-        for ($day = 1; $day <= 30; $day++) {
-            $employee->salaryDays()->create([
-                'client_id' => $client->id,
-                'date' => '2026-06-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT),
-                'is_counted' => true,
-                'reason' => 'active_working',
-            ]);
-        }
-
-        $response = $this->actingAs($admin)->get('/admin/salary-month-sheet?month=2026-06');
-
-        $response->assertOk();
-        $response->assertSee('BDT 10,000.00');
-        $response->assertDontSee('BDT 9,999.90');
-    }
-
-    public function test_employee_filter_limits_salary_month_sheet_rows(): void
+    public function test_employee_and_status_filters_limit_salary_report_rows(): void
     {
         $admin = $this->admin();
         $client = $this->client();
         $included = $this->employee(['name' => 'Included Employee']);
         $excluded = $this->employee(['name' => 'Excluded Employee']);
 
-        foreach ([$included, $excluded] as $employee) {
-            $employee->salaryDays()->create([
-                'client_id' => $client->id,
-                'date' => '2026-06-01',
-                'is_counted' => true,
-                'reason' => 'active_working',
-            ]);
-        }
+        $this->payroll($included, $client, [
+            'paid_amount' => 3000,
+            'payable_salary' => 6000,
+            'status' => 'partial',
+        ]);
+        $this->payroll($excluded, $client, [
+            'paid_amount' => 6000,
+            'payable_salary' => 6000,
+            'status' => 'paid',
+        ]);
 
         $response = $this->actingAs($admin)
-            ->get('/admin/salary-month-sheet?month=2026-06&employee_id=' . $included->id);
+            ->get('/admin/salary-month-sheet?month=2026-06&employee_id=' . $included->id . '&status=partial');
 
         $response->assertOk();
         $response->assertSee('Included Employee');
-        $response->assertDontSee('Excluded Employee</td>', false);
+        $response->assertSee('Partially Paid');
+        $response->assertDontSee('<br>Excluded Employee', false);
     }
 
-    public function test_admin_can_export_employee_salary_month_sheet_csv(): void
+    public function test_admin_can_export_salary_report_csv(): void
     {
         $admin = $this->admin();
         $client = $this->client();
         $employee = $this->employee([
             'employee_id' => 'NSYS-EM-011',
             'name' => 'CSV Employee',
-            'monthly_salary' => 3000,
         ]);
 
-        $employee->salaryDays()->create([
-            'client_id' => $client->id,
-            'date' => '2026-06-01',
-            'is_counted' => true,
-            'reason' => 'active_working',
+        $this->payroll($employee, $client, [
+            'working_days' => 10,
+            'payable_salary' => 10000,
+            'paid_amount' => 10000,
+            'status' => 'paid',
+            'payment_date' => '2026-06-15',
         ]);
 
-        $response = $this->actingAs($admin)->get('/admin/salary-month-sheet/export?month=2026-06');
+        $response = $this->actingAs($admin)->get('/admin/salary-month-sheet/export?month=2026-06&status=paid');
 
         $response->assertOk();
-        $response->assertDownload('employee-salary-month-sheet-2026-06.csv');
+        $response->assertDownload('employee-salary-report-2026-06.csv');
 
         $csv = $response->streamedContent();
-        $this->assertStringContainsString('"Employee ID","Employee Name",Month,"Counted Days","Non Counted Days","Monthly Salary","Payable Salary"', $csv);
-        $this->assertStringContainsString('NSYS-EM-011,"CSV Employee",2026-06,1,0,3000.00,100.00', $csv);
+        $this->assertStringContainsString('Employee,Client,"Salary Period","Working Days","Payable Salary","Paid Salary","Remaining Due",Status,"Payment Date"', $csv);
+        $this->assertStringContainsString('"NSYS-EM-011 CSV Employee","Sheet Client","2026-06-01 to 2026-06-10",10,10000.00,10000.00,0.00,Paid,2026-06-15', $csv);
+    }
+
+    private function payroll(Employee $employee, Client $client, array $overrides = [])
+    {
+        return $employee->payrolls()->create(array_merge([
+            'client_id' => $client->id,
+            'calculation_type' => 'date_to_date',
+            'salary_period_from' => '2026-06-01',
+            'salary_period_to' => '2026-06-10',
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-10',
+            'working_days' => 10,
+            'non_working_days' => 0,
+            'month_days' => 30,
+            'daily_salary' => 1000,
+            'salary_month' => '2026-06-01',
+            'payable_salary' => 10000,
+            'paid_amount' => 0,
+            'status' => 'unpaid',
+        ], $overrides));
     }
 
     private function admin(): User
@@ -138,7 +161,7 @@ class EmployeeSalaryMonthSheetTest extends TestCase
     {
         return Employee::create(array_merge([
             'employee_id' => 'EMP-' . uniqid(),
-            'name' => 'Sheet Test Employee',
+            'name' => 'Report Test Employee',
             'department' => 'Moderator',
             'role' => 'Moderator',
             'joining_date' => now()->toDateString(),
