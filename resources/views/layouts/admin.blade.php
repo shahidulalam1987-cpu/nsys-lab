@@ -115,6 +115,19 @@
             box-shadow: 0 10px 30px rgba(47, 140, 255, 0.25);
         }
 
+        .sidebar-section-title {
+            color: var(--cyan);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: .08em;
+            margin: 18px 0 8px;
+            text-transform: uppercase;
+        }
+
+        .sidebar-section-title:first-child {
+            margin-top: 0;
+        }
+
         .content {
             flex: 1;
             padding: 30px;
@@ -270,6 +283,12 @@
         margin-bottom: 0;
     }
 
+    .sidebar-section-title {
+        align-self: center;
+        margin: 0 4px 0 12px;
+        white-space: nowrap;
+    }
+
     .content {
         padding: 16px;
     }
@@ -362,11 +381,14 @@
     <div class="layout">
         <div class="sidebar">
             @if($isEmployeeDepartment)
-                <a class="{{ request()->is('admin/employees*') ? 'active-menu' : '' }}" href="/admin/employees">Employee Management</a>
+                <div class="sidebar-section-title">Employee</div>
+                <a class="{{ request()->is('admin/employees*') ? 'active-menu' : '' }}" href="/admin/employees">Employee List</a>
                 <a class="{{ request()->is('admin/payroll*') ? 'active-menu' : '' }}" href="/admin/payroll">Salary Generate</a>
                 <a class="{{ request()->is('admin/salary-month-sheet*') ? 'active-menu' : '' }}" href="/admin/salary-month-sheet">Salary Report</a>
                 <a class="{{ request()->is('admin/salary-payments') ? 'active-menu' : '' }}" href="/admin/salary-payments">Salary Payments</a>
-                <a class="{{ request()->is('admin/salary-payments/pending') ? 'active-menu' : '' }}" href="/admin/salary-payments/pending">Pending Salary Payments</a>
+
+                <div class="sidebar-section-title">Client Fund</div>
+                <a class="{{ request()->is('admin/salary-payments/pending') ? 'active-menu' : '' }}" href="/admin/salary-payments/pending">Pending Payments</a>
             @else
                 <a class="{{ request()->is('admin/dashboard') ? 'active-menu' : '' }}" href="/admin/dashboard">Dashboard</a>
                 <a class="{{ request()->is('admin/clients*') ? 'active-menu' : '' }}" href="/admin/clients">Clients</a>

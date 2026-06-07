@@ -46,34 +46,42 @@
             color: #fff;
         }
 
-        .employee-summary-bar {
+        .employee-summary-badges {
+            display: grid;
+            gap: 8px;
+            grid-template-columns: repeat(6, minmax(96px, 1fr));
+            margin: 0 0 12px;
+        }
+
+        .employee-summary-badge {
             align-items: center;
-            background: #111827;
+            background: rgba(17, 24, 39, .95);
             border: 1px solid #243044;
             border-radius: 8px;
-            color: #cbd5e1;
             display: flex;
-            flex-wrap: wrap;
-            gap: 6px 12px;
-            margin: 0 0 12px;
-            padding: 10px 12px;
+            gap: 8px;
+            justify-content: center;
+            min-height: 38px;
+            padding: 8px 10px;
         }
 
-        .employee-summary-item {
-            font-size: 13px;
-            line-height: 1.4;
-            white-space: nowrap;
+        .employee-summary-badge span {
+            color: #94a3b8;
+            font-size: 12px;
+            font-weight: 700;
         }
 
-        .employee-summary-item strong {
+        .employee-summary-badge strong {
             color: #eef6ff;
+            font-size: 15px;
+            line-height: 1;
         }
 
         .employee-filter-form {
             align-items: center;
             display: grid;
             gap: 8px;
-            grid-template-columns: minmax(260px, 1fr) minmax(180px, 220px) auto auto;
+            grid-template-columns: minmax(280px, 1fr) minmax(170px, 210px) auto;
         }
 
         .employee-filter-form input,
@@ -93,7 +101,8 @@
             color: #42e8ff;
             font-size: 13px;
             font-weight: 700;
-            padding: 8px 0;
+            display: inline-block;
+            margin-top: 8px;
             text-decoration: none;
         }
 
@@ -114,12 +123,19 @@
 
         .employee-table th,
         .employee-table td {
-            padding: 11px 12px;
+            padding: 12px 12px;
         }
 
         .employee-table th,
         .employee-table td {
             vertical-align: middle;
+        }
+
+        .employee-table th:nth-child(4),
+        .employee-table th:nth-child(5),
+        .employee-table td:nth-child(4),
+        .employee-table td:nth-child(5) {
+            text-align: right;
         }
 
         .employee-table th:nth-child(6),
@@ -129,8 +145,19 @@
             text-align: center;
         }
 
-        .employee-main-link {
+        .employee-id-link {
+            color: #94a3b8;
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            text-decoration: none;
+        }
+
+        .employee-name-link {
             color: #dbeafe;
+            display: inline-block;
+            font-size: 14px;
             font-weight: 700;
             text-decoration: none;
         }
@@ -148,7 +175,9 @@
             font-size: 12px;
             font-weight: 700;
             line-height: 1;
+            min-width: 86px;
             padding: 7px 10px;
+            text-align: center;
             white-space: nowrap;
         }
 
@@ -191,7 +220,7 @@
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
-            min-width: 225px;
+            min-width: 248px;
         }
 
         .employee-actions form {
@@ -215,9 +244,30 @@
             text-decoration: none;
         }
 
+        .action-link:hover,
+        .action-button:hover {
+            border-color: #42e8ff;
+            color: #eef6ff;
+        }
+
+        .action-button-warning {
+            border-color: rgba(245, 158, 11, 0.55);
+            color: #fcd34d;
+        }
+
         .action-button-danger {
             border-color: rgba(239, 68, 68, 0.45);
             color: #fca5a5;
+        }
+
+        .employee-table-card {
+            padding: 16px;
+        }
+
+        @media (max-width: 1180px) {
+            .employee-summary-badges {
+                grid-template-columns: repeat(3, minmax(96px, 1fr));
+            }
         }
 
         @media (max-width: 760px) {
@@ -227,6 +277,10 @@
 
             .employee-status-nav {
                 flex-wrap: nowrap;
+            }
+
+            .employee-summary-badges {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
         }
     </style>
@@ -245,18 +299,13 @@
         @endforeach
     </div>
 
-    <div class="employee-summary-bar" aria-label="Employee status summary">
-        <span class="employee-summary-item">Total: <strong>{{ number_format($summary['total']) }}</strong></span>
-        <span>|</span>
-        <span class="employee-summary-item">Active: <strong>{{ number_format($summary['active']) }}</strong></span>
-        <span>|</span>
-        <span class="employee-summary-item">Probation: <strong>{{ number_format($summary['probation']) }}</strong></span>
-        <span>|</span>
-        <span class="employee-summary-item">Leave: <strong>{{ number_format($summary['on_leave']) }}</strong></span>
-        <span>|</span>
-        <span class="employee-summary-item">Inactive: <strong>{{ number_format($summary['inactive']) }}</strong></span>
-        <span>|</span>
-        <span class="employee-summary-item">Terminated: <strong>{{ number_format($summary['terminated']) }}</strong></span>
+    <div class="employee-summary-badges" aria-label="Employee status summary">
+        <div class="employee-summary-badge"><span>Total</span><strong>{{ number_format($summary['total']) }}</strong></div>
+        <div class="employee-summary-badge"><span>Active</span><strong>{{ number_format($summary['active']) }}</strong></div>
+        <div class="employee-summary-badge"><span>Probation</span><strong>{{ number_format($summary['probation']) }}</strong></div>
+        <div class="employee-summary-badge"><span>Leave</span><strong>{{ number_format($summary['on_leave']) }}</strong></div>
+        <div class="employee-summary-badge"><span>Inactive</span><strong>{{ number_format($summary['inactive']) }}</strong></div>
+        <div class="employee-summary-badge"><span>Terminated</span><strong>{{ number_format($summary['terminated']) }}</strong></div>
     </div>
 
     <div class="card employee-filter-card">
@@ -269,12 +318,12 @@
                 @endforeach
             </select>
             <button class="btn" type="submit">Search</button>
-            <a class="employee-filter-reset" href="/admin/employees">Reset</a>
         </form>
+        <a class="employee-filter-reset" href="/admin/employees">Reset</a>
         <p class="employee-filter-meta">Total Employees Found: {{ $employees->count() }}</p>
     </div>
 
-    <div class="card">
+    <div class="card employee-table-card">
         <div class="employee-table-wrap">
             <table class="employee-table">
                 <tr>
@@ -290,10 +339,8 @@
                 @forelse($employees as $employee)
                     <tr>
                         <td>
-                            <a class="employee-main-link" href="/admin/employees/{{ $employee->id }}">{{ $employee->employee_id }}</a>
-                            <div class="employee-subtext">
-                                <a href="/admin/employees/{{ $employee->id }}">{{ $employee->name }}</a>
-                            </div>
+                            <a class="employee-id-link" href="/admin/employees/{{ $employee->id }}">{{ $employee->employee_id }}</a>
+                            <div><a class="employee-name-link" href="/admin/employees/{{ $employee->id }}">{{ $employee->name }}</a></div>
                         </td>
                         <td>{{ $employee->mobile ?: '-' }}</td>
                         <td>
@@ -321,7 +368,7 @@
 
                                 <form method="POST" action="/admin/employees/{{ $employee->id }}/terminate">
                                     @csrf
-                                    <button class="action-button action-button-danger" type="submit" onclick="return confirm('Terminate this employee? History and login will be preserved.');">Terminate</button>
+                                    <button class="action-button action-button-warning" type="submit" onclick="return confirm('Terminate this employee? History and login will be preserved.');">Terminate</button>
                                 </form>
 
                                 <form method="POST" action="/admin/employees/{{ $employee->id }}/delete">
