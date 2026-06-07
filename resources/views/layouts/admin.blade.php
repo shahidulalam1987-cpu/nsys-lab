@@ -390,7 +390,7 @@
                 <a class="{{ request()->is('admin/payroll') && request('status') === 'due' ? 'active-menu' : '' }}" href="/admin/payroll?status=due">Unpaid Salary</a>
 
                 <div class="sidebar-section-title">Client Fund</div>
-                <a class="{{ request()->is('admin/salary-payments') && request('status') === 'pending' ? 'active-menu' : '' }}" href="/admin/salary-payments?status=pending">Receive Payment</a>
+                <a class="{{ request()->is('admin/salary-payments/create') ? 'active-menu' : '' }}" href="/admin/salary-payments/create">Receive Payment</a>
                 <a class="{{ request()->is('admin/salary-payments/pending') ? 'active-menu' : '' }}" href="/admin/salary-payments/pending">Pending Payments</a>
                 <a class="{{ request()->is('admin/salary-payments') && ! request()->filled('status') ? 'active-menu' : '' }}" href="/admin/salary-payments">Payment History</a>
             @else

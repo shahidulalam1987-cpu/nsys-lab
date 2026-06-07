@@ -27,8 +27,8 @@
     <div class="card">
         <a class="btn" href="/client/employees">My Employees</a>
         <a class="btn" href="/client/salary-fund">Salary Fund</a>
-        <a class="btn" href="/client/salary-payments">Salary Payments</a>
-        <a class="btn" href="/client/salary-payments/create">Submit Salary Payment</a>
+        <a class="btn" href="/client/salary-payments">Payment History</a>
+        <a class="btn" href="/client/salary-payments/create">Submit Payment</a>
     </div>
 
     <div class="card">
@@ -56,10 +56,10 @@
     </div>
 
     <div class="card">
-        <h2>Recent Salary Payments</h2>
+        <h2>Recent Client Fund Payments</h2>
         <table>
             <tr>
-                <th>Salary Month</th>
+                <th>Payment Date</th>
                 <th>Amount</th>
                 <th>Method</th>
                 <th>Status</th>
@@ -67,14 +67,14 @@
             </tr>
             @forelse($recentSalaryPayments as $payment)
                 <tr>
-                    <td>{{ $payment->salary_month?->format('Y-m') }}</td>
+                    <td>{{ $payment->salary_month?->toDateString() }}</td>
                     <td>BDT {{ number_format($payment->amount, 2) }}</td>
                     <td>{{ $payment->payment_method }}</td>
                     <td>{{ ucfirst($payment->status) }}</td>
                     <td>{{ $payment->created_at }}</td>
                 </tr>
             @empty
-                <tr><td colspan="5">No salary payments found.</td></tr>
+                <tr><td colspan="5">No client fund payments found.</td></tr>
             @endforelse
         </table>
     </div>

@@ -24,6 +24,7 @@
 
     <div class="card">
         <a class="btn" href="/admin/employees">Employees</a>
+        <a class="btn" href="/admin/salary-payments/create">Receive Client Payment</a>
         <a class="btn" href="/admin/salary-payments">Client Payment History</a>
         <a class="btn" href="/admin/salary-payments/pending">Pending Client Payments</a>
     </div>
@@ -57,7 +58,7 @@
         <table>
             <tr>
                 <th>Client</th>
-                <th>Salary Month</th>
+                <th>Payment Date</th>
                 <th>Amount</th>
                 <th>Status</th>
                 <th>Date</th>
@@ -65,7 +66,7 @@
             @forelse($recentSalaryPayments as $payment)
                 <tr>
                     <td>{{ $payment->client?->company_name }}</td>
-                    <td>{{ $payment->salary_month?->format('Y-m') }}</td>
+                    <td>{{ $payment->salary_month?->toDateString() }}</td>
                     <td>BDT {{ number_format($payment->amount, 2) }}</td>
                     <td>{{ ucfirst($payment->status) }}</td>
                     <td>{{ $payment->created_at }}</td>

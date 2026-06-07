@@ -86,6 +86,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/salary-days/{salaryDay}/delete', [SalaryDayController::class, 'destroy']);
 
     Route::get('/admin/salary-payments', [SalaryPaymentController::class, 'index']);
+    Route::get('/admin/salary-payments/create', [SalaryPaymentController::class, 'create']);
+    Route::post('/admin/salary-payments', [SalaryPaymentController::class, 'store']);
     Route::get('/admin/salary-payments/pending', [SalaryPaymentController::class, 'pending']);
     Route::post('/admin/salary-payments/{id}/approve', [SalaryPaymentController::class, 'approve']);
     Route::post('/admin/salary-payments/{id}/reject', [SalaryPaymentController::class, 'reject']);

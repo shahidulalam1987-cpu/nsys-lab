@@ -69,11 +69,11 @@ class EmployeeController extends Controller
         }
 
         $data['client_id'] = $client->id;
-        $data['salary_month'] = date('Y-m-01', strtotime($data['salary_month']));
+        $data['salary_month'] = date('Y-m-d', strtotime($data['salary_month']));
         $data['status'] = 'pending';
 
         SalaryPayment::create($data);
 
-        return redirect('/client/salary-payments')->with('success', 'Salary payment submitted successfully.');
+        return redirect('/client/salary-payments')->with('success', 'Client fund payment submitted successfully.');
     }
 }

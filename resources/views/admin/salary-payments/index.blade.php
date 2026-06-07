@@ -3,6 +3,7 @@
 @section('content')
     <h1>Client Payment History</h1>
 
+    <a class="btn" href="/admin/salary-payments/create">Receive Client Payment</a>
     <a class="btn" href="/admin/salary-payments/pending">Pending Client Payments</a>
 
     <div class="card" style="margin-top:20px;">
@@ -24,5 +25,9 @@
         </form>
     </div>
 
-    @include('admin.salary-payments.partials.table', ['payments' => $payments])
+    @include('admin.salary-payments.partials.table', [
+        'payments' => $payments,
+        'mode' => 'history',
+        'emptyMessage' => 'No client payment history found.',
+    ])
 @endsection

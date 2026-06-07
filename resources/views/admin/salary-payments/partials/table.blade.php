@@ -1,34 +1,53 @@
 <div class="card" style="margin-top:20px;">
+    @php
+        $mode = $mode ?? 'history';
+        $emptyMessage = $emptyMessage ?? 'No client payment history found.';
+    @endphp
+
     <table>
         <tr>
             <th>ID</th>
             <th>Client</th>
-            <th>Salary Month</th>
             <th>Amount</th>
             <th>Method</th>
             <th>Transaction ID</th>
-            <th>Proof</th>
+            @if($mode === 'pending')
+                <th>Proof</th>
+                <th>Submitted Date</th>
+            @else
+                <th>Payment Date</th>
+                <th>Proof</th>
+            @endif
             <th>Status</th>
-            <th>Reject Reason</th>
+            @if($mode !== 'pending')
+                <th>Reject Reason</th>
+            @endif
             <th>Action</th>
         </tr>
         @forelse($payments as $payment)
             <tr>
                 <td>{{ $payment->id }}</td>
                 <td>{{ $payment->client?->company_name }}</td>
-                <td>{{ $payment->salary_month?->format('Y-m') }}</td>
                 <td>BDT {{ number_format($payment->amount, 2) }}</td>
                 <td>{{ $payment->payment_method }}</td>
                 <td>{{ $payment->transaction_id }}</td>
+                @if($mode !== 'pending')
+                    <td>{{ $payment->salary_month?->toDateString() ?: '-' }}</td>
+                @endif
                 <td>
                     @if($payment->screenshot)
                         <a href="{{ asset('storage/' . $payment->screenshot) }}" target="_blank">View Proof</a>
                     @else
-                        No Proof
+                        -
                     @endif
                 </td>
+                @if($mode === 'pending')
+                    <td>{{ $payment->created_at?->toDateString() ?: '-' }}</td>
+                @endif
                 <td>{{ ucfirst($payment->status) }}</td>
-                <td>{{ $payment->status === 'rejected' ? $payment->reject_reason : '-' }}</td>
+                @if($mode !== 'pending')
+                    <td>{{ $payment->status === 'rejected' ? $payment->reject_reason : '-' }}</td>
+                @endif
                 <td>
                     @if($payment->status === 'pending')
                         <form method="POST" action="/admin/salary-payments/{{ $payment->id }}/approve" style="display:inline;">
@@ -46,7 +65,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="10">No salary payments found.</td></tr>
+            <tr><td colspan="{{ $mode === 'pending' ? 9 : 10 }}">{{ $emptyMessage }}</td></tr>
         @endforelse
     </table>
 </div>

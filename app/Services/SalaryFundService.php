@@ -41,7 +41,7 @@ class SalaryFundService
             ->values();
 
         $payments = SalaryPayment::where('client_id', $client->id)
-            ->whereDate('salary_month', $monthStart->toDateString())
+            ->whereBetween('salary_month', [$monthStart->toDateString(), $monthEnd->toDateString()])
             ->latest()
             ->get();
 

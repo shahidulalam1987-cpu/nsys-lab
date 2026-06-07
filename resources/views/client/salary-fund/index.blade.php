@@ -7,7 +7,7 @@
         <form method="GET" action="/client/salary-fund">
             <input type="month" name="salary_month" value="{{ request('salary_month', $fund['month']->format('Y-m')) }}">
             <button class="btn" type="submit">View Month</button>
-            <a class="btn" href="/client/salary-payments/create">Submit Salary Payment</a>
+            <a class="btn" href="/client/salary-payments/create">Submit Client Fund Payment</a>
         </form>
     </div>
 

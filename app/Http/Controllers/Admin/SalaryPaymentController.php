@@ -27,6 +27,42 @@ class SalaryPaymentController extends Controller
         return view('admin.salary-payments.index', compact('payments', 'clients'));
     }
 
+    public function create()
+    {
+        $clients = Client::orderBy('company_name')->get();
+
+        return view('admin.salary-payments.create', compact('clients'));
+    }
+
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'client_id' => ['required', 'exists:clients,id'],
+            'amount' => ['required', 'numeric', 'min:1'],
+            'payment_method' => ['required', 'string', 'max:100'],
+            'transaction_id' => ['required', 'string', 'max:255'],
+            'payment_date' => ['required', 'date'],
+            'screenshot' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'note' => ['nullable', 'string'],
+            'status' => ['required', 'in:pending,approved'],
+        ]);
+
+        if ($request->hasFile('screenshot')) {
+            $data['screenshot'] = $request->file('screenshot')->store('salary-payment-screenshots', 'public');
+        }
+
+        $data['salary_month'] = date('Y-m-d', strtotime($data['payment_date']));
+        unset($data['payment_date']);
+
+        if ($data['status'] === 'approved') {
+            $data['approved_at'] = now();
+        }
+
+        SalaryPayment::create($data);
+
+        return redirect('/admin/salary-payments')->with('success', 'Client fund payment saved successfully.');
+    }
+
     public function pending()
     {
         $payments = SalaryPayment::with('client')
@@ -48,7 +84,7 @@ class SalaryPaymentController extends Controller
             'reject_reason' => null,
         ]);
 
-        return back()->with('success', 'Salary payment approved successfully.');
+        return back()->with('success', 'Client payment approved successfully.');
     }
 
     public function reject(Request $request, $id)
@@ -65,6 +101,6 @@ class SalaryPaymentController extends Controller
             'reject_reason' => $request->reject_reason,
         ]);
 
-        return back()->with('success', 'Salary payment rejected successfully.');
+        return back()->with('success', 'Client payment rejected successfully.');
     }
 }
