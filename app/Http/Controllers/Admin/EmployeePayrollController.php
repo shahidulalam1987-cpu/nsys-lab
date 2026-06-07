@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\Employee;
 use App\Models\EmployeePayroll;
+use App\Services\ClientFundDashboardService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -46,12 +47,13 @@ class EmployeePayrollController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(ClientFundDashboardService $clientFundDashboardService)
     {
         $employees = Employee::orderBy('name')->get();
         $clients = Client::orderBy('company_name')->get();
+        $clientBalances = $clientFundDashboardService->clientBalanceMap();
 
-        return view('admin.payroll.create', compact('employees', 'clients'));
+        return view('admin.payroll.create', compact('employees', 'clients', 'clientBalances'));
     }
 
     public function store(Request $request)
@@ -134,11 +136,15 @@ class EmployeePayrollController extends Controller
         return view('admin.payroll.show', compact('payroll'));
     }
 
-    public function edit($id)
+    public function edit($id, ClientFundDashboardService $clientFundDashboardService)
     {
         $payroll = EmployeePayroll::with(['employee', 'client'])->findOrFail($id);
+        $clientFundBalance = $payroll->client_id
+            ? $clientFundDashboardService->clientAvailableBalance($payroll->client_id)
+            : null;
+        $clientFundNeed = max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0);
 
-        return view('admin.payroll.edit', compact('payroll'));
+        return view('admin.payroll.edit', compact('payroll', 'clientFundBalance', 'clientFundNeed'));
     }
 
     public function update(Request $request, $id)

@@ -91,6 +91,16 @@
             border-color: #334155;
         }
 
+        .fund-warning {
+            display: none;
+            margin-top: 12px;
+            padding: 12px;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            color: #fcd34d;
+            background: rgba(245, 158, 11, .12);
+        }
+
         .salary-actions {
             display: flex;
             justify-content: flex-end;
@@ -193,10 +203,10 @@
                     </p>
 
                     <p class="salary-field">Client<br>
-                        <select name="client_id" required>
+                        <select name="client_id" id="client_id" required>
                             <option value="">Select Client</option>
                             @foreach($clients as $client)
-                                <option value="{{ $client->id }}" {{ old('client_id') == $client->id ? 'selected' : '' }}>
+                                <option value="{{ $client->id }}" data-balance="{{ $clientBalances[$client->id] ?? 0 }}" {{ old('client_id') == $client->id ? 'selected' : '' }}>
                                     {{ $client->company_name }}
                                 </option>
                             @endforeach
@@ -214,6 +224,7 @@
                     <p class="salary-field">From Date<br><input type="date" name="from_date" id="from_date" value="{{ old('from_date', now()->startOfMonth()->toDateString()) }}"></p>
                     <p class="salary-field">To Date<br><input type="date" name="to_date" id="to_date" value="{{ old('to_date', now()->toDateString()) }}"></p>
                 </div>
+                <div class="fund-warning" id="fund_warning"></div>
             </div>
 
             <div class="salary-section">
@@ -278,6 +289,7 @@
 
     <script>
         const employeeSelect = document.getElementById('employee_id');
+        const clientSelect = document.getElementById('client_id');
         const calculationType = document.getElementById('calculation_type');
         const salaryMonth = document.getElementById('salary_month');
         const fromDate = document.getElementById('from_date');
@@ -298,6 +310,7 @@
         const dailySalaryDisplay = document.getElementById('daily_salary_display');
         const payableSalaryDisplay = document.getElementById('payable_salary_display');
         const dueDisplay = document.getElementById('due_display');
+        const fundWarning = document.getElementById('fund_warning');
         let dateAdjustmentsExpanded = true;
 
         function money(amount) {
@@ -463,7 +476,9 @@
 
         function calculateSalary() {
             const selected = employeeSelect.options[employeeSelect.selectedIndex];
+            const selectedClient = clientSelect.options[clientSelect.selectedIndex];
             const monthlySalary = Number(selected?.dataset.salary || 0);
+            const clientBalance = Number(selectedClient?.dataset.balance || 0);
             const monthDays = daysInMonth(fromDate.value);
             const dailySalary = monthDays > 0 ? monthlySalary / monthDays : 0;
             const payableSalary = monthDays > 0 ? (monthlySalary * Number(workingDays.value || 0)) / monthDays : 0;
@@ -475,6 +490,13 @@
             dailySalaryDisplay.value = money(dailySalary);
             payableSalaryDisplay.value = money(payableSalary);
             dueDisplay.value = money(due);
+            if (clientSelect.value && payableSalary > clientBalance) {
+                fundWarning.style.display = 'block';
+                fundWarning.innerHTML = `<strong>Insufficient Client Fund</strong><br>Need: ${money(payableSalary)}<br>Available: ${money(clientBalance)}<br>Admin can still save salary if approved.`;
+            } else {
+                fundWarning.style.display = 'none';
+                fundWarning.innerHTML = '';
+            }
             paidAmount.required = needsPaymentDetails;
             paymentMethod.required = needsPaymentDetails;
             paymentDate.required = needsPaymentDetails;
@@ -497,7 +519,7 @@
             field.addEventListener('change', syncDatesAndSalary);
         });
 
-        [employeeSelect, workingDays, paymentStatus, paidAmount].forEach((field) => {
+        [employeeSelect, clientSelect, workingDays, paymentStatus, paidAmount].forEach((field) => {
             field.addEventListener('input', calculateSalary);
             field.addEventListener('change', calculateSalary);
         });

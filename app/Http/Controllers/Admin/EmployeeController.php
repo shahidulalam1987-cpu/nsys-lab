@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\Employee;
 use App\Models\User;
+use App\Services\ClientFundDashboardService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -314,6 +315,11 @@ class EmployeeController extends Controller
     private function salarySummary(Employee $employee): array
     {
         $payrolls = $employee->payrolls;
+        $assignedClient = $employee->assignments
+            ->where('status', 'active')
+            ->sortByDesc('assigned_from')
+            ->first()
+            ?->client;
         $lastPayment = $payrolls
             ->filter(fn ($payroll) => (float) $payroll->paid_amount > 0)
             ->sortByDesc(fn ($payroll) => $payroll->payment_date ?: $payroll->created_at)
@@ -326,6 +332,12 @@ class EmployeeController extends Controller
             'total_paid_salary' => (float) $payrolls->sum('paid_amount'),
             'current_salary_due' => $payrolls->sum(fn ($payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
             'last_salary_payment' => $lastPayment,
+            'assigned_client' => $assignedClient,
+            'client_fund_balance' => $assignedClient
+                ? app(ClientFundDashboardService::class)->clientAvailableBalance($assignedClient->id)
+                : null,
+            'upcoming_salary_date' => $employee->nextSalaryDate(),
+            'salary_status' => $employee->salaryStatusLabel(),
         ];
     }
 }

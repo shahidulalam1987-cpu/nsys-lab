@@ -3,12 +3,16 @@
 @section('content')
     <h1>Client Fund Dashboard</h1>
     <p>Track client salary fund received, employee salary usage, pending client payments, and unpaid salary due.</p>
+    <p>
+        <a class="btn" href="/admin/client-fund/export/csv">Export CSV</a>
+        <a class="btn" href="/admin/client-fund/export/excel">Export Excel</a>
+    </p>
 
     <style>
         .client-fund-grid {
             display: grid;
             gap: 12px;
-            grid-template-columns: repeat(5, minmax(150px, 1fr));
+            grid-template-columns: repeat(6, minmax(150px, 1fr));
             margin: 18px 0;
         }
 
@@ -28,6 +32,32 @@
         .client-fund-card h2 {
             font-size: 20px;
             margin: 0;
+        }
+
+        .balance-positive {
+            border-color: rgba(34, 197, 94, .5) !important;
+            color: #86efac;
+        }
+
+        .balance-warning {
+            border-color: rgba(245, 158, 11, .6) !important;
+            color: #fcd34d;
+        }
+
+        .balance-critical {
+            border-color: rgba(239, 68, 68, .65) !important;
+            color: #fca5a5;
+        }
+
+        .alert-badge {
+            display: inline-block;
+            margin-top: 6px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: rgba(239, 68, 68, .18);
+            color: #fca5a5;
+            font-size: 12px;
+            font-weight: 700;
         }
 
         .client-fund-table-wrap {
@@ -75,7 +105,7 @@
             <p>Total Salary Used</p>
             <h2>BDT {{ number_format($summary['total_salary_used'], 2) }}</h2>
         </div>
-        <div class="client-fund-card">
+        <div class="client-fund-card {{ $clientFundDashboardService->balanceClass($summary['available_balance']) }}">
             <p>Available Balance</p>
             <h2>BDT {{ number_format($summary['available_balance'], 2) }}</h2>
         </div>
@@ -87,6 +117,15 @@
         <div class="client-fund-card">
             <p>Unpaid Salary Due</p>
             <h2>BDT {{ number_format($summary['unpaid_salary_due'], 2) }}</h2>
+            <p style="margin-top:6px;">{{ number_format($summary['unpaid_employee_count']) }} Employees</p>
+            @if($summary['unpaid_salary_due'] > 0)
+                <span class="alert-badge">Needs attention</span>
+            @endif
+        </div>
+        <div class="client-fund-card">
+            <p>Upcoming Salary This Week</p>
+            <h2>BDT {{ number_format($summary['upcoming_salary'], 2) }}</h2>
+            <p style="margin-top:6px;">{{ number_format($summary['upcoming_employee_count']) }} Employees</p>
         </div>
     </div>
 
@@ -101,6 +140,7 @@
                     <th>Available Balance</th>
                     <th>Pending Payments</th>
                     <th>Unpaid Salary Due</th>
+                    <th>Upcoming Salary</th>
                     <th>Action</th>
                 </tr>
                 @forelse($rows as $row)
@@ -108,16 +148,27 @@
                         <td style="text-align:left;">{{ $row['client']->company_name }}</td>
                         <td>BDT {{ number_format($row['fund_received'], 2) }}</td>
                         <td>BDT {{ number_format($row['salary_used'], 2) }}</td>
-                        <td>BDT {{ number_format($row['available_balance'], 2) }}</td>
+                        <td class="{{ $row['balance_class'] }}">BDT {{ number_format($row['available_balance'], 2) }}</td>
                         <td>
                             BDT {{ number_format($row['pending_payments'], 2) }}
                             <div style="color:#a9b7cf; font-size:12px;">{{ number_format($row['pending_payment_count']) }} pending</div>
                         </td>
-                        <td>BDT {{ number_format($row['unpaid_salary_due'], 2) }}</td>
-                        <td><a class="btn" href="/admin/clients/{{ $row['client']->id }}">View Details</a></td>
+                        <td>
+                            BDT {{ number_format($row['unpaid_salary_due'], 2) }}
+                            <div style="color:#a9b7cf; font-size:12px;">{{ number_format($row['unpaid_employee_count']) }} employees</div>
+                        </td>
+                        <td>
+                            @if($row['upcoming_salary'] > 0)
+                                BDT {{ number_format($row['upcoming_salary'], 2) }}
+                                <div style="color:#a9b7cf; font-size:12px;">{{ $row['upcoming_due_text'] }}</div>
+                            @else
+                                No Upcoming Salary
+                            @endif
+                        </td>
+                        <td><a class="btn" href="/admin/client-fund/{{ $row['client']->id }}">View Details</a></td>
                     </tr>
                 @empty
-                    <tr><td colspan="7">No client fund data found.</td></tr>
+                    <tr><td colspan="8">No client fund data found.</td></tr>
                 @endforelse
             </table>
         </div>

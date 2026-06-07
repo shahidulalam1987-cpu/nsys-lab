@@ -22,6 +22,15 @@
         <p><strong>Non Working Days:</strong> {{ $payroll->non_working_days ?? '-' }}</p>
         <p><strong>Payable Salary (BDT):</strong> BDT {{ number_format($payroll->payable_salary, 2) }}</p>
 
+        @if($clientFundBalance !== null && $clientFundNeed > $clientFundBalance)
+            <div style="margin:14px 0; padding:12px; border:1px solid #f59e0b; border-radius:8px; color:#fcd34d; background:rgba(245,158,11,.12);">
+                <strong>Insufficient Client Fund</strong><br>
+                Need: BDT {{ number_format($clientFundNeed, 2) }}<br>
+                Available: BDT {{ number_format($clientFundBalance, 2) }}<br>
+                Admin can still update salary if approved.
+            </div>
+        @endif
+
         <form method="POST" action="/admin/payroll/{{ $payroll->id }}/update" enctype="multipart/form-data">
             @csrf
 

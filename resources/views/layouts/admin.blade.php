@@ -128,6 +128,28 @@
             margin-top: 0;
         }
 
+        .sidebar-link-with-badge {
+            align-items: center;
+            display: flex !important;
+            gap: 10px;
+            justify-content: space-between;
+        }
+
+        .sidebar-count-badge {
+            background: rgba(47, 140, 255, .35);
+            border-radius: 999px;
+            color: #fff;
+            font-size: 11px;
+            line-height: 1;
+            min-width: 22px;
+            padding: 5px 7px;
+            text-align: center;
+        }
+
+        .sidebar-count-badge.danger {
+            background: var(--danger);
+        }
+
         .content {
             flex: 1;
             padding: 30px;
@@ -361,6 +383,9 @@
             || request()->is('admin/salary-payments*')
             || request()->is('admin/salary-month-sheet*')
             || request()->is('admin/payroll*');
+        $clientFundBadges = $isEmployeeDepartment
+            ? app(\App\Services\ClientFundDashboardService::class)->sidebarBadges()
+            : ['upcoming_salary_count' => 0, 'unpaid_salary_count' => 0, 'pending_payment_count' => 0];
     @endphp
 
     <div class="topbar">
@@ -386,14 +411,29 @@
                 <a class="{{ request()->is('admin/employees*') ? 'active-menu' : '' }}" href="/admin/employees">Employee List</a>
                 <a class="{{ request()->is('admin/payroll*') && ! request()->filled('status') ? 'active-menu' : '' }}" href="/admin/payroll">Salary Generate</a>
                 <a class="{{ request()->is('admin/salary-month-sheet*') ? 'active-menu' : '' }}" href="/admin/salary-month-sheet">Salary Report</a>
-                <a class="{{ request()->is('admin/payroll') && request('status') === 'upcoming' ? 'active-menu' : '' }}" href="/admin/payroll?status=upcoming">Upcoming Salary</a>
+                <a class="sidebar-link-with-badge {{ request()->is('admin/payroll') && request('status') === 'upcoming' ? 'active-menu' : '' }}" href="/admin/payroll?status=upcoming">
+                    <span>Upcoming Salary</span>
+                    @if($clientFundBadges['upcoming_salary_count'] > 0)
+                        <span class="sidebar-count-badge">{{ $clientFundBadges['upcoming_salary_count'] }}</span>
+                    @endif
+                </a>
                 <a class="{{ request()->is('admin/payroll') && request('status') === 'paid' ? 'active-menu' : '' }}" href="/admin/payroll?status=paid">Paid Salary</a>
-                <a class="{{ request()->is('admin/payroll') && request('status') === 'due' ? 'active-menu' : '' }}" href="/admin/payroll?status=due">Unpaid Salary</a>
+                <a class="sidebar-link-with-badge {{ request()->is('admin/payroll') && request('status') === 'due' ? 'active-menu' : '' }}" href="/admin/payroll?status=due">
+                    <span>Unpaid Salary</span>
+                    @if($clientFundBadges['unpaid_salary_count'] > 0)
+                        <span class="sidebar-count-badge danger">{{ $clientFundBadges['unpaid_salary_count'] }}</span>
+                    @endif
+                </a>
 
                 <div class="sidebar-section-title">Client Fund</div>
                 <a class="{{ request()->is('admin/client-fund*') ? 'active-menu' : '' }}" href="/admin/client-fund">Dashboard</a>
                 <a class="{{ request()->is('admin/salary-payments/create') ? 'active-menu' : '' }}" href="/admin/salary-payments/create">Receive Payment</a>
-                <a class="{{ request()->is('admin/salary-payments/pending') ? 'active-menu' : '' }}" href="/admin/salary-payments/pending">Pending Payments</a>
+                <a class="sidebar-link-with-badge {{ request()->is('admin/salary-payments/pending') ? 'active-menu' : '' }}" href="/admin/salary-payments/pending">
+                    <span>Pending Payments</span>
+                    @if($clientFundBadges['pending_payment_count'] > 0)
+                        <span class="sidebar-count-badge danger">{{ $clientFundBadges['pending_payment_count'] }}</span>
+                    @endif
+                </a>
                 <a class="{{ request()->is('admin/salary-payments') && ! request()->filled('status') ? 'active-menu' : '' }}" href="/admin/salary-payments">Payment History</a>
             @else
                 <a class="{{ request()->is('admin/dashboard') ? 'active-menu' : '' }}" href="/admin/dashboard">Dashboard</a>

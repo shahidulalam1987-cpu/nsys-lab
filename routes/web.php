@@ -87,6 +87,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/salary-days/{salaryDay}/delete', [SalaryDayController::class, 'destroy']);
 
     Route::get('/admin/client-fund', [ClientFundController::class, 'dashboard']);
+    Route::get('/admin/client-fund/export/csv', [ClientFundController::class, 'exportCsv']);
+    Route::get('/admin/client-fund/export/excel', [ClientFundController::class, 'exportExcel']);
+    Route::get('/admin/client-fund/{client}', [ClientFundController::class, 'show']);
     Route::get('/admin/salary-payments', [SalaryPaymentController::class, 'index']);
     Route::get('/admin/salary-payments/create', [SalaryPaymentController::class, 'create']);
     Route::post('/admin/salary-payments', [SalaryPaymentController::class, 'store']);

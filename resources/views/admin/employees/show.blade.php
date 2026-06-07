@@ -209,6 +209,13 @@
             <h2>Salary Information Summary</h2>
             <div class="employee-info-grid">
                 <p><strong>Monthly Salary:</strong> BDT {{ number_format($employee->monthly_salary, 2) }}</p>
+                <p><strong>Assigned Client:</strong> {{ $salarySummary['assigned_client']?->company_name ?: '-' }}</p>
+                <p>
+                    <strong>Client Fund Balance:</strong>
+                    {{ $salarySummary['client_fund_balance'] !== null ? 'BDT ' . number_format($salarySummary['client_fund_balance'], 2) : '-' }}
+                </p>
+                <p><strong>Upcoming Salary Date:</strong> {{ $salarySummary['upcoming_salary_date']?->toDateString() ?: '-' }}</p>
+                <p><strong>Salary Status:</strong> {{ $salarySummary['salary_status'] }}</p>
                 <p><strong>Working Days:</strong> {{ number_format($salarySummary['working_days']) }}</p>
                 <p><strong>Non Working Days:</strong> {{ number_format($salarySummary['non_working_days']) }}</p>
                 <p><strong>Total Payable Salary:</strong> BDT {{ number_format($salarySummary['total_payable_salary'], 2) }}</p>
