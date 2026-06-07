@@ -22,7 +22,7 @@
 
             <select name="status">
                 <option value="">All Status</option>
-                @foreach(['upcoming' => 'Upcoming', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'] as $value => $label)
+                @foreach(['upcoming' => 'Upcoming', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid', 'due' => 'Unpaid / Due'] as $value => $label)
                     <option value="{{ $value }}" {{ request('status') == $value ? 'selected' : '' }}>{{ $label }}</option>
                 @endforeach
             </select>

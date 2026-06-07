@@ -18,7 +18,7 @@ class EmployeePayrollController extends Controller
         $filters = $request->validate([
             'month' => ['nullable', 'date_format:Y-m'],
             'employee_id' => ['nullable', 'exists:employees,id'],
-            'status' => ['nullable', 'in:upcoming,unpaid,partial,paid'],
+            'status' => ['nullable', 'in:upcoming,unpaid,partial,paid,due'],
         ]);
 
         $query = EmployeePayroll::with(['employee', 'client'])

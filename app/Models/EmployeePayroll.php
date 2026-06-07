@@ -161,6 +161,14 @@ class EmployeePayroll extends Model
             });
         }
 
+        if ($status === 'due') {
+            return $query->where(function ($query) {
+                $query->where('payment_status', 'unpaid')
+                    ->orWhere('payment_status', 'partial')
+                    ->orWhereColumn('paid_amount', '<', 'payable_salary');
+            });
+        }
+
         if ($status === 'paid') {
             return $query->where(function ($query) {
                 $query->where('payment_status', 'paid')
