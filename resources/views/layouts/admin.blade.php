@@ -357,6 +357,7 @@
     @php
         $isEmployeeDepartment = request()->is('admin/employee-dashboard')
             || request()->is('admin/employees*')
+            || request()->is('admin/client-fund*')
             || request()->is('admin/salary-payments*')
             || request()->is('admin/salary-month-sheet*')
             || request()->is('admin/payroll*');
@@ -390,6 +391,7 @@
                 <a class="{{ request()->is('admin/payroll') && request('status') === 'due' ? 'active-menu' : '' }}" href="/admin/payroll?status=due">Unpaid Salary</a>
 
                 <div class="sidebar-section-title">Client Fund</div>
+                <a class="{{ request()->is('admin/client-fund*') ? 'active-menu' : '' }}" href="/admin/client-fund">Dashboard</a>
                 <a class="{{ request()->is('admin/salary-payments/create') ? 'active-menu' : '' }}" href="/admin/salary-payments/create">Receive Payment</a>
                 <a class="{{ request()->is('admin/salary-payments/pending') ? 'active-menu' : '' }}" href="/admin/salary-payments/pending">Pending Payments</a>
                 <a class="{{ request()->is('admin/salary-payments') && ! request()->filled('status') ? 'active-menu' : '' }}" href="/admin/salary-payments">Payment History</a>

@@ -23,6 +23,7 @@ use App\Http\Controllers\Admin\SalaryDayController;
 use App\Http\Controllers\Admin\SalaryPaymentController;
 use App\Http\Controllers\Admin\SalaryMonthSheetController;
 use App\Http\Controllers\Admin\EmployeePayrollController;
+use App\Http\Controllers\Admin\ClientFundController;
 
 Route::get('/', [DashboardController::class, 'index']);
 
@@ -85,6 +86,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/employees/{employee}/salary-days', [SalaryDayController::class, 'store']);
     Route::post('/admin/salary-days/{salaryDay}/delete', [SalaryDayController::class, 'destroy']);
 
+    Route::get('/admin/client-fund', [ClientFundController::class, 'dashboard']);
     Route::get('/admin/salary-payments', [SalaryPaymentController::class, 'index']);
     Route::get('/admin/salary-payments/create', [SalaryPaymentController::class, 'create']);
     Route::post('/admin/salary-payments', [SalaryPaymentController::class, 'store']);
