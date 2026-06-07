@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
 @section('content')
-    <h1>Employee Management</h1>
+    <h1 style="margin-bottom:6px;">Employee List</h1>
 
     <style>
         .employee-page-header {
@@ -10,79 +10,97 @@
             flex-wrap: wrap;
             gap: 12px;
             justify-content: space-between;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
 
-        .employee-summary-grid {
-            display: grid;
-            gap: 10px;
-            grid-template-columns: repeat(6, minmax(120px, 1fr));
-            margin: 14px 0 18px;
+        .employee-page-subtitle {
+            color: #94a3b8;
+            margin: 0;
         }
 
         .employee-status-nav {
             display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin: 4px 0 18px;
+            gap: 6px;
+            margin: 2px 0 12px;
+            overflow-x: auto;
+            padding-bottom: 2px;
         }
 
-        .employee-status-pill {
+        .employee-status-tab {
             background: rgba(255, 255, 255, .06);
             border: 1px solid rgba(255, 255, 255, .16);
             border-radius: 999px;
             color: #a9b7cf;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 700;
-            padding: 9px 13px;
+            line-height: 1;
+            padding: 7px 11px;
             text-decoration: none;
             white-space: nowrap;
         }
 
-        .employee-status-pill:hover,
-        .employee-status-pill.active {
+        .employee-status-tab:hover,
+        .employee-status-tab.active {
             background: linear-gradient(90deg, #2f8cff, #42e8ff);
             box-shadow: 0 10px 30px rgba(47, 140, 255, .25);
             color: #fff;
         }
 
-        .employee-summary-card {
+        .employee-summary-bar {
+            align-items: center;
             background: #111827;
             border: 1px solid #243044;
             border-radius: 8px;
-            padding: 12px;
+            color: #cbd5e1;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 12px;
+            margin: 0 0 12px;
+            padding: 10px 12px;
         }
 
-        .employee-summary-card p {
-            color: #94a3b8;
-            font-size: 12px;
-            margin: 0 0 6px;
+        .employee-summary-item {
+            font-size: 13px;
+            line-height: 1.4;
+            white-space: nowrap;
         }
 
-        .employee-summary-card h2 {
-            font-size: 22px;
-            line-height: 1;
-            margin: 0;
+        .employee-summary-item strong {
+            color: #eef6ff;
         }
 
         .employee-filter-form {
             align-items: center;
             display: grid;
-            gap: 10px;
+            gap: 8px;
             grid-template-columns: minmax(260px, 1fr) minmax(180px, 220px) auto auto;
         }
 
         .employee-filter-form input,
         .employee-filter-form select {
             box-sizing: border-box;
-            min-height: 42px;
+            margin: 0;
+            min-height: 38px;
             width: 100%;
+        }
+
+        .employee-filter-card {
+            margin: 0 0 14px;
+            padding: 14px;
+        }
+
+        .employee-filter-reset {
+            color: #42e8ff;
+            font-size: 13px;
+            font-weight: 700;
+            padding: 8px 0;
+            text-decoration: none;
         }
 
         .employee-filter-meta {
             color: #94a3b8;
             font-size: 13px;
-            margin: 10px 0 0;
+            margin: 8px 0 0;
         }
 
         .employee-table-wrap {
@@ -96,7 +114,19 @@
 
         .employee-table th,
         .employee-table td {
+            padding: 11px 12px;
+        }
+
+        .employee-table th,
+        .employee-table td {
             vertical-align: middle;
+        }
+
+        .employee-table th:nth-child(6),
+        .employee-table th:nth-child(7),
+        .employee-table td:nth-child(6),
+        .employee-table td:nth-child(7) {
+            text-align: center;
         }
 
         .employee-main-link {
@@ -161,6 +191,7 @@
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
+            min-width: 225px;
         }
 
         .employee-actions form {
@@ -177,8 +208,10 @@
             cursor: pointer;
             display: inline-block;
             font-size: 12px;
-            line-height: 1;
-            padding: 8px 10px;
+            font-weight: 700;
+            line-height: 30px;
+            min-height: 32px;
+            padding: 0 10px;
             text-decoration: none;
         }
 
@@ -187,46 +220,48 @@
             color: #fca5a5;
         }
 
-        @media (max-width: 1100px) {
-            .employee-summary-grid {
-                grid-template-columns: repeat(3, minmax(120px, 1fr));
-            }
-        }
-
         @media (max-width: 760px) {
-            .employee-summary-grid,
             .employee-filter-form {
                 grid-template-columns: 1fr;
+            }
+
+            .employee-status-nav {
+                flex-wrap: nowrap;
             }
         }
     </style>
 
     <div class="employee-page-header">
         <div>
-            <p style="margin:0; color:#94a3b8;">Manage employee profiles, login links, and employment status.</p>
+            <p class="employee-page-subtitle">Manage employee records, status, login access, and salary information.</p>
         </div>
         <a class="btn" href="/admin/employees/create">Add Employee</a>
     </div>
 
     <div class="employee-status-nav" aria-label="Employee status filters">
-        <a class="employee-status-pill {{ request()->filled('status') ? '' : 'active' }}" href="/admin/employees">Employee List</a>
+        <a class="employee-status-tab {{ request()->filled('status') ? '' : 'active' }}" href="/admin/employees">All</a>
         @foreach(\App\Models\Employee::STATUS_FILTERS as $value => $label)
-            <a class="employee-status-pill {{ request('status') === $value ? 'active' : '' }}" href="/admin/employees?status={{ $value }}">{{ $label }}</a>
+            <a class="employee-status-tab {{ request('status') === $value ? 'active' : '' }}" href="/admin/employees?status={{ $value }}">{{ $label }}</a>
         @endforeach
     </div>
 
-    <div class="employee-summary-grid">
-        <div class="employee-summary-card"><p>Total</p><h2>{{ number_format($summary['total']) }}</h2></div>
-        <div class="employee-summary-card"><p>Active</p><h2>{{ number_format($summary['active']) }}</h2></div>
-        <div class="employee-summary-card"><p>Probation</p><h2>{{ number_format($summary['probation']) }}</h2></div>
-        <div class="employee-summary-card"><p>On Leave</p><h2>{{ number_format($summary['on_leave']) }}</h2></div>
-        <div class="employee-summary-card"><p>Inactive</p><h2>{{ number_format($summary['inactive']) }}</h2></div>
-        <div class="employee-summary-card"><p>Terminated</p><h2>{{ number_format($summary['terminated']) }}</h2></div>
+    <div class="employee-summary-bar" aria-label="Employee status summary">
+        <span class="employee-summary-item">Total: <strong>{{ number_format($summary['total']) }}</strong></span>
+        <span>|</span>
+        <span class="employee-summary-item">Active: <strong>{{ number_format($summary['active']) }}</strong></span>
+        <span>|</span>
+        <span class="employee-summary-item">Probation: <strong>{{ number_format($summary['probation']) }}</strong></span>
+        <span>|</span>
+        <span class="employee-summary-item">Leave: <strong>{{ number_format($summary['on_leave']) }}</strong></span>
+        <span>|</span>
+        <span class="employee-summary-item">Inactive: <strong>{{ number_format($summary['inactive']) }}</strong></span>
+        <span>|</span>
+        <span class="employee-summary-item">Terminated: <strong>{{ number_format($summary['terminated']) }}</strong></span>
     </div>
 
-    <div class="card" style="margin-top:20px;">
+    <div class="card employee-filter-card">
         <form class="employee-filter-form" method="GET" action="/admin/employees">
-            <input type="text" name="search" placeholder="Employee ID, name, mobile" value="{{ request('search') }}">
+            <input type="text" name="search" placeholder="Search Employee" value="{{ request('search') }}">
             <select name="status">
                 <option value="">All Employees</option>
                 @foreach(\App\Models\Employee::STATUS_FILTERS as $value => $label)
@@ -234,7 +269,7 @@
                 @endforeach
             </select>
             <button class="btn" type="submit">Search</button>
-            <a href="/admin/employees">Reset</a>
+            <a class="employee-filter-reset" href="/admin/employees">Reset</a>
         </form>
         <p class="employee-filter-meta">Total Employees Found: {{ $employees->count() }}</p>
     </div>
