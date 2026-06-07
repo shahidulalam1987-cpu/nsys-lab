@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Models\DailyReport;
 use App\Models\Employee;
 use App\Models\SalaryPayment;
+use App\Services\ClientFundDashboardService;
 
 class DashboardController extends Controller
 {
@@ -77,8 +78,10 @@ class DashboardController extends Controller
         ));
     }
 
-    public function employeeDepartment()
+    public function employeeDepartment(ClientFundDashboardService $clientFundDashboardService)
     {
+        $clientFundDashboard = $clientFundDashboardService->dashboard();
+        $clientFundSummary = $clientFundDashboard['summary'];
         $totalEmployees = Employee::count();
         $activeEmployees = Employee::where('status', 'active')->count();
         $probationEmployees = Employee::where('status', 'probation')->count();
@@ -91,6 +94,7 @@ class DashboardController extends Controller
             'activeEmployees',
             'probationEmployees',
             'pendingSalaryPayments',
+            'clientFundSummary',
             'recentEmployees',
             'recentSalaryPayments'
         ));

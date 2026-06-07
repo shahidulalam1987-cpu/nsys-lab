@@ -140,6 +140,40 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $this->assertSame('partial', $partialPayroll->fresh()->calculated_status);
     }
 
+    public function test_salary_status_modules_can_export_csv_and_excel(): void
+    {
+        Carbon::setTestNow('2026-06-08');
+
+        $admin = $this->admin();
+        $client = $this->client();
+        $employee = $this->employee([
+            'name' => 'Paid Export Employee',
+            'salary_day' => 7,
+        ]);
+
+        $this->payroll($employee, $client, [
+            'payable_salary' => 10000,
+            'paid_amount' => 10000,
+            'payment_status' => 'paid',
+            'payment_date' => '2026-06-07',
+            'payment_method' => 'Bank',
+            'transaction_id' => 'PAID-EXPORT',
+        ]);
+
+        $csv = $this->actingAs($admin)->get('/admin/payroll/export/csv?status=paid');
+        $excel = $this->actingAs($admin)->get('/admin/payroll/export/excel?status=paid');
+
+        $csv->assertOk();
+        $csv->assertDownload('salary-generate-report.csv');
+        $csvContent = $csv->streamedContent();
+        $this->assertStringContainsString('Paid Export Employee', $csvContent);
+        $this->assertStringContainsString('PAID-EXPORT', $csvContent);
+
+        $excel->assertOk();
+        $excel->assertHeader('Content-Type', 'application/vnd.ms-excel');
+        $excel->assertSee('Paid Export Employee');
+    }
+
     private function admin(): User
     {
         return User::factory()->create([

@@ -77,7 +77,7 @@ class ClientFundDashboardTest extends TestCase
         $response->assertSee('BDT 5,000.00');
         $response->assertSee('Upcoming Salary This Week');
         $response->assertSee('Fund Client A');
-        $response->assertSee('/admin/client-fund/' . $client->id, false);
+        $response->assertSee('/admin/client-fund/' . $client->id . '/details', false);
     }
 
     public function test_admin_can_view_client_fund_detail_ledger(): void
@@ -106,17 +106,59 @@ class ClientFundDashboardTest extends TestCase
             'status' => 'paid',
         ]);
 
-        $response = $this->actingAs($admin)->get('/admin/client-fund/' . $client->id);
+        $response = $this->actingAs($admin)->get('/admin/client-fund/' . $client->id . '/details');
 
         $response->assertOk();
         $response->assertSee('Client Fund Details');
         $response->assertSee('Ledger Client');
-        $response->assertSee('Transaction Timeline');
-        $response->assertSee('Receive Payment');
-        $response->assertSee('Salary Payment');
+        $response->assertSee('Transaction Ledger');
+        $response->assertSee('Client Fund Received');
+        $response->assertSee('Employee Salary Paid');
         $response->assertSee('BDT 10,000.00');
         $response->assertSee('BDT 2,000.00');
         $response->assertSee('BDT 8,000.00');
+    }
+
+    public function test_admin_can_filter_and_export_client_fund_detail_ledger(): void
+    {
+        $admin = $this->admin();
+        $client = $this->client(['company_name' => 'Filtered Ledger Client']);
+        $employee = $this->employee();
+
+        SalaryPayment::create([
+            'client_id' => $client->id,
+            'salary_month' => '2026-06-01',
+            'amount' => 12000,
+            'payment_method' => 'Bank',
+            'transaction_id' => 'FILTER-CREDIT',
+            'status' => 'approved',
+            'approved_at' => now(),
+        ]);
+        $employee->payrolls()->create([
+            'client_id' => $client->id,
+            'salary_month' => '2026-06-01',
+            'payment_date' => '2026-06-05',
+            'payable_salary' => 3000,
+            'paid_amount' => 3000,
+            'status' => 'paid',
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/client-fund/' . $client->id . '/details?type=Employee%20Salary%20Paid');
+
+        $response->assertOk();
+        $response->assertSee('Employee Salary Paid');
+        $response->assertDontSee('FILTER-CREDIT');
+
+        $csv = $this->actingAs($admin)->get('/admin/client-fund/' . $client->id . '/details/export/csv?type=Employee%20Salary%20Paid');
+        $excel = $this->actingAs($admin)->get('/admin/client-fund/' . $client->id . '/details/export/excel?type=Employee%20Salary%20Paid');
+
+        $csv->assertOk();
+        $csv->assertDownload('client-fund-ledger-' . $client->id . '.csv');
+        $this->assertStringContainsString('Employee Salary Paid', $csv->streamedContent());
+
+        $excel->assertOk();
+        $excel->assertHeader('Content-Type', 'application/vnd.ms-excel');
+        $excel->assertSee('Employee Salary Paid');
     }
 
     public function test_admin_can_export_client_fund_dashboard_csv_and_excel(): void

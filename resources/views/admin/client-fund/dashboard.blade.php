@@ -165,7 +165,7 @@
                                 No Upcoming Salary
                             @endif
                         </td>
-                        <td><a class="btn" href="/admin/client-fund/{{ $row['client']->id }}">View Details</a></td>
+                        <td><a class="btn" href="/admin/client-fund/{{ $row['client']->id }}/details">View Details</a></td>
                     </tr>
                 @empty
                     <tr><td colspan="8">No client fund data found.</td></tr>

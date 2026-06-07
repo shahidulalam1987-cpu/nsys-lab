@@ -37,13 +37,13 @@ class ClientFundDashboardService
         ];
     }
 
-    public function clientDetails(Client $client): array
+    public function clientDetails(Client $client, array $filters = []): array
     {
         $client->load(['salaryPayments', 'employeePayrolls.employee']);
 
         return [
             'row' => $this->clientSummary($client),
-            'ledger' => $this->ledger($client),
+            'ledger' => $this->ledger($client, $filters),
         ];
     }
 
@@ -153,7 +153,7 @@ class ClientFundDashboardService
             $employee = $assignment->employee;
             $dueDate = $employee?->currentSalaryDueDate();
 
-            if (! $employee || ! $dueDate || ! $dueDate->lt(now()->startOfDay())) {
+            if (! $employee || $employee->status === 'terminated' || ! $dueDate || ! $dueDate->lt(now()->startOfDay())) {
                 continue;
             }
 
@@ -186,7 +186,7 @@ class ClientFundDashboardService
             $employee = $assignment->employee;
             $dueDate = $employee?->nextSalaryDate();
 
-            if (! $employee || ! $dueDate || ! $dueDate->betweenIncluded($today, $until)) {
+            if (! $employee || $employee->status === 'terminated' || ! $dueDate || ! $dueDate->betweenIncluded($today, $until)) {
                 continue;
             }
 
@@ -233,14 +233,19 @@ class ClientFundDashboardService
             ->get();
     }
 
-    private function ledger(Client $client): Collection
+    public function ledgerExportRows(Client $client, array $filters = []): Collection
+    {
+        return $this->clientDetails($client, $filters)['ledger'];
+    }
+
+    private function ledger(Client $client, array $filters = []): Collection
     {
         $entries = collect();
 
         foreach ($client->salaryPayments->where('status', 'approved') as $payment) {
             $entries->push([
                 'date' => $payment->salary_month?->toDateString() ?: $payment->created_at?->toDateString(),
-                'type' => 'Receive Payment',
+                'type' => 'Client Fund Received',
                 'description' => 'Client fund payment ' . ($payment->transaction_id ? '(' . $payment->transaction_id . ')' : ''),
                 'debit' => 0.0,
                 'credit' => (float) $payment->amount,
@@ -250,7 +255,7 @@ class ClientFundDashboardService
         foreach ($client->employeePayrolls->where('paid_amount', '>', 0) as $payroll) {
             $entries->push([
                 'date' => $payroll->payment_date?->toDateString() ?: $payroll->created_at?->toDateString(),
-                'type' => 'Salary Payment',
+                'type' => 'Employee Salary Paid',
                 'description' => trim(($payroll->employee?->name ?: 'Employee') . ' - ' . $payroll->salary_period),
                 'debit' => (float) $payroll->paid_amount,
                 'credit' => 0.0,
@@ -261,6 +266,22 @@ class ClientFundDashboardService
 
         return $entries
             ->sortBy([['date', 'asc'], ['type', 'asc']])
+            ->values()
+            ->filter(function (array $entry) use ($filters) {
+                if (($filters['type'] ?? null) && $entry['type'] !== $filters['type']) {
+                    return false;
+                }
+
+                if (($filters['date_from'] ?? null) && $entry['date'] < $filters['date_from']) {
+                    return false;
+                }
+
+                if (($filters['date_to'] ?? null) && $entry['date'] > $filters['date_to']) {
+                    return false;
+                }
+
+                return true;
+            })
             ->values()
             ->map(function (array $entry) use (&$runningBalance) {
                 $runningBalance += $entry['credit'] - $entry['debit'];

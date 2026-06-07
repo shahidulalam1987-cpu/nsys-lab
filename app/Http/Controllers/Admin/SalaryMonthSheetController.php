@@ -75,4 +75,22 @@ class SalaryMonthSheetController extends Controller
             'Content-Type' => 'text/csv',
         ]);
     }
+
+    public function exportExcel(Request $request, SalaryMonthSheetService $salaryMonthSheetService)
+    {
+        $filters = $request->validate([
+            'month' => ['nullable', 'date_format:Y-m'],
+            'employee_id' => ['nullable', 'exists:employees,id'],
+            'status' => ['nullable', 'in:upcoming,unpaid,partial,paid'],
+        ]);
+
+        $sheet = $salaryMonthSheetService->build($filters);
+
+        return response()->view('admin.salary-month-sheet.export-excel', [
+            'rows' => $sheet['rows'],
+        ], 200, [
+            'Content-Type' => 'application/vnd.ms-excel',
+            'Content-Disposition' => 'attachment; filename="employee-salary-report-' . $sheet['month']->format('Y-m') . '.xls"',
+        ]);
+    }
 }

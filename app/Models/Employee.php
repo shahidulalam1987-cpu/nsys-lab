@@ -165,6 +165,10 @@ class Employee extends Model
 
     public function salaryCycleStatus(?Carbon $today = null): string
     {
+        if ($this->status === 'terminated') {
+            return 'terminated';
+        }
+
         $today = ($today ?: now())->copy()->startOfDay();
         $payroll = $this->payrollForSalaryMonth($this->currentSalaryDueDate($today)?->copy()->startOfMonth());
 
@@ -196,6 +200,7 @@ class Employee extends Model
             'unpaid' => 'Unpaid',
             'partial' => 'Partially Paid',
             'paid' => 'Paid',
+            'terminated' => 'Terminated',
         ][$this->salaryCycleStatus($today)] ?? 'Upcoming';
     }
 

@@ -89,6 +89,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/client-fund', [ClientFundController::class, 'dashboard']);
     Route::get('/admin/client-fund/export/csv', [ClientFundController::class, 'exportCsv']);
     Route::get('/admin/client-fund/export/excel', [ClientFundController::class, 'exportExcel']);
+    Route::get('/admin/client-fund/{client}/details', [ClientFundController::class, 'show']);
+    Route::get('/admin/client-fund/{client}/details/export/csv', [ClientFundController::class, 'exportLedgerCsv']);
+    Route::get('/admin/client-fund/{client}/details/export/excel', [ClientFundController::class, 'exportLedgerExcel']);
     Route::get('/admin/client-fund/{client}', [ClientFundController::class, 'show']);
     Route::get('/admin/salary-payments', [SalaryPaymentController::class, 'index']);
     Route::get('/admin/salary-payments/create', [SalaryPaymentController::class, 'create']);
@@ -98,8 +101,11 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/salary-payments/{id}/reject', [SalaryPaymentController::class, 'reject']);
     Route::get('/admin/salary-month-sheet', [SalaryMonthSheetController::class, 'index']);
     Route::get('/admin/salary-month-sheet/export', [SalaryMonthSheetController::class, 'export']);
+    Route::get('/admin/salary-month-sheet/export/excel', [SalaryMonthSheetController::class, 'exportExcel']);
 
     Route::get('/admin/payroll', [EmployeePayrollController::class, 'index']);
+    Route::get('/admin/payroll/export/csv', [EmployeePayrollController::class, 'exportCsv']);
+    Route::get('/admin/payroll/export/excel', [EmployeePayrollController::class, 'exportExcel']);
     Route::get('/admin/payroll/create', [EmployeePayrollController::class, 'create']);
     Route::post('/admin/payroll', [EmployeePayrollController::class, 'store']);
     Route::get('/admin/payroll/{id}', [EmployeePayrollController::class, 'show']);

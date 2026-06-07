@@ -16,34 +16,57 @@ class EmployeePayrollController extends Controller
 {
     public function index(Request $request)
     {
-        $filters = $request->validate([
-            'month' => ['nullable', 'date_format:Y-m'],
-            'employee_id' => ['nullable', 'exists:employees,id'],
-            'status' => ['nullable', 'in:upcoming,unpaid,partial,paid,due'],
-        ]);
-
-        $query = EmployeePayroll::with(['employee', 'client'])
-            ->when($filters['month'] ?? null, fn ($query, $month) => $query->whereDate('salary_month', $month . '-01'))
-            ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId));
-
-        $payrolls = $query->latest('salary_month')
-            ->latest()
-            ->get()
-            ->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter($filters['status'] ?? null))
-            ->values();
-        $employees = Employee::orderBy('name')->get();
-        $cycleEmployees = $this->cycleEmployeesForStatus($filters['status'] ?? null);
+        $filters = $this->validatedFilters($request);
+        $data = $this->filteredPayrollData($filters);
 
         return view('admin.payroll.index', [
             'filters' => $filters,
-            'payrolls' => $payrolls,
-            'employees' => $employees,
-            'cycleEmployees' => $cycleEmployees,
-            'summary' => [
-                'total_payable' => $payrolls->sum('payable_salary'),
-                'total_paid' => $payrolls->sum('paid_amount'),
-                'total_due' => $payrolls->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
-            ],
+            'payrolls' => $data['payrolls'],
+            'employees' => $data['employees'],
+            'cycleEmployees' => $data['cycleEmployees'],
+            'summary' => $data['summary'],
+        ]);
+    }
+
+    public function exportCsv(Request $request)
+    {
+        $filters = $this->validatedFilters($request);
+        $rows = $this->payrollExportRows($filters);
+
+        return response()->streamDownload(function () use ($rows) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Employee', 'Client', 'Salary Period', 'Salary Date', 'Working Days', 'Payable Salary', 'Paid Salary', 'Remaining Due', 'Status', 'Payment Date', 'Method', 'Reference']);
+
+            foreach ($rows as $row) {
+                fputcsv($handle, [
+                    $row['employee'],
+                    $row['client'],
+                    $row['salary_period'],
+                    $row['salary_date'],
+                    $row['working_days'],
+                    number_format($row['payable_salary'], 2, '.', ''),
+                    number_format($row['paid_salary'], 2, '.', ''),
+                    number_format($row['remaining_due'], 2, '.', ''),
+                    $row['status'],
+                    $row['payment_date'],
+                    $row['method'],
+                    $row['reference'],
+                ]);
+            }
+
+            fclose($handle);
+        }, 'salary-generate-report.csv', ['Content-Type' => 'text/csv']);
+    }
+
+    public function exportExcel(Request $request)
+    {
+        $filters = $this->validatedFilters($request);
+
+        return response()->view('admin.payroll.export-excel', [
+            'rows' => $this->payrollExportRows($filters),
+        ], 200, [
+            'Content-Type' => 'application/vnd.ms-excel',
+            'Content-Disposition' => 'attachment; filename="salary-generate-report.xls"',
         ]);
     }
 
@@ -196,6 +219,94 @@ class EmployeePayrollController extends Controller
             ->with('success', 'Salary record deleted successfully.');
     }
 
+    private function validatedFilters(Request $request): array
+    {
+        return $request->validate([
+            'month' => ['nullable', 'date_format:Y-m'],
+            'employee_id' => ['nullable', 'exists:employees,id'],
+            'status' => ['nullable', 'in:upcoming,unpaid,partial,paid,due'],
+        ]);
+    }
+
+    private function filteredPayrollData(array $filters): array
+    {
+        $query = EmployeePayroll::with(['employee', 'client'])
+            ->when($filters['month'] ?? null, fn ($query, $month) => $query->whereDate('salary_month', $month . '-01'))
+            ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId));
+
+        $payrolls = $query->latest('salary_month')
+            ->latest()
+            ->get()
+            ->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter($filters['status'] ?? null))
+            ->values();
+
+        $cycleEmployees = $this->cycleEmployeesForStatus($filters['status'] ?? null);
+
+        return [
+            'payrolls' => $payrolls,
+            'employees' => Employee::orderBy('name')->get(),
+            'cycleEmployees' => $cycleEmployees,
+            'summary' => [
+                'total_payable' => $payrolls->sum('payable_salary') + $cycleEmployees->sum(fn (Employee $employee) => (float) $employee->monthly_salary),
+                'total_paid' => $payrolls->sum('paid_amount'),
+                'total_due' => $payrolls->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0))
+                    + $cycleEmployees->sum(fn (Employee $employee) => (float) $employee->monthly_salary),
+                'record_count' => $payrolls->count() + $cycleEmployees->count(),
+            ],
+        ];
+    }
+
+    private function payrollExportRows(array $filters)
+    {
+        $data = $this->filteredPayrollData($filters);
+        $statusLabels = [
+            'upcoming' => 'Upcoming',
+            'unpaid' => 'Unpaid',
+            'partial' => 'Partially Paid',
+            'paid' => 'Paid',
+        ];
+
+        $rows = $data['payrolls']->map(function (EmployeePayroll $payroll) use ($statusLabels) {
+            return [
+                'employee' => trim(($payroll->employee?->employee_id ?: '-') . ' ' . ($payroll->employee?->name ?: '')),
+                'client' => $payroll->client?->company_name ?: '-',
+                'salary_period' => $payroll->salary_period,
+                'salary_date' => $payroll->employee?->salaryDateForMonth($payroll->salary_month?->copy() ?: now())?->toDateString() ?: '-',
+                'working_days' => $payroll->working_days ?? 0,
+                'payable_salary' => (float) $payroll->payable_salary,
+                'paid_salary' => (float) $payroll->paid_amount,
+                'remaining_due' => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0),
+                'status' => $statusLabels[$payroll->calculated_status] ?? ucfirst($payroll->calculated_status),
+                'payment_date' => $payroll->payment_date?->toDateString() ?: '-',
+                'method' => $payroll->payment_method ?: '-',
+                'reference' => $payroll->transaction_id ?: '-',
+            ];
+        });
+
+        return $rows
+            ->concat($data['cycleEmployees']->map(function (Employee $employee) use ($filters) {
+                $salaryDate = ($filters['status'] ?? null) === 'due'
+                    ? $employee->currentSalaryDueDate()
+                    : $employee->nextSalaryDate();
+
+                return [
+                    'employee' => trim(($employee->employee_id ?: '-') . ' ' . $employee->name),
+                    'client' => $employee->activeAssignments->first()?->client?->company_name ?: '-',
+                    'salary_period' => $salaryDate?->format('Y-m') ?: '-',
+                    'salary_date' => $salaryDate?->toDateString() ?: '-',
+                    'working_days' => $salaryDate?->daysInMonth ?: 0,
+                    'payable_salary' => (float) $employee->monthly_salary,
+                    'paid_salary' => 0,
+                    'remaining_due' => (float) $employee->monthly_salary,
+                    'status' => $employee->salaryStatusLabel(),
+                    'payment_date' => '-',
+                    'method' => '-',
+                    'reference' => '-',
+                ];
+            }))
+            ->values();
+    }
+
     private function calculatePayroll(Employee $employee, array $data): array
     {
         $submittedWorkingDays = $data['working_days'] ?? null;
@@ -330,10 +441,14 @@ class EmployeePayrollController extends Controller
 
         $today = now()->startOfDay();
 
-        return Employee::with('payrolls')
+        return Employee::with(['payrolls', 'activeAssignments.client'])
             ->orderBy('name')
             ->get()
             ->filter(function (Employee $employee) use ($status, $today) {
+                if ($employee->status === 'terminated') {
+                    return false;
+                }
+
                 $cycleDate = $status === 'upcoming'
                     ? $employee->nextSalaryDate()
                     : $employee->currentSalaryDueDate($today);

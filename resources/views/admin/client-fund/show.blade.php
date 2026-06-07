@@ -63,14 +63,42 @@
             text-align: right;
         }
 
+        .ledger-filter-form {
+            display: grid;
+            gap: 10px;
+            grid-template-columns: repeat(5, minmax(140px, 1fr));
+            align-items: end;
+        }
+
+        .ledger-filter-form label {
+            display: grid;
+            gap: 6px;
+            color: #a9b7cf;
+            font-size: 13px;
+        }
+
+        .ledger-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
         @media (max-width: 900px) {
             .client-fund-grid {
                 grid-template-columns: repeat(2, minmax(150px, 1fr));
+            }
+
+            .ledger-filter-form {
+                grid-template-columns: repeat(2, minmax(140px, 1fr));
             }
         }
 
         @media (max-width: 560px) {
             .client-fund-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .ledger-filter-form {
                 grid-template-columns: 1fr;
             }
         }
@@ -101,15 +129,43 @@
     </div>
 
     <div class="card">
-        <h2>Transaction Timeline</h2>
+        <h2>Transaction Ledger</h2>
+        <form class="ledger-filter-form" method="GET" action="/admin/client-fund/{{ $client->id }}/details">
+            <label>
+                From Date
+                <input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}">
+            </label>
+            <label>
+                To Date
+                <input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}">
+            </label>
+            <label>
+                Transaction Type
+                <select name="type">
+                    <option value="">All Transactions</option>
+                    @foreach(['Client Fund Received', 'Employee Salary Paid'] as $type)
+                        <option value="{{ $type }}" {{ ($filters['type'] ?? '') === $type ? 'selected' : '' }}>{{ $type }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <div class="ledger-actions">
+                <button class="btn" type="submit">Filter</button>
+                <a href="/admin/client-fund/{{ $client->id }}/details">Reset</a>
+            </div>
+            <div class="ledger-actions">
+                <a class="btn" href="/admin/client-fund/{{ $client->id }}/details/export/csv?{{ http_build_query($filters ?? []) }}">Export CSV</a>
+                <a class="btn" href="/admin/client-fund/{{ $client->id }}/details/export/excel?{{ http_build_query($filters ?? []) }}">Export Excel</a>
+            </div>
+        </form>
+
         <div class="ledger-wrap">
             <table class="ledger-table">
                 <tr>
                     <th>Date</th>
                     <th>Type</th>
                     <th>Description</th>
-                    <th>Debit</th>
                     <th>Credit</th>
+                    <th>Debit</th>
                     <th>Running Balance</th>
                 </tr>
                 @forelse($ledger as $entry)
@@ -117,8 +173,8 @@
                         <td>{{ $entry['date'] }}</td>
                         <td>{{ $entry['type'] }}</td>
                         <td>{{ $entry['description'] }}</td>
-                        <td>{{ $entry['debit'] > 0 ? 'BDT ' . number_format($entry['debit'], 2) : '-' }}</td>
                         <td>{{ $entry['credit'] > 0 ? 'BDT ' . number_format($entry['credit'], 2) : '-' }}</td>
+                        <td>{{ $entry['debit'] > 0 ? 'BDT ' . number_format($entry['debit'], 2) : '-' }}</td>
                         <td>BDT {{ number_format($entry['running_balance'], 2) }}</td>
                     </tr>
                 @empty

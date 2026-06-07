@@ -26,6 +26,7 @@
             <button class="btn" type="submit">Filter</button>
             <a href="/admin/salary-month-sheet">Reset</a>
             <a class="btn" href="/admin/salary-month-sheet/export?{{ http_build_query(request()->only(['month', 'employee_id', 'status'])) }}">Export CSV</a>
+            <a class="btn" href="/admin/salary-month-sheet/export/excel?{{ http_build_query(request()->only(['month', 'employee_id', 'status'])) }}">Export Excel</a>
         </form>
     </div>
 

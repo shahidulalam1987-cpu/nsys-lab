@@ -206,7 +206,7 @@
 
     <div class="employee-tab-panel" data-tab-panel="salary">
         <div class="card" style="margin-top:0;">
-            <h2>Salary Information Summary</h2>
+            <h2>Salary Overview</h2>
             <div class="employee-info-grid">
                 <p><strong>Monthly Salary:</strong> BDT {{ number_format($employee->monthly_salary, 2) }}</p>
                 <p><strong>Assigned Client:</strong> {{ $salarySummary['assigned_client']?->company_name ?: '-' }}</p>

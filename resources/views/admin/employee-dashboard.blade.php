@@ -13,8 +13,18 @@
             <h2>{{ number_format($activeEmployees) }}</h2>
         </div>
         <div class="stat-card">
-            <p>Probation Employees</p>
-            <h2>{{ number_format($probationEmployees) }}</h2>
+            <p>Upcoming Salary</p>
+            <h2>BDT {{ number_format($clientFundSummary['upcoming_salary'], 2) }}</h2>
+            <p>{{ number_format($clientFundSummary['upcoming_employee_count']) }} Employees</p>
+        </div>
+        <div class="stat-card">
+            <p>Unpaid Salary Due</p>
+            <h2>BDT {{ number_format($clientFundSummary['unpaid_salary_due'], 2) }}</h2>
+            <p>{{ number_format($clientFundSummary['unpaid_employee_count']) }} Employees</p>
+        </div>
+        <div class="stat-card">
+            <p>Client Fund Available</p>
+            <h2>BDT {{ number_format($clientFundSummary['available_balance'], 2) }}</h2>
         </div>
         <div class="stat-card">
             <p>Pending Client Payments</p>

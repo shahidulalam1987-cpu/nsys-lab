@@ -106,7 +106,7 @@ class EmployeePhase2AAdminTest extends TestCase
         $response->assertSee('Employment Information');
         $response->assertSee('Login Information');
         $response->assertSee('Banking / Mobile Banking Information');
-        $response->assertSee('Salary Information Summary');
+        $response->assertSee('Salary Overview');
         $response->assertSee('Documents');
         $response->assertSee('Admin Notes');
         $response->assertSee('profile.employee@example.com');
