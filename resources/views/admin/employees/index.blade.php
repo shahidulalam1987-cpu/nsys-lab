@@ -20,6 +20,32 @@
             margin: 14px 0 18px;
         }
 
+        .employee-status-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 4px 0 18px;
+        }
+
+        .employee-status-pill {
+            background: rgba(255, 255, 255, .06);
+            border: 1px solid rgba(255, 255, 255, .16);
+            border-radius: 999px;
+            color: #a9b7cf;
+            font-size: 13px;
+            font-weight: 700;
+            padding: 9px 13px;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .employee-status-pill:hover,
+        .employee-status-pill.active {
+            background: linear-gradient(90deg, #2f8cff, #42e8ff);
+            box-shadow: 0 10px 30px rgba(47, 140, 255, .25);
+            color: #fff;
+        }
+
         .employee-summary-card {
             background: #111827;
             border: 1px solid #243044;
@@ -180,6 +206,13 @@
             <p style="margin:0; color:#94a3b8;">Manage employee profiles, login links, and employment status.</p>
         </div>
         <a class="btn" href="/admin/employees/create">Add Employee</a>
+    </div>
+
+    <div class="employee-status-nav" aria-label="Employee status filters">
+        <a class="employee-status-pill {{ request()->filled('status') ? '' : 'active' }}" href="/admin/employees">Employee List</a>
+        @foreach(\App\Models\Employee::STATUS_FILTERS as $value => $label)
+            <a class="employee-status-pill {{ request('status') === $value ? 'active' : '' }}" href="/admin/employees?status={{ $value }}">{{ $label }}</a>
+        @endforeach
     </div>
 
     <div class="employee-summary-grid">

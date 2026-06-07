@@ -115,41 +115,6 @@
             box-shadow: 0 10px 30px rgba(47, 140, 255, 0.25);
         }
 
-        .sidebar-section-title {
-            color: var(--cyan);
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: .08em;
-            margin: 18px 0 8px;
-            text-transform: uppercase;
-        }
-
-        .sidebar-section-title:first-child {
-            margin-top: 0;
-        }
-
-        .sidebar-link-with-badge {
-            display: flex !important;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-        }
-
-        .sidebar-count-badge {
-            min-width: 22px;
-            padding: 3px 7px;
-            border-radius: 999px;
-            background: rgba(47, 140, 255, .25);
-            color: white;
-            font-size: 11px;
-            line-height: 1.2;
-            text-align: center;
-        }
-
-        .sidebar-count-badge.danger {
-            background: var(--danger);
-        }
-
         .content {
             flex: 1;
             padding: 30px;
@@ -305,12 +270,6 @@
         margin-bottom: 0;
     }
 
-    .sidebar-section-title {
-        align-self: center;
-        margin: 0 4px 0 12px;
-        white-space: nowrap;
-    }
-
     .content {
         padding: 16px;
     }
@@ -382,24 +341,6 @@
             || request()->is('admin/salary-payments*')
             || request()->is('admin/salary-month-sheet*')
             || request()->is('admin/payroll*');
-
-        $upcomingSalaryCount = 0;
-        $unpaidSalaryCount = 0;
-
-        if ($isEmployeeDepartment) {
-            $upcomingSalaryCount = \App\Models\EmployeePayroll::query()
-                ->where('payment_status', 'upcoming')
-                ->whereBetween('payment_date', [now()->toDateString(), now()->addDays(5)->toDateString()])
-                ->count();
-
-            $unpaidSalaryCount = \App\Models\EmployeePayroll::query()
-                ->where(function ($query) {
-                    $query->where('payment_status', 'unpaid')
-                        ->orWhere('payment_status', 'partial')
-                        ->orWhereColumn('paid_amount', '<', 'payable_salary');
-                })
-                ->count();
-        }
     @endphp
 
     <div class="topbar">
@@ -421,34 +362,11 @@
     <div class="layout">
         <div class="sidebar">
             @if($isEmployeeDepartment)
-                <div class="sidebar-section-title">Employee Management</div>
-                <a class="{{ request()->is('admin/employees*') && ! request()->filled('status') ? 'active-menu' : '' }}" href="/admin/employees">Employee List</a>
-                <a class="{{ request()->is('admin/employees') && request('status') === 'active' ? 'active-menu' : '' }}" href="/admin/employees?status=active">Active Employees</a>
-                <a class="{{ request()->is('admin/employees') && request('status') === 'probation' ? 'active-menu' : '' }}" href="/admin/employees?status=probation">Probation Employees</a>
-                <a class="{{ request()->is('admin/employees') && request('status') === 'on_leave' ? 'active-menu' : '' }}" href="/admin/employees?status=on_leave">On Leave Employees</a>
-                <a class="{{ request()->is('admin/employees') && request('status') === 'inactive' ? 'active-menu' : '' }}" href="/admin/employees?status=inactive">Inactive Employees</a>
-                <a class="{{ request()->is('admin/employees') && request('status') === 'terminated' ? 'active-menu' : '' }}" href="/admin/employees?status=terminated">Terminated Employees</a>
-
-                <div class="sidebar-section-title">Salary Management</div>
-                <a class="{{ request()->is('admin/payroll*') && ! request()->filled('status') ? 'active-menu' : '' }}" href="/admin/payroll">Salary Generate</a>
+                <a class="{{ request()->is('admin/employees*') ? 'active-menu' : '' }}" href="/admin/employees">Employee Management</a>
+                <a class="{{ request()->is('admin/payroll*') ? 'active-menu' : '' }}" href="/admin/payroll">Salary Generate</a>
                 <a class="{{ request()->is('admin/salary-month-sheet*') ? 'active-menu' : '' }}" href="/admin/salary-month-sheet">Salary Report</a>
-                <a class="sidebar-link-with-badge {{ request()->is('admin/payroll') && request('status') === 'upcoming' ? 'active-menu' : '' }}" href="/admin/payroll?status=upcoming">
-                    <span>Upcoming Salary</span>
-                    @if($upcomingSalaryCount > 0)
-                        <span class="sidebar-count-badge">{{ $upcomingSalaryCount }}</span>
-                    @endif
-                </a>
-                <a class="{{ request()->is('admin/payroll') && request('status') === 'paid' ? 'active-menu' : '' }}" href="/admin/payroll?status=paid">Paid Salary</a>
-                <a class="sidebar-link-with-badge {{ request()->is('admin/payroll') && request('status') === 'due' ? 'active-menu' : '' }}" href="/admin/payroll?status=due">
-                    <span>Unpaid Salary</span>
-                    @if($unpaidSalaryCount > 0)
-                        <span class="sidebar-count-badge danger">{{ $unpaidSalaryCount }}</span>
-                    @endif
-                </a>
-
-                <div class="sidebar-section-title">Client Fund</div>
-                <a class="{{ request()->is('admin/salary-payments') ? 'active-menu' : '' }}" href="/admin/salary-payments">Receive Payment</a>
-                <a class="{{ request()->is('admin/salary-payments/pending') ? 'active-menu' : '' }}" href="/admin/salary-payments/pending">Pending Payments</a>
+                <a class="{{ request()->is('admin/salary-payments') ? 'active-menu' : '' }}" href="/admin/salary-payments">Salary Payments</a>
+                <a class="{{ request()->is('admin/salary-payments/pending') ? 'active-menu' : '' }}" href="/admin/salary-payments/pending">Pending Salary Payments</a>
             @else
                 <a class="{{ request()->is('admin/dashboard') ? 'active-menu' : '' }}" href="/admin/dashboard">Dashboard</a>
                 <a class="{{ request()->is('admin/clients*') ? 'active-menu' : '' }}" href="/admin/clients">Clients</a>
