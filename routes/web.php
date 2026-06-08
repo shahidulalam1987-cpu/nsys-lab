@@ -14,6 +14,8 @@ use App\Http\Controllers\Client\PaymentController as ClientPaymentController;
 use App\Http\Controllers\Client\DashboardController as ClientDashboardController;
 use App\Http\Controllers\Client\EmployeeController as ClientEmployeeController;
 use App\Http\Controllers\Employee\DashboardController as EmployeeDashboardController;
+use App\Http\Controllers\Employee\AttendanceController as EmployeeAttendancePortalController;
+use App\Http\Controllers\Employee\PortalController as EmployeePortalController;
 use App\Http\Controllers\Admin\ExportController;
 use App\Http\Controllers\Admin\InvoiceController;
 use App\Http\Controllers\Client\InvoiceController as ClientInvoiceController;
@@ -23,6 +25,7 @@ use App\Http\Controllers\Admin\SalaryDayController;
 use App\Http\Controllers\Admin\SalaryPaymentController;
 use App\Http\Controllers\Admin\SalaryMonthSheetController;
 use App\Http\Controllers\Admin\EmployeePayrollController;
+use App\Http\Controllers\Admin\EmployeeAttendanceController;
 use App\Http\Controllers\Admin\ClientFundController;
 
 Route::get('/', [DashboardController::class, 'index']);
@@ -85,6 +88,12 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/employee-assignments/{assignment}/delete', [EmployeeAssignmentController::class, 'destroy']);
     Route::post('/admin/employees/{employee}/salary-days', [SalaryDayController::class, 'store']);
     Route::post('/admin/salary-days/{salaryDay}/delete', [SalaryDayController::class, 'destroy']);
+
+    Route::get('/admin/attendance', [EmployeeAttendanceController::class, 'index']);
+    Route::get('/admin/attendance/export', [EmployeeAttendanceController::class, 'export']);
+    Route::get('/admin/attendance/{attendance}/edit', [EmployeeAttendanceController::class, 'edit']);
+    Route::post('/admin/attendance/{attendance}/update', [EmployeeAttendanceController::class, 'update']);
+    Route::post('/admin/attendance/{attendance}/delete', [EmployeeAttendanceController::class, 'destroy']);
 
     Route::get('/admin/client-fund', [ClientFundController::class, 'dashboard']);
     Route::get('/admin/client-fund/export/csv', [ClientFundController::class, 'exportCsv']);
@@ -163,6 +172,14 @@ Route::middleware(['auth', 'client', 'client.status'])->group(function () {
 
 Route::middleware(['auth', 'employee'])->group(function () {
     Route::get('/employee/dashboard', [EmployeeDashboardController::class, 'index']);
+    Route::get('/employee/attendance', [EmployeeAttendancePortalController::class, 'index']);
+    Route::post('/employee/attendance', [EmployeeAttendancePortalController::class, 'store']);
+    Route::post('/employee/attendance/check-in', [EmployeeAttendancePortalController::class, 'checkIn']);
+    Route::post('/employee/attendance/check-out', [EmployeeAttendancePortalController::class, 'checkOut']);
+    Route::get('/employee/salary', [EmployeePortalController::class, 'salary']);
+    Route::get('/employee/assignments', [EmployeePortalController::class, 'assignments']);
+    Route::get('/employee/profile', [EmployeePortalController::class, 'profile']);
+    Route::get('/employee/notices', [EmployeePortalController::class, 'notices']);
 });
 
 require __DIR__.'/auth.php';

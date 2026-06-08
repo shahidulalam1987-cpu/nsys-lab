@@ -223,6 +223,12 @@
                     <p class="salary-field">Salary Month<br><input type="month" name="salary_month" id="salary_month" value="{{ old('salary_month', now()->format('Y-m')) }}"></p>
                     <p class="salary-field">From Date<br><input type="date" name="from_date" id="from_date" value="{{ old('from_date', now()->startOfMonth()->toDateString()) }}"></p>
                     <p class="salary-field">To Date<br><input type="date" name="to_date" id="to_date" value="{{ old('to_date', now()->toDateString()) }}"></p>
+                    <p class="salary-field">Use Attendance Records<br>
+                        <label style="display:flex; align-items:center; gap:8px;">
+                            <input type="checkbox" name="use_attendance_records" id="use_attendance_records" value="1" {{ old('use_attendance_records') ? 'checked' : '' }}>
+                            Auto-fill working days
+                        </label>
+                    </p>
                 </div>
                 <div class="fund-warning" id="fund_warning"></div>
             </div>
@@ -288,6 +294,7 @@
         const salaryMonth = document.getElementById('salary_month');
         const fromDate = document.getElementById('from_date');
         const toDate = document.getElementById('to_date');
+        const useAttendanceRecords = document.getElementById('use_attendance_records');
         const workingDays = document.getElementById('working_days');
         const nonWorkingDays = document.getElementById('non_working_days');
         const dateAdjustmentCard = document.getElementById('date_adjustment_card');
@@ -305,6 +312,16 @@
         const dueDisplay = document.getElementById('due_display');
         const fundWarning = document.getElementById('fund_warning');
         let dateAdjustmentsExpanded = true;
+        const attendanceRecords = @json($attendanceRecords ?? []);
+        const attendanceReasonMap = {
+            present: 'active_working',
+            absent: 'absent',
+            on_leave: 'on_leave',
+            client_issue: 'client_issue',
+            boosting_off: 'boosting_off',
+            sick_leave: 'sick_leave',
+            holiday: 'holiday',
+        };
 
         function money(amount) {
             return 'BDT ' + amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -340,14 +357,29 @@
 
         const reasonOptions = {
             active_working: 'Active Working',
+            absent: 'Absent',
             client_issue: 'Client Issue',
             boosting_off: 'Boosting OFF',
             business_closed: 'Business Closed',
             agency_hold: 'Agency Hold',
             on_leave: 'On Leave',
             sick_leave: 'Sick Leave',
+            holiday: 'Holiday',
             other: 'Other',
         };
+
+        function attendanceForDate(date) {
+            if (!useAttendanceRecords.checked || !employeeSelect.value) {
+                return null;
+            }
+
+            return attendanceRecords.find((attendance) => {
+                const employeeMatches = String(attendance.employee_id) === String(employeeSelect.value);
+                const clientMatches = !clientSelect.value || !attendance.client_id || String(attendance.client_id) === String(clientSelect.value);
+
+                return employeeMatches && clientMatches && attendance.date === date;
+            }) || null;
+        }
 
         function dateRange(startValue, endValue) {
             if (!startValue || !endValue) {
@@ -424,9 +456,19 @@
             setDateAdjustmentExpanded(dates.length <= 5);
 
             dates.forEach((date, index) => {
+                const attendance = attendanceForDate(date);
+                const dayType = attendance
+                    ? (attendance.is_working_day ? 'working' : 'non_working')
+                    : (useAttendanceRecords.checked ? 'non_working' : 'working');
+                const selectedReason = attendance
+                    ? (attendanceReasonMap[attendance.status] || 'other')
+                    : (useAttendanceRecords.checked ? 'other' : 'active_working');
+                const note = attendance
+                    ? (attendance.note || attendance.status_label || 'From attendance record')
+                    : (useAttendanceRecords.checked ? 'No attendance record' : '');
                 const row = document.createElement('tr');
                 const reasonSelectOptions = Object.entries(reasonOptions).map(([value, label]) => {
-                    return `<option value="${value}" ${value === 'active_working' ? 'selected' : ''}>${label}</option>`;
+                    return `<option value="${value}" ${value === selectedReason ? 'selected' : ''}>${label}</option>`;
                 }).join('');
 
                 row.innerHTML = `
@@ -436,8 +478,8 @@
                     </td>
                     <td>
                         <select name="salary_day_adjustments[${index}][day_type]" class="day-type">
-                            <option value="working" selected>Working</option>
-                            <option value="non_working">Non Working</option>
+                            <option value="working" ${dayType === 'working' ? 'selected' : ''}>Working</option>
+                            <option value="non_working" ${dayType === 'non_working' ? 'selected' : ''}>Non Working</option>
                         </select>
                     </td>
                     <td>
@@ -446,7 +488,7 @@
                         </select>
                     </td>
                     <td>
-                        <input type="text" name="salary_day_adjustments[${index}][note]" placeholder="Optional note">
+                        <input type="text" name="salary_day_adjustments[${index}][note]" value="${note.replace(/"/g, '&quot;')}" placeholder="Optional note">
                     </td>
                 `;
 
@@ -507,12 +549,12 @@
             setDateAdjustmentExpanded(!dateAdjustmentsExpanded);
         });
 
-        [calculationType, salaryMonth, fromDate, toDate].forEach((field) => {
+        [calculationType, salaryMonth, fromDate, toDate, employeeSelect, clientSelect, useAttendanceRecords].forEach((field) => {
             field.addEventListener('input', syncDatesAndSalary);
             field.addEventListener('change', syncDatesAndSalary);
         });
 
-        [employeeSelect, clientSelect, workingDays, paidAmount].forEach((field) => {
+        [workingDays, paidAmount].forEach((field) => {
             field.addEventListener('input', calculateSalary);
             field.addEventListener('change', calculateSalary);
         });

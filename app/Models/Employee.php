@@ -117,6 +117,11 @@ class Employee extends Model
         return $this->hasMany(EmployeePayroll::class);
     }
 
+    public function attendances()
+    {
+        return $this->hasMany(EmployeeAttendance::class);
+    }
+
     public function isEligibleForConfirmation(): bool
     {
         return $this->status === 'probation'

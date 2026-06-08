@@ -12,10 +12,26 @@
     </div>
 
     <div class="stats-grid">
-        <div class="stat-card"><p>Working Days</p><h2>{{ $countedDays }}</h2></div>
+        <div class="stat-card"><p>Present Days</p><h2>{{ $countedDays }}</h2></div>
         <div class="stat-card"><p>Non Working Days</p><h2>{{ $nonCountedDays }}</h2></div>
-        <div class="stat-card"><p>Salary Status</p><h2>{{ $countedDays > 0 ? 'Active' : 'Pending' }}</h2></div>
-        <div class="stat-card"><p>Assignments</p><h2>{{ $activeAssignments->count() }}</h2></div>
+        <div class="stat-card"><p>Salary Status</p><h2>{{ $employee->salaryStatusLabel() }}</h2></div>
+        <div class="stat-card"><p>Next Salary Date</p><h2>{{ $employee->nextSalaryDate()?->toDateString() ?: '-' }}</h2></div>
+    </div>
+
+    <div class="card">
+        <h2>Today Attendance</h2>
+        <p><strong>Status:</strong> {{ $todayAttendance?->statusLabel() ?: 'Not Marked' }}</p>
+        <p><strong>Check In:</strong> {{ $todayAttendance?->check_in_at?->format('h:i A') ?: '-' }}</p>
+        <p><strong>Check Out:</strong> {{ $todayAttendance?->check_out_at?->format('h:i A') ?: '-' }}</p>
+
+        <form method="POST" action="/employee/attendance/check-in" style="display:inline;">
+            @csrf
+            <button class="btn" type="submit" {{ $todayAttendance?->check_in_at ? 'disabled' : '' }}>Check In</button>
+        </form>
+        <form method="POST" action="/employee/attendance/check-out" style="display:inline;">
+            @csrf
+            <button class="btn" type="submit" {{ ! $todayAttendance?->check_in_at || $todayAttendance?->check_out_at ? 'disabled' : '' }}>Check Out</button>
+        </form>
     </div>
 
     <div class="card">

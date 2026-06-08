@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\Employee;
+use App\Models\EmployeeAttendance;
 use App\Models\EmployeePayroll;
 use App\Services\ClientFundDashboardService;
 use Carbon\Carbon;
@@ -75,8 +76,20 @@ class EmployeePayrollController extends Controller
         $employees = Employee::orderBy('name')->get();
         $clients = Client::orderBy('company_name')->get();
         $clientBalances = $clientFundDashboardService->clientBalanceMap();
+        $attendanceRecords = EmployeeAttendance::orderBy('attendance_date')
+            ->get()
+            ->map(fn (EmployeeAttendance $attendance) => [
+                'employee_id' => $attendance->employee_id,
+                'client_id' => $attendance->client_id,
+                'date' => $attendance->attendance_date?->toDateString(),
+                'status' => $attendance->status,
+                'status_label' => $attendance->statusLabel(),
+                'is_working_day' => $attendance->is_working_day,
+                'note' => $attendance->note,
+            ])
+            ->values();
 
-        return view('admin.payroll.create', compact('employees', 'clients', 'clientBalances'));
+        return view('admin.payroll.create', compact('employees', 'clients', 'clientBalances', 'attendanceRecords'));
     }
 
     public function store(Request $request)
@@ -88,6 +101,7 @@ class EmployeePayrollController extends Controller
             'salary_month' => ['nullable', 'required_if:calculation_type,monthly_cycle', 'date_format:Y-m'],
             'from_date' => ['nullable', 'required_if:calculation_type,date_to_date', 'date'],
             'to_date' => ['nullable', 'required_if:calculation_type,date_to_date', 'date', 'after_or_equal:from_date'],
+            'use_attendance_records' => ['nullable', 'boolean'],
             'working_days' => ['nullable', 'integer', 'min:0', 'max:31'],
             'non_working_days' => ['nullable', 'integer', 'min:0', 'max:31'],
             'salary_day_adjustments' => ['nullable', 'array'],
@@ -95,12 +109,14 @@ class EmployeePayrollController extends Controller
             'salary_day_adjustments.*.day_type' => ['required_with:salary_day_adjustments', Rule::in(['working', 'non_working'])],
             'salary_day_adjustments.*.reason' => ['required_with:salary_day_adjustments', Rule::in([
                 'active_working',
+                'absent',
                 'client_issue',
                 'boosting_off',
                 'business_closed',
                 'agency_hold',
                 'on_leave',
                 'sick_leave',
+                'holiday',
                 'other',
             ])],
             'salary_day_adjustments.*.note' => ['nullable', 'string', 'max:500'],
@@ -330,7 +346,9 @@ class EmployeePayrollController extends Controller
             $fromDate = Carbon::parse($data['from_date']);
             $toDate = Carbon::parse($data['to_date']);
             $salaryMonth = $fromDate->copy()->startOfMonth();
-            $adjustments = $this->normalizeSalaryDayAdjustments($data['salary_day_adjustments'] ?? [], $fromDate, $toDate);
+            $adjustments = ! empty($data['use_attendance_records'])
+                ? $this->attendanceAdjustments($employee, (int) ($data['client_id'] ?? 0), $fromDate, $toDate)
+                : $this->normalizeSalaryDayAdjustments($data['salary_day_adjustments'] ?? [], $fromDate, $toDate);
 
             if ($adjustments !== []) {
                 $nonWorkingDays = collect($adjustments)
@@ -363,6 +381,52 @@ class EmployeePayrollController extends Controller
         ];
     }
 
+    private function attendanceAdjustments(Employee $employee, int $clientId, Carbon $fromDate, Carbon $toDate): array
+    {
+        $attendanceByDate = $employee->attendances()
+            ->whereDate('attendance_date', '>=', $fromDate->toDateString())
+            ->whereDate('attendance_date', '<=', $toDate->toDateString())
+            ->where(function ($query) use ($clientId) {
+                $query->whereNull('client_id')
+                    ->orWhere('client_id', $clientId);
+            })
+            ->get()
+            ->keyBy(fn (EmployeeAttendance $attendance) => $attendance->attendance_date?->toDateString());
+
+        $adjustments = [];
+        $current = $fromDate->copy();
+
+        while ($current->lte($toDate)) {
+            $date = $current->toDateString();
+            $attendance = $attendanceByDate->get($date);
+            $isWorking = $attendance?->is_working_day ?? false;
+
+            $adjustments[] = [
+                'date' => $date,
+                'day_type' => $isWorking ? 'working' : 'non_working',
+                'reason' => $attendance ? $this->attendanceReason($attendance->status) : 'other',
+                'note' => $attendance?->note ?: ($attendance ? 'From attendance record' : 'No attendance record'),
+            ];
+
+            $current->addDay();
+        }
+
+        return $adjustments;
+    }
+
+    private function attendanceReason(string $status): string
+    {
+        return [
+            'present' => 'active_working',
+            'absent' => 'absent',
+            'on_leave' => 'on_leave',
+            'client_issue' => 'client_issue',
+            'boosting_off' => 'boosting_off',
+            'sick_leave' => 'sick_leave',
+            'holiday' => 'holiday',
+        ][$status] ?? 'other';
+    }
+
     private function normalizeSalaryDayAdjustments(array $adjustments, Carbon $fromDate, Carbon $toDate): array
     {
         if ($adjustments === []) {
@@ -371,12 +435,14 @@ class EmployeePayrollController extends Controller
 
         $allowedReasons = [
             'active_working',
+            'absent',
             'client_issue',
             'boosting_off',
             'business_closed',
             'agency_hold',
             'on_leave',
             'sick_leave',
+            'holiday',
             'other',
         ];
         $normalized = [];

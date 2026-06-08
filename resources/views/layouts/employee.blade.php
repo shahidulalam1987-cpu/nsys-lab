@@ -21,6 +21,9 @@
         .topbar { height: 64px; background: rgba(8, 18, 38, 0.9); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 28px; }
         .brand { font-size: 18px; font-weight: 800; background: linear-gradient(90deg, var(--blue), var(--cyan)); -webkit-background-clip: text; color: transparent; }
         .logout-btn, button { color: var(--text); background: var(--panel); border: 1px solid var(--line); padding: 8px 14px; border-radius: 10px; cursor: pointer; }
+        input, select, textarea { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255,255,255,.08); color: var(--text); margin: 5px; }
+        option { background: var(--bg-2); color: white; }
+        .btn { display: inline-block; padding: 10px 14px; background: linear-gradient(90deg, var(--blue), var(--cyan)); color: white; text-decoration: none; border-radius: 10px; border: none; cursor: pointer; font-weight: 700; }
         .layout { display: flex; min-height: calc(100vh - 64px); }
         .sidebar { width: 240px; background: rgba(8, 18, 38, 0.82); border-right: 1px solid var(--line); padding: 22px; }
         .sidebar a { display: block; color: var(--muted); text-decoration: none; padding: 13px 14px; border-radius: 12px; margin-bottom: 8px; font-weight: 600; }
@@ -34,6 +37,7 @@
         th, td { padding: 13px; border-bottom: 1px solid var(--line); text-align: left; }
         th { color: var(--cyan); background: rgba(255,255,255,.05); }
         a { color: var(--cyan); }
+        .table-wrap { width: 100%; overflow-x: auto; }
         .badge { display: inline-block; padding: 6px 12px; border-radius: 30px; font-size: 13px; font-weight: 700; color: white; }
         .badge-success { background: var(--success); }
         .badge-warning { background: var(--warning); }
@@ -59,6 +63,11 @@
     <div class="layout">
         <div class="sidebar">
             <a class="{{ request()->is('employee/dashboard') ? 'active-menu' : '' }}" href="/employee/dashboard">Dashboard</a>
+            <a class="{{ request()->is('employee/attendance*') ? 'active-menu' : '' }}" href="/employee/attendance">My Attendance</a>
+            <a class="{{ request()->is('employee/salary') ? 'active-menu' : '' }}" href="/employee/salary">My Salary</a>
+            <a class="{{ request()->is('employee/assignments') ? 'active-menu' : '' }}" href="/employee/assignments">My Assignments</a>
+            <a class="{{ request()->is('employee/profile') ? 'active-menu' : '' }}" href="/employee/profile">My Profile</a>
+            <a class="{{ request()->is('employee/notices') ? 'active-menu' : '' }}" href="/employee/notices">Notices</a>
         </div>
         <div class="content">
             @yield('content')
