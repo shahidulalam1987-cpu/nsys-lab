@@ -127,7 +127,7 @@ class EmployeePayrollDateRangeTest extends TestCase
         $payroll = $employee->payrolls()->first();
 
         $response->assertRedirect('/admin/payroll/' . $payroll->id);
-        $this->assertSame(6, $payroll->working_days);
+        $this->assertSame(6.0, (float) $payroll->working_days);
         $this->assertSame(6000.0, (float) $payroll->payable_salary);
     }
 
@@ -176,8 +176,8 @@ class EmployeePayrollDateRangeTest extends TestCase
         $response->assertRedirect('/admin/payroll/' . $payroll->id);
         $payroll->refresh();
 
-        $this->assertSame(8, $payroll->working_days);
-        $this->assertSame(2, $payroll->non_working_days);
+        $this->assertSame(8.0, (float) $payroll->working_days);
+        $this->assertSame(2.0, (float) $payroll->non_working_days);
         $this->assertSame(8000.0, (float) $payroll->payable_salary);
         $this->assertCount(10, $payroll->salary_day_adjustments);
         $this->assertSame('client_issue', $payroll->salary_day_adjustments[2]['reason']);
@@ -213,7 +213,7 @@ class EmployeePayrollDateRangeTest extends TestCase
         $payroll = $employee->payrolls()->first();
 
         $response->assertRedirect('/admin/payroll/' . $payroll->id);
-        $this->assertSame(28, $payroll->working_days);
+        $this->assertSame(28.0, (float) $payroll->working_days);
         $this->assertSame(28, $payroll->month_days);
         $this->assertSame(28000.0, (float) $payroll->payable_salary);
     }
@@ -240,7 +240,7 @@ class EmployeePayrollDateRangeTest extends TestCase
         $payroll = $employee->payrolls()->first();
 
         $response->assertRedirect('/admin/payroll/' . $payroll->id);
-        $this->assertSame(29, $payroll->working_days);
+        $this->assertSame(29.0, (float) $payroll->working_days);
         $this->assertSame(29, $payroll->month_days);
         $this->assertSame(29000.0, (float) $payroll->payable_salary);
     }
@@ -368,8 +368,8 @@ class EmployeePayrollDateRangeTest extends TestCase
         $this->assertSame('monthly_cycle', $payroll->calculation_type);
         $this->assertSame('2026-06-01', $payroll->salary_period_from->toDateString());
         $this->assertSame('2026-06-30', $payroll->salary_period_to->toDateString());
-        $this->assertSame(30, $payroll->working_days);
-        $this->assertSame(0, $payroll->non_working_days);
+        $this->assertSame(30.0, (float) $payroll->working_days);
+        $this->assertSame(0.0, (float) $payroll->non_working_days);
         $this->assertSame(30000.0, (float) $payroll->payable_salary);
         $this->assertSame('unpaid', $payroll->calculated_status);
     }

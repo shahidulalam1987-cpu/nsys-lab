@@ -26,6 +26,7 @@ use App\Http\Controllers\Admin\SalaryPaymentController;
 use App\Http\Controllers\Admin\SalaryMonthSheetController;
 use App\Http\Controllers\Admin\EmployeePayrollController;
 use App\Http\Controllers\Admin\EmployeeAttendanceController;
+use App\Http\Controllers\Admin\EmployeeWorkStatusController;
 use App\Http\Controllers\Admin\ClientFundController;
 
 Route::get('/', [DashboardController::class, 'index']);
@@ -94,6 +95,14 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/attendance/{attendance}/edit', [EmployeeAttendanceController::class, 'edit']);
     Route::post('/admin/attendance/{attendance}/update', [EmployeeAttendanceController::class, 'update']);
     Route::post('/admin/attendance/{attendance}/delete', [EmployeeAttendanceController::class, 'destroy']);
+
+    Route::get('/admin/work-status', [EmployeeWorkStatusController::class, 'index']);
+    Route::get('/admin/work-status/create', [EmployeeWorkStatusController::class, 'create']);
+    Route::post('/admin/work-status', [EmployeeWorkStatusController::class, 'store']);
+    Route::get('/admin/work-status/export', [EmployeeWorkStatusController::class, 'export']);
+    Route::get('/admin/work-status/{workStatus}/edit', [EmployeeWorkStatusController::class, 'edit']);
+    Route::post('/admin/work-status/{workStatus}/update', [EmployeeWorkStatusController::class, 'update']);
+    Route::post('/admin/work-status/{workStatus}/delete', [EmployeeWorkStatusController::class, 'destroy']);
 
     Route::get('/admin/client-fund', [ClientFundController::class, 'dashboard']);
     Route::get('/admin/client-fund/export/csv', [ClientFundController::class, 'exportCsv']);

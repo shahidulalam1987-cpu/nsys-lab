@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Client;
 use App\Models\Employee;
 use App\Models\EmployeeAttendance;
+use App\Models\EmployeeWorkStatus;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -101,7 +102,40 @@ class EmployeeAttendancePhase3Test extends TestCase
         $this->assertDatabaseMissing('employee_attendances', ['id' => $attendance->id]);
     }
 
-    public function test_salary_generate_can_use_attendance_records_for_working_days(): void
+    public function test_admin_can_manage_and_export_work_status_records(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client(['company_name' => 'Work Status Client']);
+        $employee = $this->employee(['name' => 'Work Status Employee']);
+
+        $this->actingAs($admin)
+            ->post('/admin/work-status', [
+                'employee_id' => $employee->id,
+                'client_id' => $client->id,
+                'work_date' => '2026-06-08',
+                'status' => 'half_day',
+                'note' => 'Half shift',
+            ])
+            ->assertRedirect();
+
+        $workStatus = $employee->workStatuses()->first();
+        $this->assertSame('half_day', $workStatus->status);
+        $this->assertSame(0.5, (float) $workStatus->salary_count_value);
+
+        $this->actingAs($admin)
+            ->get('/admin/work-status?employee_id=' . $employee->id)
+            ->assertOk()
+            ->assertSee('Work Status Employee')
+            ->assertSee('Half Day')
+            ->assertSee('0.50');
+
+        $csv = $this->actingAs($admin)->get('/admin/work-status/export?status=half_day');
+        $csv->assertOk();
+        $csv->assertDownload('employee-work-status-report.csv');
+        $this->assertStringContainsString('Half Day', $csv->streamedContent());
+    }
+
+    public function test_salary_generate_can_use_work_status_records_for_working_days(): void
     {
         $admin = $this->user('admin');
         $client = $this->client();
@@ -111,10 +145,10 @@ class EmployeeAttendancePhase3Test extends TestCase
         ]);
 
         foreach (range(1, 8) as $day) {
-            $this->attendance($employee, $client, '2026-06-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT), 'present');
+            $this->workStatus($employee, $client, '2026-06-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT), 'working');
         }
-        $this->attendance($employee, $client, '2026-06-09', 'boosting_off');
-        $this->attendance($employee, $client, '2026-06-10', 'on_leave');
+        $this->workStatus($employee, $client, '2026-06-09', 'half_day');
+        $this->workStatus($employee, $client, '2026-06-10', 'half_day');
 
         $response = $this->actingAs($admin)->post('/admin/payroll', [
             'employee_id' => $employee->id,
@@ -122,19 +156,49 @@ class EmployeeAttendancePhase3Test extends TestCase
             'calculation_type' => 'date_to_date',
             'from_date' => '2026-06-01',
             'to_date' => '2026-06-10',
-            'use_attendance_records' => 1,
+            'use_work_status_records' => 1,
             'paid_amount' => 0,
         ]);
 
         $payroll = $employee->payrolls()->first();
 
         $response->assertRedirect('/admin/payroll/' . $payroll->id);
-        $this->assertSame(8, $payroll->working_days);
-        $this->assertSame(2, $payroll->non_working_days);
-        $this->assertSame(8000.0, (float) $payroll->payable_salary);
+        $this->assertSame(9.0, (float) $payroll->working_days);
+        $this->assertSame(0.0, (float) $payroll->non_working_days);
+        $this->assertSame(9000.0, (float) $payroll->payable_salary);
         $this->assertCount(10, $payroll->salary_day_adjustments);
-        $this->assertSame('boosting_off', $payroll->salary_day_adjustments[8]['reason']);
-        $this->assertSame('on_leave', $payroll->salary_day_adjustments[9]['reason']);
+        $this->assertSame(0.5, $payroll->salary_day_adjustments[8]['salary_count_value']);
+        $this->assertSame(0.5, $payroll->salary_day_adjustments[9]['salary_count_value']);
+    }
+
+    public function test_attendance_records_do_not_drive_salary_generation(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $employee = $this->employee([
+            'monthly_salary' => 30000,
+        ]);
+
+        foreach (range(1, 10) as $day) {
+            $this->attendance($employee, $client, '2026-06-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT), 'present');
+        }
+
+        $response = $this->actingAs($admin)->post('/admin/payroll', [
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'calculation_type' => 'date_to_date',
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-10',
+            'use_work_status_records' => 1,
+            'paid_amount' => 0,
+        ]);
+
+        $payroll = $employee->payrolls()->first();
+
+        $response->assertRedirect('/admin/payroll/' . $payroll->id);
+        $this->assertSame(0.0, (float) $payroll->working_days);
+        $this->assertSame(10.0, (float) $payroll->non_working_days);
+        $this->assertSame(0.0, (float) $payroll->payable_salary);
     }
 
     private function user(string $role): User
@@ -178,6 +242,15 @@ class EmployeeAttendancePhase3Test extends TestCase
             'client_id' => $client->id,
             'attendance_date' => $date,
             'check_in_at' => $status === 'present' ? $date . ' 09:30:00' : null,
+            'status' => $status,
+        ]);
+    }
+
+    private function workStatus(Employee $employee, Client $client, string $date, string $status): EmployeeWorkStatus
+    {
+        return $employee->workStatuses()->create([
+            'client_id' => $client->id,
+            'work_date' => $date,
             'status' => $status,
         ]);
     }

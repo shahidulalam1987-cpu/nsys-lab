@@ -126,7 +126,7 @@ class EmployeeSalaryMonthSheetTest extends TestCase
 
         $csv = $response->streamedContent();
         $this->assertStringContainsString('Employee,Client,"Salary Period","Working Days","Payable Salary","Paid Salary","Remaining Due",Status,"Payment Date"', $csv);
-        $this->assertStringContainsString('"NSYS-EM-011 CSV Employee","Sheet Client","2026-06-01 to 2026-06-10",10,10000.00,10000.00,0.00,Paid,2026-06-15', $csv);
+        $this->assertStringContainsString('"NSYS-EM-011 CSV Employee","Sheet Client","2026-06-01 to 2026-06-10",10.00,10000.00,10000.00,0.00,Paid,2026-06-15', $csv);
     }
 
     private function payroll(Employee $employee, Client $client, array $overrides = [])

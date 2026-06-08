@@ -122,6 +122,11 @@ class Employee extends Model
         return $this->hasMany(EmployeeAttendance::class);
     }
 
+    public function workStatuses()
+    {
+        return $this->hasMany(EmployeeWorkStatus::class);
+    }
+
     public function isEligibleForConfirmation(): bool
     {
         return $this->status === 'probation'

@@ -2,6 +2,7 @@
 
 @section('content')
     <h1>My Attendance</h1>
+    <p>Attendance is for shift monitoring only. Salary is calculated from Work Status records assigned by admin or team leader.</p>
 
     @if ($errors->any())
         <div class="card" style="color:#ef4444;">

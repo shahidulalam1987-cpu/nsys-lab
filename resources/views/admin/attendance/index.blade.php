@@ -2,7 +2,7 @@
 
 @section('content')
     <h1>Attendance</h1>
-    <p>Review and adjust employee daily attendance records.</p>
+    <p>Attendance is for check-in, check-out, shift monitoring, and late tracking only. Salary is calculated from Work Status records.</p>
 
     <div class="stats-grid">
         <div class="stat-card"><p>Total Present</p><h2>{{ number_format($summary['present']) }}</h2></div>

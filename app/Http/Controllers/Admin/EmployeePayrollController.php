@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\Employee;
-use App\Models\EmployeeAttendance;
 use App\Models\EmployeePayroll;
+use App\Models\EmployeeWorkStatus;
 use App\Services\ClientFundDashboardService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -76,20 +76,20 @@ class EmployeePayrollController extends Controller
         $employees = Employee::orderBy('name')->get();
         $clients = Client::orderBy('company_name')->get();
         $clientBalances = $clientFundDashboardService->clientBalanceMap();
-        $attendanceRecords = EmployeeAttendance::orderBy('attendance_date')
+        $workStatusRecords = EmployeeWorkStatus::orderBy('work_date')
             ->get()
-            ->map(fn (EmployeeAttendance $attendance) => [
-                'employee_id' => $attendance->employee_id,
-                'client_id' => $attendance->client_id,
-                'date' => $attendance->attendance_date?->toDateString(),
-                'status' => $attendance->status,
-                'status_label' => $attendance->statusLabel(),
-                'is_working_day' => $attendance->is_working_day,
-                'note' => $attendance->note,
+            ->map(fn (EmployeeWorkStatus $workStatus) => [
+                'employee_id' => $workStatus->employee_id,
+                'client_id' => $workStatus->client_id,
+                'date' => $workStatus->work_date?->toDateString(),
+                'status' => $workStatus->status,
+                'status_label' => $workStatus->statusLabel(),
+                'salary_count_value' => (float) $workStatus->salary_count_value,
+                'note' => $workStatus->note,
             ])
             ->values();
 
-        return view('admin.payroll.create', compact('employees', 'clients', 'clientBalances', 'attendanceRecords'));
+        return view('admin.payroll.create', compact('employees', 'clients', 'clientBalances', 'workStatusRecords'));
     }
 
     public function store(Request $request)
@@ -101,12 +101,13 @@ class EmployeePayrollController extends Controller
             'salary_month' => ['nullable', 'required_if:calculation_type,monthly_cycle', 'date_format:Y-m'],
             'from_date' => ['nullable', 'required_if:calculation_type,date_to_date', 'date'],
             'to_date' => ['nullable', 'required_if:calculation_type,date_to_date', 'date', 'after_or_equal:from_date'],
-            'use_attendance_records' => ['nullable', 'boolean'],
-            'working_days' => ['nullable', 'integer', 'min:0', 'max:31'],
-            'non_working_days' => ['nullable', 'integer', 'min:0', 'max:31'],
+            'use_work_status_records' => ['nullable', 'boolean'],
+            'working_days' => ['nullable', 'numeric', 'min:0', 'max:31'],
+            'non_working_days' => ['nullable', 'numeric', 'min:0', 'max:31'],
             'salary_day_adjustments' => ['nullable', 'array'],
             'salary_day_adjustments.*.date' => ['required_with:salary_day_adjustments', 'date'],
             'salary_day_adjustments.*.day_type' => ['required_with:salary_day_adjustments', Rule::in(['working', 'non_working'])],
+            'salary_day_adjustments.*.salary_count_value' => ['nullable', 'numeric', 'min:0', 'max:1'],
             'salary_day_adjustments.*.reason' => ['required_with:salary_day_adjustments', Rule::in([
                 'active_working',
                 'absent',
@@ -117,6 +118,7 @@ class EmployeePayrollController extends Controller
                 'on_leave',
                 'sick_leave',
                 'holiday',
+                'agency_closed',
                 'other',
             ])],
             'salary_day_adjustments.*.note' => ['nullable', 'string', 'max:500'],
@@ -333,10 +335,10 @@ class EmployeePayrollController extends Controller
             $fromDate = $salaryMonth->copy();
             $toDate = $salaryMonth->copy()->endOfMonth();
             $workingDays = $submittedWorkingDays !== null
-                ? (int) $submittedWorkingDays
+                ? (float) $submittedWorkingDays
                 : $fromDate->daysInMonth;
             $nonWorkingDays = $submittedNonWorkingDays !== null
-                ? (int) $submittedNonWorkingDays
+                ? (float) $submittedNonWorkingDays
                 : 0;
         } else {
             if (empty($data['from_date']) || empty($data['to_date'])) {
@@ -346,20 +348,22 @@ class EmployeePayrollController extends Controller
             $fromDate = Carbon::parse($data['from_date']);
             $toDate = Carbon::parse($data['to_date']);
             $salaryMonth = $fromDate->copy()->startOfMonth();
-            $adjustments = ! empty($data['use_attendance_records'])
-                ? $this->attendanceAdjustments($employee, (int) ($data['client_id'] ?? 0), $fromDate, $toDate)
+            $adjustments = ! empty($data['use_work_status_records'])
+                ? $this->workStatusAdjustments($employee, (int) ($data['client_id'] ?? 0), $fromDate, $toDate)
                 : $this->normalizeSalaryDayAdjustments($data['salary_day_adjustments'] ?? [], $fromDate, $toDate);
 
             if ($adjustments !== []) {
                 $nonWorkingDays = collect($adjustments)
                     ->where('day_type', 'non_working')
                     ->count();
-                $workingDays = count($adjustments) - $nonWorkingDays;
+                $workingDays = collect($adjustments)->contains(fn (array $adjustment) => array_key_exists('salary_count_value', $adjustment))
+                    ? (float) collect($adjustments)->sum('salary_count_value')
+                    : count($adjustments) - $nonWorkingDays;
             } else {
                 $workingDays = $submittedWorkingDays !== null
-                    ? (int) $submittedWorkingDays
+                    ? (float) $submittedWorkingDays
                     : ((int) $fromDate->diffInDays($toDate)) + 1;
-                $nonWorkingDays = (int) ($submittedNonWorkingDays ?? 0);
+                $nonWorkingDays = (float) ($submittedNonWorkingDays ?? 0);
             }
         }
 
@@ -381,31 +385,32 @@ class EmployeePayrollController extends Controller
         ];
     }
 
-    private function attendanceAdjustments(Employee $employee, int $clientId, Carbon $fromDate, Carbon $toDate): array
+    private function workStatusAdjustments(Employee $employee, int $clientId, Carbon $fromDate, Carbon $toDate): array
     {
-        $attendanceByDate = $employee->attendances()
-            ->whereDate('attendance_date', '>=', $fromDate->toDateString())
-            ->whereDate('attendance_date', '<=', $toDate->toDateString())
+        $workStatusByDate = $employee->workStatuses()
+            ->whereDate('work_date', '>=', $fromDate->toDateString())
+            ->whereDate('work_date', '<=', $toDate->toDateString())
             ->where(function ($query) use ($clientId) {
                 $query->whereNull('client_id')
                     ->orWhere('client_id', $clientId);
             })
             ->get()
-            ->keyBy(fn (EmployeeAttendance $attendance) => $attendance->attendance_date?->toDateString());
+            ->keyBy(fn (EmployeeWorkStatus $workStatus) => $workStatus->work_date?->toDateString());
 
         $adjustments = [];
         $current = $fromDate->copy();
 
         while ($current->lte($toDate)) {
             $date = $current->toDateString();
-            $attendance = $attendanceByDate->get($date);
-            $isWorking = $attendance?->is_working_day ?? false;
+            $workStatus = $workStatusByDate->get($date);
+            $salaryCount = $workStatus ? (float) $workStatus->salary_count_value : 0.0;
 
             $adjustments[] = [
                 'date' => $date,
-                'day_type' => $isWorking ? 'working' : 'non_working',
-                'reason' => $attendance ? $this->attendanceReason($attendance->status) : 'other',
-                'note' => $attendance?->note ?: ($attendance ? 'From attendance record' : 'No attendance record'),
+                'day_type' => $salaryCount > 0 ? 'working' : 'non_working',
+                'salary_count_value' => $salaryCount,
+                'reason' => $workStatus ? $this->workStatusReason($workStatus->status) : 'other',
+                'note' => $workStatus?->note ?: ($workStatus ? 'From work status record' : 'No work status record'),
             ];
 
             $current->addDay();
@@ -414,16 +419,17 @@ class EmployeePayrollController extends Controller
         return $adjustments;
     }
 
-    private function attendanceReason(string $status): string
+    private function workStatusReason(string $status): string
     {
         return [
-            'present' => 'active_working',
+            'working' => 'active_working',
+            'half_day' => 'active_working',
             'absent' => 'absent',
             'on_leave' => 'on_leave',
             'client_issue' => 'client_issue',
             'boosting_off' => 'boosting_off',
             'sick_leave' => 'sick_leave',
-            'holiday' => 'holiday',
+            'agency_closed' => 'agency_closed',
         ][$status] ?? 'other';
     }
 
@@ -443,6 +449,7 @@ class EmployeePayrollController extends Controller
             'on_leave',
             'sick_leave',
             'holiday',
+            'agency_closed',
             'other',
         ];
         $normalized = [];
@@ -468,6 +475,9 @@ class EmployeePayrollController extends Controller
             $normalized[$date->toDateString()] = [
                 'date' => $date->toDateString(),
                 'day_type' => $dayType,
+                'salary_count_value' => array_key_exists('salary_count_value', $adjustment)
+                    ? (float) $adjustment['salary_count_value']
+                    : ($dayType === 'working' ? 1.0 : 0.0),
                 'reason' => $reason,
                 'note' => trim((string) ($adjustment['note'] ?? '')),
             ];

@@ -383,6 +383,7 @@
             || request()->is('admin/salary-payments*')
             || request()->is('admin/salary-month-sheet*')
             || request()->is('admin/attendance*')
+            || request()->is('admin/work-status*')
             || request()->is('admin/payroll*');
         $clientFundBadges = $isEmployeeDepartment
             ? app(\App\Services\ClientFundDashboardService::class)->sidebarBadges()
@@ -410,6 +411,7 @@
             @if($isEmployeeDepartment)
                 <div class="sidebar-section-title">Employee</div>
                 <a class="{{ request()->is('admin/employees*') ? 'active-menu' : '' }}" href="/admin/employees">Employee List</a>
+                <a class="{{ request()->is('admin/work-status*') ? 'active-menu' : '' }}" href="/admin/work-status">Work Status</a>
                 <a class="{{ request()->is('admin/attendance*') ? 'active-menu' : '' }}" href="/admin/attendance">Attendance</a>
                 <a class="{{ request()->is('admin/payroll*') && ! request()->filled('status') ? 'active-menu' : '' }}" href="/admin/payroll">Salary Generate</a>
                 <a class="{{ request()->is('admin/salary-month-sheet*') ? 'active-menu' : '' }}" href="/admin/salary-month-sheet">Salary Report</a>

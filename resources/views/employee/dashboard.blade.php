@@ -12,14 +12,29 @@
     </div>
 
     <div class="stats-grid">
-        <div class="stat-card"><p>Present Days</p><h2>{{ $countedDays }}</h2></div>
-        <div class="stat-card"><p>Non Working Days</p><h2>{{ $nonCountedDays }}</h2></div>
+        <div class="stat-card"><p>Working Days</p><h2>{{ number_format($workStatusSummary['working_days'], 2) }}</h2></div>
+        <div class="stat-card"><p>Half Days</p><h2>{{ number_format($workStatusSummary['half_days']) }}</h2></div>
         <div class="stat-card"><p>Salary Status</p><h2>{{ $employee->salaryStatusLabel() }}</h2></div>
         <div class="stat-card"><p>Next Salary Date</p><h2>{{ $employee->nextSalaryDate()?->toDateString() ?: '-' }}</h2></div>
     </div>
 
     <div class="card">
+        <h2>Today's Work Status</h2>
+        <p><strong>Status:</strong> {{ $todayWorkStatus?->statusLabel() ?: 'Not Assigned' }}</p>
+        <p><strong>Salary Count Value:</strong> {{ $todayWorkStatus ? number_format($todayWorkStatus->salary_count_value, 2) : '-' }}</p>
+        <p><strong>Note:</strong> {{ $todayWorkStatus?->note ?: '-' }}</p>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card"><p>Leave</p><h2>{{ number_format($workStatusSummary['leave']) }}</h2></div>
+        <div class="stat-card"><p>Client Issue</p><h2>{{ number_format($workStatusSummary['client_issue']) }}</h2></div>
+        <div class="stat-card"><p>Boosting OFF</p><h2>{{ number_format($workStatusSummary['boosting_off']) }}</h2></div>
+        <div class="stat-card"><p>Assignments</p><h2>{{ $activeAssignments->count() }}</h2></div>
+    </div>
+
+    <div class="card">
         <h2>Today Attendance</h2>
+        <p>Attendance is for shift monitoring only. Salary is calculated from Work Status records.</p>
         <p><strong>Status:</strong> {{ $todayAttendance?->statusLabel() ?: 'Not Marked' }}</p>
         <p><strong>Check In:</strong> {{ $todayAttendance?->check_in_at?->format('h:i A') ?: '-' }}</p>
         <p><strong>Check Out:</strong> {{ $todayAttendance?->check_out_at?->format('h:i A') ?: '-' }}</p>

@@ -223,9 +223,9 @@
                     <p class="salary-field">Salary Month<br><input type="month" name="salary_month" id="salary_month" value="{{ old('salary_month', now()->format('Y-m')) }}"></p>
                     <p class="salary-field">From Date<br><input type="date" name="from_date" id="from_date" value="{{ old('from_date', now()->startOfMonth()->toDateString()) }}"></p>
                     <p class="salary-field">To Date<br><input type="date" name="to_date" id="to_date" value="{{ old('to_date', now()->toDateString()) }}"></p>
-                    <p class="salary-field">Use Attendance Records<br>
+                    <p class="salary-field">Use Work Status Records<br>
                         <label style="display:flex; align-items:center; gap:8px;">
-                            <input type="checkbox" name="use_attendance_records" id="use_attendance_records" value="1" {{ old('use_attendance_records') ? 'checked' : '' }}>
+                            <input type="checkbox" name="use_work_status_records" id="use_work_status_records" value="1" {{ old('use_work_status_records') ? 'checked' : '' }}>
                             Auto-fill working days
                         </label>
                     </p>
@@ -236,8 +236,8 @@
             <div class="salary-section">
                 <h2>Calculation Summary</h2>
                 <div class="salary-form-grid calculation-grid">
-                    <p class="salary-field">Working Days<br><input type="number" min="0" max="31" name="working_days" id="working_days" value="{{ old('working_days') }}"></p>
-                    <p class="salary-field">Non Working Days<br><input type="number" min="0" max="31" name="non_working_days" id="non_working_days" value="{{ old('non_working_days', 0) }}"></p>
+                    <p class="salary-field">Working Days<br><input type="number" step="0.5" min="0" max="31" name="working_days" id="working_days" value="{{ old('working_days') }}"></p>
+                    <p class="salary-field">Non Working Days<br><input type="number" step="0.5" min="0" max="31" name="non_working_days" id="non_working_days" value="{{ old('non_working_days', 0) }}"></p>
                     <p class="salary-field">Monthly Salary<br><input type="text" id="monthly_salary_display" value="BDT 0.00" readonly></p>
                     <p class="salary-field">Month Days<br><input type="text" id="month_days_display" value="0" readonly></p>
                     <p class="salary-field">Daily Salary<br><input type="text" id="daily_salary_display" value="BDT 0.00" readonly></p>
@@ -294,7 +294,7 @@
         const salaryMonth = document.getElementById('salary_month');
         const fromDate = document.getElementById('from_date');
         const toDate = document.getElementById('to_date');
-        const useAttendanceRecords = document.getElementById('use_attendance_records');
+        const useWorkStatusRecords = document.getElementById('use_work_status_records');
         const workingDays = document.getElementById('working_days');
         const nonWorkingDays = document.getElementById('non_working_days');
         const dateAdjustmentCard = document.getElementById('date_adjustment_card');
@@ -312,15 +312,16 @@
         const dueDisplay = document.getElementById('due_display');
         const fundWarning = document.getElementById('fund_warning');
         let dateAdjustmentsExpanded = true;
-        const attendanceRecords = @json($attendanceRecords ?? []);
-        const attendanceReasonMap = {
-            present: 'active_working',
+        const workStatusRecords = @json($workStatusRecords ?? []);
+        const workStatusReasonMap = {
+            working: 'active_working',
+            half_day: 'active_working',
             absent: 'absent',
             on_leave: 'on_leave',
             client_issue: 'client_issue',
             boosting_off: 'boosting_off',
             sick_leave: 'sick_leave',
-            holiday: 'holiday',
+            agency_closed: 'agency_closed',
         };
 
         function money(amount) {
@@ -365,19 +366,20 @@
             on_leave: 'On Leave',
             sick_leave: 'Sick Leave',
             holiday: 'Holiday',
+            agency_closed: 'Agency Closed',
             other: 'Other',
         };
 
-        function attendanceForDate(date) {
-            if (!useAttendanceRecords.checked || !employeeSelect.value) {
+        function workStatusForDate(date) {
+            if (!useWorkStatusRecords.checked || !employeeSelect.value) {
                 return null;
             }
 
-            return attendanceRecords.find((attendance) => {
-                const employeeMatches = String(attendance.employee_id) === String(employeeSelect.value);
-                const clientMatches = !clientSelect.value || !attendance.client_id || String(attendance.client_id) === String(clientSelect.value);
+            return workStatusRecords.find((workStatus) => {
+                const employeeMatches = String(workStatus.employee_id) === String(employeeSelect.value);
+                const clientMatches = !clientSelect.value || !workStatus.client_id || String(workStatus.client_id) === String(clientSelect.value);
 
-                return employeeMatches && clientMatches && attendance.date === date;
+                return employeeMatches && clientMatches && workStatus.date === date;
             }) || null;
         }
 
@@ -430,7 +432,7 @@
             }
 
             const calculatedWorkingDays = dateAdjustmentRows.children.length > 0
-                ? Array.from(dateAdjustmentRows.querySelectorAll('.day-type')).filter((field) => field.value === 'working').length
+                ? Array.from(dateAdjustmentRows.querySelectorAll('.salary-count-value')).reduce((total, field) => total + Number(field.value || 0), 0)
                 : inclusiveDaysBetween(fromDate.value, toDate.value);
             const calculatedNonWorkingDays = dateAdjustmentRows.children.length > 0
                 ? Array.from(dateAdjustmentRows.querySelectorAll('.day-type')).filter((field) => field.value === 'non_working').length
@@ -456,16 +458,17 @@
             setDateAdjustmentExpanded(dates.length <= 5);
 
             dates.forEach((date, index) => {
-                const attendance = attendanceForDate(date);
-                const dayType = attendance
-                    ? (attendance.is_working_day ? 'working' : 'non_working')
-                    : (useAttendanceRecords.checked ? 'non_working' : 'working');
-                const selectedReason = attendance
-                    ? (attendanceReasonMap[attendance.status] || 'other')
-                    : (useAttendanceRecords.checked ? 'other' : 'active_working');
-                const note = attendance
-                    ? (attendance.note || attendance.status_label || 'From attendance record')
-                    : (useAttendanceRecords.checked ? 'No attendance record' : '');
+                const workStatus = workStatusForDate(date);
+                const salaryCount = workStatus
+                    ? Number(workStatus.salary_count_value || 0)
+                    : (useWorkStatusRecords.checked ? 0 : 1);
+                const dayType = salaryCount > 0 ? 'working' : 'non_working';
+                const selectedReason = workStatus
+                    ? (workStatusReasonMap[workStatus.status] || 'other')
+                    : (useWorkStatusRecords.checked ? 'other' : 'active_working');
+                const note = workStatus
+                    ? (workStatus.note || workStatus.status_label || 'From work status record')
+                    : (useWorkStatusRecords.checked ? 'No work status record' : '');
                 const row = document.createElement('tr');
                 const reasonSelectOptions = Object.entries(reasonOptions).map(([value, label]) => {
                     return `<option value="${value}" ${value === selectedReason ? 'selected' : ''}>${label}</option>`;
@@ -475,6 +478,7 @@
                     <td>
                         ${date}
                         <input type="hidden" name="salary_day_adjustments[${index}][date]" value="${date}">
+                        <input type="hidden" name="salary_day_adjustments[${index}][salary_count_value]" class="salary-count-value" value="${salaryCount}">
                     </td>
                     <td>
                         <select name="salary_day_adjustments[${index}][day_type]" class="day-type">
@@ -497,10 +501,15 @@
 
             dateAdjustmentRows.querySelectorAll('.day-type').forEach((field) => {
                 field.addEventListener('change', () => {
-                    const reason = field.closest('tr').querySelector('.day-reason');
+                    const row = field.closest('tr');
+                    const reason = row.querySelector('.day-reason');
+                    const salaryCountField = row.querySelector('.salary-count-value');
 
                     if (field.value === 'working') {
                         reason.value = 'active_working';
+                        salaryCountField.value = salaryCountField.value === '0' ? 1 : salaryCountField.value;
+                    } else {
+                        salaryCountField.value = 0;
                     }
 
                     syncWorkingDays();
@@ -549,7 +558,7 @@
             setDateAdjustmentExpanded(!dateAdjustmentsExpanded);
         });
 
-        [calculationType, salaryMonth, fromDate, toDate, employeeSelect, clientSelect, useAttendanceRecords].forEach((field) => {
+        [calculationType, salaryMonth, fromDate, toDate, employeeSelect, clientSelect, useWorkStatusRecords].forEach((field) => {
             field.addEventListener('input', syncDatesAndSalary);
             field.addEventListener('change', syncDatesAndSalary);
         });
