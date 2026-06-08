@@ -28,6 +28,7 @@ use App\Http\Controllers\Admin\EmployeePayrollController;
 use App\Http\Controllers\Admin\EmployeeAttendanceController;
 use App\Http\Controllers\Admin\EmployeeWorkStatusController;
 use App\Http\Controllers\Admin\ClientFundController;
+use App\Http\Controllers\Admin\ClientPageController;
 
 Route::get('/', [DashboardController::class, 'index']);
 
@@ -106,6 +107,13 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/work-status/{workStatus}/update', [EmployeeWorkStatusController::class, 'update']);
     Route::post('/admin/work-status/{workStatus}/delete', [EmployeeWorkStatusController::class, 'destroy']);
 
+    Route::get('/admin/client-pages', [ClientPageController::class, 'index']);
+    Route::get('/admin/client-pages/create', [ClientPageController::class, 'create']);
+    Route::post('/admin/client-pages', [ClientPageController::class, 'store']);
+    Route::get('/admin/client-pages/{page}/edit', [ClientPageController::class, 'edit']);
+    Route::post('/admin/client-pages/{page}/update', [ClientPageController::class, 'update']);
+    Route::post('/admin/client-pages/{page}/delete', [ClientPageController::class, 'destroy']);
+
     Route::get('/admin/client-fund', [ClientFundController::class, 'dashboard']);
     Route::get('/admin/client-fund/export/csv', [ClientFundController::class, 'exportCsv']);
     Route::get('/admin/client-fund/export/excel', [ClientFundController::class, 'exportExcel']);
@@ -119,6 +127,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/salary-payments/pending', [SalaryPaymentController::class, 'pending']);
     Route::post('/admin/salary-payments/{id}/approve', [SalaryPaymentController::class, 'approve']);
     Route::post('/admin/salary-payments/{id}/reject', [SalaryPaymentController::class, 'reject']);
+    Route::post('/admin/salary-payments/{payment}/delete', [SalaryPaymentController::class, 'destroy']);
     Route::get('/admin/salary-month-sheet', [SalaryMonthSheetController::class, 'index']);
     Route::get('/admin/salary-month-sheet/export', [SalaryMonthSheetController::class, 'export']);
     Route::get('/admin/salary-month-sheet/export/excel', [SalaryMonthSheetController::class, 'exportExcel']);

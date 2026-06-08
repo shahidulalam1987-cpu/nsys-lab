@@ -16,7 +16,7 @@ class AttendanceController extends Controller
     {
         $employee = $this->employee();
         $attendances = $employee->attendances()
-            ->with('client')
+            ->with(['client', 'shift'])
             ->latest('attendance_date')
             ->paginate(20);
 
@@ -41,10 +41,15 @@ class AttendanceController extends Controller
             return back()->withErrors(['attendance_date' => 'Attendance already exists for this date.']);
         }
 
+        $assignment = $this->activeAssignment($employee, $date);
+        $shift = $assignment?->shift ?: $employee->shift;
+
         $attendance->fill([
-            'client_id' => $this->activeClientId($employee, $date),
+            'client_id' => $assignment?->client_id,
+            'shift_id' => $shift?->id,
             'status' => $data['status'],
             'check_in_at' => $data['status'] === 'present' ? now() : null,
+            'is_late' => $data['status'] === 'present' ? $this->isLate($shift) : false,
             'note' => $data['note'] ?? null,
             'created_by' => auth()->id(),
             'updated_by' => auth()->id(),
@@ -65,11 +70,16 @@ class AttendanceController extends Controller
             return back()->withErrors(['attendance' => 'You have already checked in today.']);
         }
 
+        $assignment = $this->activeAssignment($employee, $today);
+        $shift = $assignment?->shift ?: $employee->shift;
+
         $attendance->fill([
-            'client_id' => $this->activeClientId($employee, $today),
+            'client_id' => $assignment?->client_id,
+            'shift_id' => $shift?->id,
             'status' => 'present',
             'is_working_day' => true,
             'check_in_at' => now(),
+            'is_late' => $this->isLate($shift),
             'created_by' => $attendance->created_by ?: auth()->id(),
             'updated_by' => auth()->id(),
         ])->save();
@@ -105,9 +115,10 @@ class AttendanceController extends Controller
         return auth()->user()->employee()->firstOrFail();
     }
 
-    private function activeClientId(Employee $employee, string $date): ?int
+    private function activeAssignment(Employee $employee, string $date): ?EmployeeAssignment
     {
         return EmployeeAssignment::where('employee_id', $employee->id)
+            ->with('shift')
             ->where('status', 'active')
             ->whereDate('assigned_from', '<=', $date)
             ->where(function ($query) use ($date) {
@@ -115,6 +126,17 @@ class AttendanceController extends Controller
                     ->orWhereDate('assigned_to', '>=', $date);
             })
             ->latest('assigned_from')
-            ->value('client_id');
+            ->first();
+    }
+
+    private function isLate($shift): bool
+    {
+        if (! $shift?->start_time) {
+            return false;
+        }
+
+        $start = Carbon::parse(today()->toDateString() . ' ' . $shift->start_time->format('H:i:s'));
+
+        return now()->gt($start);
     }
 }

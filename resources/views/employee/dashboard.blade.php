@@ -9,6 +9,10 @@
         <p><strong>Joining Date:</strong> {{ $employee->joining_date?->toDateString() }}</p>
         <p><strong>Confirmation Status:</strong> {{ $employee->confirmation_date ? 'Confirmed on ' . $employee->confirmation_date->toDateString() : 'Not Confirmed' }}</p>
         <p><strong>Monthly Salary:</strong> BDT {{ number_format($employee->monthly_salary, 2) }}</p>
+        <p><strong>Assigned Client:</strong> {{ $primaryAssignment?->client?->company_name ?: '-' }}</p>
+        <p><strong>Assigned Page:</strong> {{ $primaryAssignment?->page?->page_name ?: '-' }}</p>
+        <p><strong>Shift:</strong> {{ $primaryAssignment?->shift?->name ?: $employee->shift?->name ?: '-' }}</p>
+        <p><strong>Shift Time:</strong> {{ $primaryAssignment?->shift?->timeRange() ?: $employee->shift?->timeRange() ?: '-' }}</p>
     </div>
 
     <div class="stats-grid">
@@ -21,6 +25,9 @@
     <div class="card">
         <h2>Today's Work Status</h2>
         <p><strong>Status:</strong> {{ $todayWorkStatus?->statusLabel() ?: 'Not Assigned' }}</p>
+        <p><strong>Client:</strong> {{ $todayWorkStatus?->client?->company_name ?: '-' }}</p>
+        <p><strong>Page:</strong> {{ $todayWorkStatus?->page?->page_name ?: '-' }}</p>
+        <p><strong>Shift:</strong> {{ $todayWorkStatus?->shift?->name ?: ($primaryAssignment?->shift?->name ?: '-') }}</p>
         <p><strong>Salary Count Value:</strong> {{ $todayWorkStatus ? number_format($todayWorkStatus->salary_count_value, 2) : '-' }}</p>
         <p><strong>Note:</strong> {{ $todayWorkStatus?->note ?: '-' }}</p>
     </div>
@@ -38,6 +45,8 @@
         <p><strong>Status:</strong> {{ $todayAttendance?->statusLabel() ?: 'Not Marked' }}</p>
         <p><strong>Check In:</strong> {{ $todayAttendance?->check_in_at?->format('h:i A') ?: '-' }}</p>
         <p><strong>Check Out:</strong> {{ $todayAttendance?->check_out_at?->format('h:i A') ?: '-' }}</p>
+        <p><strong>Shift:</strong> {{ $todayAttendance?->shift?->name ?: ($primaryAssignment?->shift?->name ?: $employee->shift?->name ?: '-') }}</p>
+        <p><strong>Late:</strong> {{ $todayAttendance?->is_late ? 'Yes' : 'No' }}</p>
 
         <form method="POST" action="/employee/attendance/check-in" style="display:inline;">
             @csrf
@@ -54,6 +63,8 @@
         <table>
             <tr>
                 <th>Client</th>
+                <th>Page</th>
+                <th>Shift</th>
                 <th>From</th>
                 <th>To</th>
                 <th>Status</th>
@@ -61,12 +72,14 @@
             @forelse($employee->assignments->sortByDesc('assigned_from') as $assignment)
                 <tr>
                     <td>{{ $assignment->client?->company_name }}</td>
+                    <td>{{ $assignment->page?->page_name ?: '-' }}</td>
+                    <td>{{ $assignment->shift?->name ?: '-' }}</td>
                     <td>{{ $assignment->assigned_from?->toDateString() }}</td>
                     <td>{{ $assignment->assigned_to?->toDateString() ?: '-' }}</td>
                     <td>{{ ucfirst($assignment->status) }}</td>
                 </tr>
             @empty
-                <tr><td colspan="4">No assignment found.</td></tr>
+                <tr><td colspan="6">No assignment found.</td></tr>
             @endforelse
         </table>
     </div>

@@ -21,8 +21,10 @@ class EmployeeAttendance extends Model
     protected $fillable = [
         'employee_id',
         'client_id',
+        'shift_id',
         'attendance_date',
         'check_in_at',
+        'is_late',
         'check_out_at',
         'status',
         'is_working_day',
@@ -38,6 +40,7 @@ class EmployeeAttendance extends Model
             'check_in_at' => 'datetime',
             'check_out_at' => 'datetime',
             'is_working_day' => 'boolean',
+            'is_late' => 'boolean',
         ];
     }
 
@@ -68,5 +71,10 @@ class EmployeeAttendance extends Model
     public function client()
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function shift()
+    {
+        return $this->belongsTo(Shift::class);
     }
 }

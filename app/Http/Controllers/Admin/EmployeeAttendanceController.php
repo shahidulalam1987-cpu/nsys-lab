@@ -37,7 +37,7 @@ class EmployeeAttendanceController extends Controller
 
     public function edit(EmployeeAttendance $attendance)
     {
-        $attendance->load(['employee', 'client']);
+        $attendance->load(['employee', 'client', 'shift']);
 
         return view('admin.attendance.edit', [
             'attendance' => $attendance,
@@ -89,15 +89,17 @@ class EmployeeAttendanceController extends Controller
 
         return response()->streamDownload(function () use ($rows) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Date', 'Employee', 'Client', 'Check In', 'Check Out', 'Status', 'Day Type', 'Note']);
+            fputcsv($handle, ['Date', 'Employee', 'Client', 'Shift', 'Check In', 'Check Out', 'Late', 'Status', 'Day Type', 'Note']);
 
             foreach ($rows as $attendance) {
                 fputcsv($handle, [
                     $attendance->attendance_date?->toDateString(),
                     trim(($attendance->employee?->employee_id ?: '-') . ' ' . ($attendance->employee?->name ?: '')),
                     $attendance->client?->company_name ?: '-',
+                    $attendance->shift?->name ?: '-',
                     $attendance->check_in_at?->format('Y-m-d H:i') ?: '-',
                     $attendance->check_out_at?->format('Y-m-d H:i') ?: '-',
+                    $attendance->is_late ? 'Yes' : 'No',
                     $attendance->statusLabel(),
                     $attendance->is_working_day ? 'Working Day' : 'Non Working Day',
                     $attendance->note ?: '-',
@@ -121,7 +123,7 @@ class EmployeeAttendanceController extends Controller
 
     private function filteredQuery(array $filters)
     {
-        return EmployeeAttendance::with(['employee', 'client'])
+        return EmployeeAttendance::with(['employee', 'client', 'shift'])
             ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
             ->when($filters['client_id'] ?? null, fn ($query, $clientId) => $query->where('client_id', $clientId))
             ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->whereDate('attendance_date', '>=', $date))

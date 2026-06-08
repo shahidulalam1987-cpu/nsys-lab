@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Client;
+use App\Models\ClientPage;
 use App\Models\Employee;
 use App\Models\EmployeeWorkStatus;
+use App\Models\Shift;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -21,6 +23,8 @@ class EmployeeWorkStatusController extends Controller
             'workStatuses' => $rows,
             'employees' => Employee::orderBy('name')->get(),
             'clients' => Client::orderBy('company_name')->get(),
+            'clientPages' => ClientPage::orderBy('page_name')->get(),
+            'shifts' => Shift::where('status', 'active')->orderBy('id')->get(),
             'statuses' => EmployeeWorkStatus::STATUSES,
             'filters' => $filters,
             'summary' => [
@@ -36,8 +40,10 @@ class EmployeeWorkStatusController extends Controller
     public function create()
     {
         return view('admin.work-status.create', [
-            'employees' => Employee::orderBy('name')->get(),
+            'employees' => Employee::with(['activeAssignments.page', 'activeAssignments.shift'])->orderBy('name')->get(),
             'clients' => Client::orderBy('company_name')->get(),
+            'clientPages' => ClientPage::orderBy('page_name')->get(),
+            'shifts' => Shift::where('status', 'active')->orderBy('id')->get(),
             'statuses' => EmployeeWorkStatus::STATUSES,
         ]);
     }
@@ -50,6 +56,8 @@ class EmployeeWorkStatusController extends Controller
             'work_date' => $data['work_date'],
         ], [
             'client_id' => $data['client_id'] ?? null,
+            'client_page_id' => $data['client_page_id'] ?? null,
+            'shift_id' => $data['shift_id'] ?? null,
             'status' => $data['status'],
             'salary_count_value' => EmployeeWorkStatus::salaryCountFor($data['status']),
             'note' => $data['note'] ?? null,
@@ -64,9 +72,11 @@ class EmployeeWorkStatusController extends Controller
     public function edit(EmployeeWorkStatus $workStatus)
     {
         return view('admin.work-status.edit', [
-            'workStatus' => $workStatus->load(['employee', 'client']),
+            'workStatus' => $workStatus->load(['employee', 'client', 'page', 'shift']),
             'employees' => Employee::orderBy('name')->get(),
             'clients' => Client::orderBy('company_name')->get(),
+            'clientPages' => ClientPage::orderBy('page_name')->get(),
+            'shifts' => Shift::where('status', 'active')->orderBy('id')->get(),
             'statuses' => EmployeeWorkStatus::STATUSES,
         ]);
     }
@@ -75,6 +85,8 @@ class EmployeeWorkStatusController extends Controller
     {
         $data = $request->validate([
             'client_id' => ['nullable', 'exists:clients,id'],
+            'client_page_id' => ['nullable', 'exists:client_pages,id'],
+            'shift_id' => ['nullable', 'exists:shifts,id'],
             'status' => ['required', Rule::in(array_keys(EmployeeWorkStatus::STATUSES))],
             'salary_count_value' => ['nullable', 'numeric', 'min:0', 'max:1'],
             'note' => ['nullable', 'string', 'max:500'],
@@ -82,6 +94,8 @@ class EmployeeWorkStatusController extends Controller
 
         $workStatus->fill([
             'client_id' => $data['client_id'] ?? null,
+            'client_page_id' => $data['client_page_id'] ?? null,
+            'shift_id' => $data['shift_id'] ?? null,
             'status' => $data['status'],
             'salary_count_value' => array_key_exists('salary_count_value', $data)
                 ? (float) $data['salary_count_value']
@@ -108,13 +122,15 @@ class EmployeeWorkStatusController extends Controller
 
         return response()->streamDownload(function () use ($rows) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Date', 'Employee', 'Client', 'Status', 'Salary Count Value', 'Note']);
+            fputcsv($handle, ['Date', 'Employee', 'Client', 'Page', 'Shift', 'Status', 'Salary Count Value', 'Note']);
 
             foreach ($rows as $row) {
                 fputcsv($handle, [
                     $row->work_date?->toDateString(),
                     trim(($row->employee?->employee_id ?: '-') . ' ' . ($row->employee?->name ?: '')),
                     $row->client?->company_name ?: '-',
+                    $row->page?->page_name ?: '-',
+                    $row->shift?->name ?: '-',
                     $row->statusLabel(),
                     number_format((float) $row->salary_count_value, 2, '.', ''),
                     $row->note ?: '-',
@@ -138,7 +154,7 @@ class EmployeeWorkStatusController extends Controller
 
     private function filteredQuery(array $filters)
     {
-        return EmployeeWorkStatus::with(['employee', 'client'])
+        return EmployeeWorkStatus::with(['employee', 'client', 'page', 'shift'])
             ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
             ->when($filters['client_id'] ?? null, fn ($query, $clientId) => $query->where('client_id', $clientId))
             ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->whereDate('work_date', '>=', $date))
@@ -151,6 +167,8 @@ class EmployeeWorkStatusController extends Controller
         return $request->validate([
             'employee_id' => ['required', 'exists:employees,id'],
             'client_id' => ['nullable', 'exists:clients,id'],
+            'client_page_id' => ['nullable', 'exists:client_pages,id'],
+            'shift_id' => ['nullable', 'exists:shifts,id'],
             'work_date' => ['required', 'date'],
             'status' => ['required', Rule::in(array_keys(EmployeeWorkStatus::STATUSES))],
             'note' => ['nullable', 'string', 'max:500'],

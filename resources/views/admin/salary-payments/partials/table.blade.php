@@ -49,7 +49,7 @@
                     <td>{{ $payment->status === 'rejected' ? $payment->reject_reason : '-' }}</td>
                 @endif
                 <td>
-                    @if($payment->status === 'pending')
+                    @if($mode === 'pending' && $payment->status === 'pending')
                         <form method="POST" action="/admin/salary-payments/{{ $payment->id }}/approve" style="display:inline;">
                             @csrf
                             <button class="btn-success" type="submit">Approve</button>
@@ -60,7 +60,10 @@
                             <button class="btn-danger" type="submit">Reject</button>
                         </form>
                     @else
-                        -
+                        <form method="POST" action="/admin/salary-payments/{{ $payment->id }}/delete" style="display:inline;">
+                            @csrf
+                            <button class="btn btn-danger" type="submit" onclick="return confirm('Delete this client payment record?');">Delete</button>
+                        </form>
                     @endif
                 </td>
             </tr>

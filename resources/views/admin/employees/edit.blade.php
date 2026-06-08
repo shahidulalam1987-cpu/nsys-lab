@@ -7,6 +7,7 @@
     @include('admin.employees.partials.form', [
         'employee' => $employee,
         'users' => $users,
+        'shifts' => $shifts,
         'action' => '/admin/employees/' . $employee->id . '/update',
         'button' => 'Update Employee',
     ])

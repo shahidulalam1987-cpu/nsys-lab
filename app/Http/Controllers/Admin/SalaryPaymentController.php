@@ -103,4 +103,11 @@ class SalaryPaymentController extends Controller
 
         return back()->with('success', 'Client payment rejected successfully.');
     }
+
+    public function destroy(SalaryPayment $payment)
+    {
+        $payment->delete();
+
+        return redirect('/admin/salary-payments')->with('success', 'Client payment record deleted successfully.');
+    }
 }

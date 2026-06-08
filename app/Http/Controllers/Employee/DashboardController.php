@@ -10,7 +10,19 @@ class DashboardController extends Controller
     {
         $employee = auth()->user()
             ->employee()
-            ->with(['assignments.client', 'salaryDays.client', 'payrolls.client', 'attendances.client', 'workStatuses.client'])
+            ->with([
+                'shift',
+                'assignments.client',
+                'assignments.page',
+                'assignments.shift',
+                'salaryDays.client',
+                'payrolls.client',
+                'attendances.client',
+                'attendances.shift',
+                'workStatuses.client',
+                'workStatuses.page',
+                'workStatuses.shift',
+            ])
             ->firstOrFail();
 
         $monthStart = now()->startOfMonth()->toDateString();
@@ -30,6 +42,7 @@ class DashboardController extends Controller
             'boosting_off' => $monthlyWorkStatuses->where('status', 'boosting_off')->count(),
         ];
         $activeAssignments = $employee->assignments->where('status', 'active');
+        $primaryAssignment = $activeAssignments->sortByDesc('assigned_from')->first();
         $payrolls = $employee->payrolls->sortByDesc('salary_month');
 
         return view('employee.dashboard', compact(
@@ -38,6 +51,7 @@ class DashboardController extends Controller
             'todayWorkStatus',
             'todayAttendance',
             'activeAssignments',
+            'primaryAssignment',
             'payrolls'
         ));
     }

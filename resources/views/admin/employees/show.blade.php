@@ -192,6 +192,8 @@
                 <div class="employee-info-grid">
                     <p><strong>Department:</strong> {{ $employee->department }}</p>
                     <p><strong>Role:</strong> {{ $employee->role }}</p>
+                    <p><strong>Shift Name:</strong> {{ $employee->shift?->name ?: '-' }}</p>
+                    <p><strong>Shift Time:</strong> {{ $employee->shift?->timeRange() ?: '-' }}</p>
                     <p><strong>Joining Date:</strong> {{ $employee->joining_date?->toDateString() }}</p>
                     <p><strong>Confirmation Date:</strong> {{ $employee->confirmation_date?->toDateString() ?: '-' }}</p>
                     <p><strong>Salary Day:</strong> {{ $employee->salaryCycleDay() ?: '-' }}</p>
@@ -292,14 +294,28 @@
 
     <div class="employee-tab-panel" data-tab-panel="assignment">
         <div class="card" style="margin-top:0;">
-            <h2>Assign to Client</h2>
+            <h2>Assign to Client/Page/Shift</h2>
             <form method="POST" action="/admin/employees/{{ $employee->id }}/assignments">
                 @csrf
                 <div class="assignment-form-grid">
-                    <select name="client_id" required>
+                    <select name="client_id" class="js-client-select" data-page-target="assignment-page-create" required>
                         <option value="">Select Client</option>
                         @foreach($clients as $client)
                             <option value="{{ $client->id }}">{{ $client->company_name }}</option>
+                        @endforeach
+                    </select>
+                    <select id="assignment-page-create" name="client_page_id">
+                        <option value="">Client Only / No Page</option>
+                        @foreach($clientPages as $page)
+                            <option value="{{ $page->id }}" data-client-id="{{ $page->client_id }}">
+                                {{ $page->page_name }} ({{ $page->platform }})
+                            </option>
+                        @endforeach
+                    </select>
+                    <select name="shift_id">
+                        <option value="">Default / No Shift</option>
+                        @foreach($shifts as $shift)
+                            <option value="{{ $shift->id }}">{{ $shift->name }}: {{ $shift->timeRange() }}</option>
                         @endforeach
                     </select>
                     <input type="date" name="assigned_from" required>
@@ -320,6 +336,8 @@
                 <table>
                     <tr>
                         <th>Client</th>
+                        <th>Page</th>
+                        <th>Shift</th>
                         <th>From</th>
                         <th>To</th>
                         <th>Status</th>
@@ -329,6 +347,8 @@
                     @forelse($employee->assignments->sortByDesc('assigned_from') as $assignment)
                         <tr>
                             <td>{{ $assignment->client?->company_name }}</td>
+                            <td>{{ $assignment->page?->page_name ?: '-' }}</td>
+                            <td>{{ $assignment->shift?->name ?: '-' }}</td>
                             <td>{{ $assignment->assigned_from?->toDateString() }}</td>
                             <td>{{ $assignment->assigned_to?->toDateString() ?: '-' }}</td>
                             <td>{{ ucfirst($assignment->status) }}</td>
@@ -336,6 +356,22 @@
                             <td>
                                 <form method="POST" action="/admin/employee-assignments/{{ $assignment->id }}/update" style="display:inline;">
                                     @csrf
+                                    <select name="client_page_id">
+                                        <option value="">No Page</option>
+                                        @foreach($clientPages->where('client_id', $assignment->client_id) as $page)
+                                            <option value="{{ $page->id }}" {{ $assignment->client_page_id == $page->id ? 'selected' : '' }}>
+                                                {{ $page->page_name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <select name="shift_id">
+                                        <option value="">No Shift</option>
+                                        @foreach($shifts as $shift)
+                                            <option value="{{ $shift->id }}" {{ $assignment->shift_id == $shift->id ? 'selected' : '' }}>
+                                                {{ $shift->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
                                     <input type="date" name="assigned_to" value="{{ $assignment->assigned_to?->toDateString() }}">
                                     <select name="status">
                                         <option value="active" {{ $assignment->status == 'active' ? 'selected' : '' }}>Active</option>
@@ -352,7 +388,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6">No assignment history found.</td></tr>
+                        <tr><td colspan="8">No assignment history found.</td></tr>
                     @endforelse
                 </table>
             </div>
@@ -440,6 +476,22 @@
                     panel.classList.toggle('active', panel.dataset.tabPanel === tab);
                 });
             });
+        });
+
+        document.querySelectorAll('.js-client-select').forEach((clientSelect) => {
+            const pageSelect = document.getElementById(clientSelect.dataset.pageTarget);
+            const filterPages = () => {
+                const clientId = clientSelect.value;
+                pageSelect.querySelectorAll('option[data-client-id]').forEach((option) => {
+                    option.hidden = clientId && option.dataset.clientId !== clientId;
+                });
+                if (pageSelect.selectedOptions[0]?.hidden) {
+                    pageSelect.value = '';
+                }
+            };
+
+            clientSelect.addEventListener('change', filterPages);
+            filterPages();
         });
     </script>
 @endsection

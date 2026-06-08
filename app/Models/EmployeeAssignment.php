@@ -9,6 +9,8 @@ class EmployeeAssignment extends Model
     protected $fillable = [
         'employee_id',
         'client_id',
+        'client_page_id',
+        'shift_id',
         'assigned_from',
         'assigned_to',
         'status',
@@ -31,5 +33,15 @@ class EmployeeAssignment extends Model
     public function client()
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function page()
+    {
+        return $this->belongsTo(ClientPage::class, 'client_page_id');
+    }
+
+    public function shift()
+    {
+        return $this->belongsTo(Shift::class);
     }
 }

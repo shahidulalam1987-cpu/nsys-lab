@@ -385,6 +385,7 @@
             || request()->is('admin/salary-month-sheet*')
             || request()->is('admin/attendance*')
             || request()->is('admin/work-status*')
+            || request()->is('admin/client-pages*')
             || request()->is('admin/payroll*');
         $clientFundBadges = $isEmployeeDepartment
             ? app(\App\Services\ClientFundDashboardService::class)->sidebarBadges()
@@ -414,6 +415,7 @@
                 <a class="{{ request()->is('admin/employees*') ? 'active-menu' : '' }}" href="/admin/employees">Employee List</a>
                 <a class="{{ request()->is('admin/work-status*') ? 'active-menu' : '' }}" href="/admin/work-status">Work Status</a>
                 <a class="{{ request()->is('admin/attendance*') ? 'active-menu' : '' }}" href="/admin/attendance">Attendance</a>
+                <a class="{{ request()->is('admin/client-pages*') ? 'active-menu' : '' }}" href="/admin/client-pages">Page Management</a>
                 <a class="{{ request()->is('admin/payroll*') && ! request()->filled('status') ? 'active-menu' : '' }}" href="/admin/payroll">Salary Generate</a>
                 <a class="{{ request()->is('admin/salary-month-sheet*') ? 'active-menu' : '' }}" href="/admin/salary-month-sheet">Salary Report</a>
                 <a class="sidebar-link-with-badge {{ request()->is('admin/payroll') && request('status') === 'upcoming' ? 'active-menu' : '' }}" href="/admin/payroll?status=upcoming">

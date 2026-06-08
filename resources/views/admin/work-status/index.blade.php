@@ -53,6 +53,8 @@
                     <th>Date</th>
                     <th>Employee</th>
                     <th>Client</th>
+                    <th>Page</th>
+                    <th>Shift</th>
                     <th>Status</th>
                     <th>Salary Count Value</th>
                     <th>Note</th>
@@ -66,6 +68,8 @@
                             {{ $workStatus->employee?->name }}
                         </td>
                         <td>{{ $workStatus->client?->company_name ?: '-' }}</td>
+                        <td>{{ $workStatus->page?->page_name ?: '-' }}</td>
+                        <td>{{ $workStatus->shift?->name ?: '-' }}</td>
                         <td>{{ $workStatus->statusLabel() }}</td>
                         <td>{{ number_format($workStatus->salary_count_value, 2) }}</td>
                         <td>{{ $workStatus->note ?: '-' }}</td>
@@ -79,7 +83,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7">No work status records found.</td></tr>
+                    <tr><td colspan="9">No work status records found.</td></tr>
                 @endforelse
             </table>
         </div>

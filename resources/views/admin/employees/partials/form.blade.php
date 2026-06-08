@@ -73,6 +73,16 @@
                 @endforeach
             </select>
         </p>
+        <p>Shift<br>
+            <select name="shift_id">
+                <option value="">No Default Shift</option>
+                @foreach($shifts as $shift)
+                    <option value="{{ $shift->id }}" {{ old('shift_id', $employee?->shift_id) == $shift->id ? 'selected' : '' }}>
+                        {{ $shift->name }}: {{ $shift->timeRange() }}
+                    </option>
+                @endforeach
+            </select>
+        </p>
         <p>Joining Date<br><input type="date" name="joining_date" value="{{ old('joining_date', $employee?->joining_date?->toDateString()) }}" required></p>
         <p>Confirmation Date<br><input type="date" name="confirmation_date" value="{{ old('confirmation_date', $employee?->confirmation_date?->toDateString()) }}"></p>
         <p>Last Working Date<br><input type="date" name="last_working_date" value="{{ old('last_working_date', $employee?->last_working_date?->toDateString()) }}"></p>

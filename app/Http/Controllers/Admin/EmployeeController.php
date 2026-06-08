@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Client;
+use App\Models\ClientPage;
 use App\Models\Employee;
+use App\Models\Shift;
 use App\Models\User;
 use App\Services\ClientFundDashboardService;
 use Illuminate\Http\Request;
@@ -49,8 +51,9 @@ class EmployeeController extends Controller
     public function create()
     {
         $users = User::where('role', 'employee')->orderBy('name')->get();
+        $shifts = Shift::where('status', 'active')->orderBy('id')->get();
 
-        return view('admin.employees.create', compact('users'));
+        return view('admin.employees.create', compact('users', 'shifts'));
     }
 
     public function store(Request $request)
@@ -70,8 +73,18 @@ class EmployeeController extends Controller
 
     public function show($id)
     {
-        $employee = Employee::with(['user', 'assignments.client', 'salaryDays.client', 'payrolls.client'])->findOrFail($id);
+        $employee = Employee::with([
+            'user',
+            'shift',
+            'assignments.client',
+            'assignments.page',
+            'assignments.shift',
+            'salaryDays.client',
+            'payrolls.client',
+        ])->findOrFail($id);
         $clients = Client::orderBy('company_name')->get();
+        $clientPages = ClientPage::with('client')->orderBy('page_name')->get();
+        $shifts = Shift::where('status', 'active')->orderBy('id')->get();
         $salarySummary = $this->salarySummary($employee);
         $salaryLedgerRows = $this->salaryLedgerRows($employee);
         $salaryLedgerSummary = [
@@ -84,7 +97,7 @@ class EmployeeController extends Controller
                 ->first()?->payment_date,
         ];
 
-        return view('admin.employees.show', compact('employee', 'clients', 'salarySummary', 'salaryLedgerRows', 'salaryLedgerSummary'));
+        return view('admin.employees.show', compact('employee', 'clients', 'clientPages', 'shifts', 'salarySummary', 'salaryLedgerRows', 'salaryLedgerSummary'));
     }
 
     public function edit($id)
@@ -97,8 +110,9 @@ class EmployeeController extends Controller
             })
             ->orderBy('name')
             ->get();
+        $shifts = Shift::where('status', 'active')->orderBy('id')->get();
 
-        return view('admin.employees.edit', compact('employee', 'users'));
+        return view('admin.employees.edit', compact('employee', 'users', 'shifts'));
     }
 
     public function update(Request $request, $id)
@@ -285,6 +299,7 @@ class EmployeeController extends Controller
             'agreement_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png,webp', 'max:5120'],
             'department' => ['required', Rule::in(Employee::DEPARTMENTS)],
             'role' => ['required', Rule::in(Employee::ROLES)],
+            'shift_id' => ['nullable', 'exists:shifts,id'],
             'joining_date' => ['required', 'date'],
             'confirmation_date' => ['nullable', 'date'],
             'last_working_date' => ['nullable', 'date'],

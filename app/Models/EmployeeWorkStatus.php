@@ -31,6 +31,8 @@ class EmployeeWorkStatus extends Model
     protected $fillable = [
         'employee_id',
         'client_id',
+        'client_page_id',
+        'shift_id',
         'work_date',
         'status',
         'salary_count_value',
@@ -74,5 +76,15 @@ class EmployeeWorkStatus extends Model
     public function client()
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function page()
+    {
+        return $this->belongsTo(ClientPage::class, 'client_page_id');
+    }
+
+    public function shift()
+    {
+        return $this->belongsTo(Shift::class);
     }
 }

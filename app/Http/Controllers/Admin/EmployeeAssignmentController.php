@@ -13,14 +13,17 @@ class EmployeeAssignmentController extends Controller
     {
         $data = $request->validate([
             'client_id' => ['required', 'exists:clients,id'],
+            'client_page_id' => ['nullable', 'exists:client_pages,id'],
+            'shift_id' => ['nullable', 'exists:shifts,id'],
             'assigned_from' => ['required', 'date'],
             'assigned_to' => ['nullable', 'date', 'after_or_equal:assigned_from'],
             'status' => ['required', 'in:active,ended'],
             'note' => ['nullable', 'string'],
         ]);
 
+        $assignedTo = $data['assigned_to'] ?? null;
         $hasOverlap = $employee->assignments()
-            ->whereDate('assigned_from', '<=', $data['assigned_to'] ?: '9999-12-31')
+            ->whereDate('assigned_from', '<=', $assignedTo ?: '9999-12-31')
             ->where(function ($query) use ($data) {
                 $query->whereNull('assigned_to')
                     ->orWhereDate('assigned_to', '>=', $data['assigned_from']);
@@ -39,6 +42,8 @@ class EmployeeAssignmentController extends Controller
     public function update(Request $request, EmployeeAssignment $assignment)
     {
         $data = $request->validate([
+            'client_page_id' => ['nullable', 'exists:client_pages,id'],
+            'shift_id' => ['nullable', 'exists:shifts,id'],
             'assigned_to' => ['nullable', 'date', 'after_or_equal:' . $assignment->assigned_from->toDateString()],
             'status' => ['required', 'in:active,ended'],
             'note' => ['nullable', 'string'],

@@ -62,6 +62,7 @@ class Employee extends Model
         'agreement_file',
         'department',
         'role',
+        'shift_id',
         'joining_date',
         'confirmation_date',
         'last_working_date',
@@ -105,6 +106,11 @@ class Employee extends Model
     public function activeAssignments()
     {
         return $this->hasMany(EmployeeAssignment::class)->where('status', 'active');
+    }
+
+    public function shift()
+    {
+        return $this->belongsTo(Shift::class);
     }
 
     public function salaryDays()

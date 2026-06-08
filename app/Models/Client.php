@@ -40,6 +40,11 @@ class Client extends Model
         return $this->hasMany(EmployeeAssignment::class);
     }
 
+    public function pages()
+    {
+        return $this->hasMany(ClientPage::class);
+    }
+
     public function salaryDays()
     {
         return $this->hasMany(SalaryDay::class);
