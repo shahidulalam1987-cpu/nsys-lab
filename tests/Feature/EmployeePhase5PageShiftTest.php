@@ -87,6 +87,87 @@ class EmployeePhase5PageShiftTest extends TestCase
         $profile->assertSee('Full Day Shift');
     }
 
+    public function test_assignment_management_can_create_view_edit_and_blocks_duplicate_active_page(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $employee = $this->employee();
+        $shift = Shift::where('name', 'Night Shift')->firstOrFail();
+        $page = ClientPage::create([
+            'client_id' => $client->id,
+            'page_name' => 'Assignment Management Page',
+            'platform' => 'Facebook',
+            'status' => 'active',
+        ]);
+
+        $createPage = $this->actingAs($admin)->get('/admin/assignments/create');
+        $createPage->assertOk();
+        $createPage->assertSee('Page Search');
+        $createPage->assertSee('Assignment Management Page');
+
+        $response = $this->actingAs($admin)->post('/admin/assignments', [
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'client_page_id' => $page->id,
+            'shift_id' => $shift->id,
+            'assigned_from' => '2026-06-01',
+            'status' => 'active',
+            'note' => 'Standalone assignment',
+        ]);
+        $assignment = $employee->assignments()->first();
+
+        $response->assertRedirect('/admin/assignments');
+        $this->assertDatabaseHas('employee_assignments', [
+            'employee_id' => $employee->id,
+            'client_page_id' => $page->id,
+            'shift_id' => $shift->id,
+            'status' => 'active',
+        ]);
+
+        $list = $this->actingAs($admin)->get('/admin/assignments');
+        $list->assertOk();
+        $list->assertSee('Assignment Dashboard');
+        $list->assertSee('Total Assignments');
+        $list->assertSee('Active Assignments');
+        $list->assertSee('Assignment Management Page');
+        $list->assertSee('Night Shift');
+
+        $show = $this->actingAs($admin)->get('/admin/assignments/' . $assignment->id);
+        $show->assertOk();
+        $show->assertSee('Assignment Details');
+        $show->assertSee('Standalone assignment');
+
+        $duplicate = $this->actingAs($admin)->from('/admin/assignments/create')->post('/admin/assignments', [
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'client_page_id' => $page->id,
+            'shift_id' => $shift->id,
+            'assigned_from' => '2026-06-02',
+            'status' => 'active',
+        ]);
+
+        $duplicate->assertRedirect('/admin/assignments/create');
+        $duplicate->assertSessionHasErrors('client_page_id');
+
+        $update = $this->actingAs($admin)->post('/admin/assignments/' . $assignment->id . '/update', [
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'client_page_id' => $page->id,
+            'shift_id' => $shift->id,
+            'assigned_from' => '2026-06-01',
+            'assigned_to' => '2026-06-10',
+            'status' => 'ended',
+            'note' => 'Completed assignment',
+        ]);
+
+        $update->assertRedirect('/admin/assignments');
+        $this->assertSame('ended', $assignment->fresh()->status);
+
+        $remove = $this->actingAs($admin)->post('/admin/assignments/' . $assignment->id . '/remove');
+        $remove->assertRedirect('/admin/assignments');
+        $this->assertDatabaseMissing('employee_assignments', ['id' => $assignment->id]);
+    }
+
     public function test_default_nsys_shift_options_use_correct_times(): void
     {
         $morning = Shift::where('name', 'Morning Shift')->firstOrFail();

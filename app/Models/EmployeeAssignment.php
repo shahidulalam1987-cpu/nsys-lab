@@ -44,4 +44,9 @@ class EmployeeAssignment extends Model
     {
         return $this->belongsTo(Shift::class);
     }
+
+    public function statusLabel(): string
+    {
+        return $this->status === 'active' ? 'Active' : 'Inactive';
+    }
 }

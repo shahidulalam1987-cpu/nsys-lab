@@ -384,6 +384,7 @@
             || request()->is('admin/salary-payments*')
             || request()->is('admin/salary-month-sheet*')
             || request()->is('admin/attendance*')
+            || request()->is('admin/assignments*')
             || request()->is('admin/work-status*')
             || request()->is('admin/client-pages*')
             || request()->is('admin/payroll*');
@@ -413,6 +414,7 @@
             @if($isEmployeeDepartment)
                 <div class="sidebar-section-title">Employee</div>
                 <a class="{{ request()->is('admin/employees*') ? 'active-menu' : '' }}" href="/admin/employees">Employee List</a>
+                <a class="{{ request()->is('admin/assignments*') ? 'active-menu' : '' }}" href="/admin/assignments">Assignment Management</a>
                 <a class="{{ request()->is('admin/work-status*') ? 'active-menu' : '' }}" href="/admin/work-status">Work Status</a>
                 <a class="{{ request()->is('admin/attendance*') ? 'active-menu' : '' }}" href="/admin/attendance">Attendance</a>
                 <a class="{{ request()->is('admin/client-pages*') ? 'active-menu' : '' }}" href="/admin/client-pages">Page Management</a>

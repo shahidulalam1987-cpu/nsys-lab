@@ -3,12 +3,79 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Client;
+use App\Models\ClientPage;
 use App\Models\Employee;
 use App\Models\EmployeeAssignment;
+use App\Models\Shift;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class EmployeeAssignmentController extends Controller
 {
+    public function index(Request $request)
+    {
+        $query = EmployeeAssignment::with(['employee', 'client', 'page', 'shift'])
+            ->when($request->employee_id, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
+            ->when($request->client_id, fn ($query, $clientId) => $query->where('client_id', $clientId))
+            ->when($request->status, fn ($query, $status) => $query->where('status', $status));
+
+        $assignments = $query->latest('assigned_from')->latest()->get();
+        $allAssignments = EmployeeAssignment::with(['shift'])->get();
+
+        return view('admin.assignments.index', [
+            'assignments' => $assignments,
+            'employees' => Employee::orderBy('name')->get(),
+            'clients' => Client::orderBy('company_name')->get(),
+            'summary' => [
+                'total' => $allAssignments->count(),
+                'active' => $allAssignments->where('status', 'active')->count(),
+                'morning' => $allAssignments->where('status', 'active')->filter(fn ($assignment) => $assignment->shift?->name === 'Morning Shift')->count(),
+                'night' => $allAssignments->where('status', 'active')->filter(fn ($assignment) => $assignment->shift?->name === 'Night Shift')->count(),
+                'full_day' => $allAssignments->where('status', 'active')->filter(fn ($assignment) => $assignment->shift?->name === 'Full Day Shift')->count(),
+            ],
+        ]);
+    }
+
+    public function create()
+    {
+        return view('admin.assignments.create', $this->formData());
+    }
+
+    public function storeFromManagement(Request $request)
+    {
+        $data = $this->validatedData($request, requirePage: true);
+        $this->ensureNoDuplicateActivePageAssignment($data);
+
+        EmployeeAssignment::create($data);
+
+        return redirect('/admin/assignments')->with('success', 'Assignment saved successfully.');
+    }
+
+    public function show(EmployeeAssignment $assignment)
+    {
+        return view('admin.assignments.show', [
+            'assignment' => $assignment->load(['employee', 'client', 'page', 'shift']),
+        ]);
+    }
+
+    public function edit(EmployeeAssignment $assignment)
+    {
+        return view('admin.assignments.edit', array_merge($this->formData(), [
+            'assignment' => $assignment->load(['employee', 'client', 'page', 'shift']),
+        ]));
+    }
+
+    public function updateFromManagement(Request $request, EmployeeAssignment $assignment)
+    {
+        $data = $this->validatedData($request, requirePage: true, assignment: $assignment);
+        $this->ensureNoDuplicateActivePageAssignment($data, $assignment);
+
+        $assignment->update($data);
+
+        return redirect('/admin/assignments')->with('success', 'Assignment updated successfully.');
+    }
+
     public function store(Request $request, Employee $employee)
     {
         $data = $request->validate([
@@ -20,6 +87,9 @@ class EmployeeAssignmentController extends Controller
             'status' => ['required', 'in:active,ended'],
             'note' => ['nullable', 'string'],
         ]);
+        $data['employee_id'] = $employee->id;
+
+        $this->ensureNoDuplicateActivePageAssignment($data);
 
         $assignedTo = $data['assigned_to'] ?? null;
         $hasOverlap = $employee->assignments()
@@ -30,7 +100,7 @@ class EmployeeAssignmentController extends Controller
             })
             ->exists();
 
-        $employee->assignments()->create($data);
+        $employee->assignments()->create(collect($data)->except('employee_id')->all());
 
         $message = $hasOverlap
             ? 'Assignment saved. Warning: this employee has overlapping assignment dates.'
@@ -48,8 +118,12 @@ class EmployeeAssignmentController extends Controller
             'status' => ['required', 'in:active,ended'],
             'note' => ['nullable', 'string'],
         ]);
+        $data['employee_id'] = $assignment->employee_id;
+        $data['client_id'] = $assignment->client_id;
 
-        $assignment->update($data);
+        $this->ensureNoDuplicateActivePageAssignment($data, $assignment);
+
+        $assignment->update(collect($data)->except(['employee_id', 'client_id'])->all());
 
         return back()->with('success', 'Assignment updated successfully.');
     }
@@ -62,5 +136,55 @@ class EmployeeAssignmentController extends Controller
 
         return redirect('/admin/employees/' . $employeeId)
             ->with('success', 'Assignment deleted successfully.');
+    }
+
+    public function remove(EmployeeAssignment $assignment)
+    {
+        $assignment->delete();
+
+        return redirect('/admin/assignments')->with('success', 'Assignment removed successfully.');
+    }
+
+    private function formData(): array
+    {
+        return [
+            'employees' => Employee::orderBy('name')->get(),
+            'clients' => Client::orderBy('company_name')->get(),
+            'clientPages' => ClientPage::with('client')->orderBy('page_name')->get(),
+            'shifts' => Shift::where('status', 'active')->orderBy('id')->get(),
+        ];
+    }
+
+    private function validatedData(Request $request, bool $requirePage, ?EmployeeAssignment $assignment = null): array
+    {
+        return $request->validate([
+            'employee_id' => ['required', 'exists:employees,id'],
+            'client_id' => ['required', 'exists:clients,id'],
+            'client_page_id' => [$requirePage ? 'required' : 'nullable', 'exists:client_pages,id'],
+            'shift_id' => ['required', 'exists:shifts,id'],
+            'assigned_from' => ['required', 'date'],
+            'assigned_to' => ['nullable', 'date', 'after_or_equal:assigned_from'],
+            'status' => ['required', 'in:active,ended'],
+            'note' => ['nullable', 'string'],
+        ]);
+    }
+
+    private function ensureNoDuplicateActivePageAssignment(array $data, ?EmployeeAssignment $ignoreAssignment = null): void
+    {
+        if (($data['status'] ?? null) !== 'active' || empty($data['client_page_id'])) {
+            return;
+        }
+
+        $exists = EmployeeAssignment::where('employee_id', $data['employee_id'])
+            ->where('client_page_id', $data['client_page_id'])
+            ->where('status', 'active')
+            ->when($ignoreAssignment, fn ($query) => $query->whereKeyNot($ignoreAssignment->id))
+            ->exists();
+
+        if ($exists) {
+            throw ValidationException::withMessages([
+                'client_page_id' => 'This employee already has an active assignment for this page.',
+            ]);
+        }
     }
 }

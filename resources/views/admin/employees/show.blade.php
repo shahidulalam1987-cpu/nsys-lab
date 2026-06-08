@@ -157,7 +157,7 @@
         <button class="employee-tab-button active" type="button" data-tab="overview">Overview</button>
         <button class="employee-tab-button" type="button" data-tab="salary">Salary</button>
         <button class="employee-tab-button" type="button" data-tab="salary-ledger">Salary Ledger</button>
-        <button class="employee-tab-button" type="button" data-tab="assignment">Assignment</button>
+        <button class="employee-tab-button" type="button" data-tab="assignment">Assignments</button>
         <button class="employee-tab-button" type="button" data-tab="banking">Banking</button>
         <button class="employee-tab-button" type="button" data-tab="login">Login</button>
         <button class="employee-tab-button" type="button" data-tab="documents">Documents</button>
@@ -331,14 +331,14 @@
         </div>
 
         <div class="card">
-            <h2>Assignment History</h2>
+            <h2>Assignments</h2>
             <div class="table-wrap">
                 <table>
                     <tr>
                         <th>Client</th>
                         <th>Page</th>
                         <th>Shift</th>
-                        <th>From</th>
+                        <th>Assigned Date</th>
                         <th>To</th>
                         <th>Status</th>
                         <th>Note</th>
@@ -351,7 +351,7 @@
                             <td>{{ $assignment->shift?->name ?: '-' }}</td>
                             <td>{{ $assignment->assigned_from?->toDateString() }}</td>
                             <td>{{ $assignment->assigned_to?->toDateString() ?: '-' }}</td>
-                            <td>{{ ucfirst($assignment->status) }}</td>
+                            <td>{{ $assignment->statusLabel() }}</td>
                             <td>{{ $assignment->note ?: '-' }}</td>
                             <td>
                                 <form method="POST" action="/admin/employee-assignments/{{ $assignment->id }}/update" style="display:inline;">

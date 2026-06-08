@@ -93,6 +93,14 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/employees/{employee}/salary-days', [SalaryDayController::class, 'store']);
     Route::post('/admin/salary-days/{salaryDay}/delete', [SalaryDayController::class, 'destroy']);
 
+    Route::get('/admin/assignments', [EmployeeAssignmentController::class, 'index']);
+    Route::get('/admin/assignments/create', [EmployeeAssignmentController::class, 'create']);
+    Route::post('/admin/assignments', [EmployeeAssignmentController::class, 'storeFromManagement']);
+    Route::get('/admin/assignments/{assignment}', [EmployeeAssignmentController::class, 'show']);
+    Route::get('/admin/assignments/{assignment}/edit', [EmployeeAssignmentController::class, 'edit']);
+    Route::post('/admin/assignments/{assignment}/update', [EmployeeAssignmentController::class, 'updateFromManagement']);
+    Route::post('/admin/assignments/{assignment}/remove', [EmployeeAssignmentController::class, 'remove']);
+
     Route::get('/admin/attendance', [EmployeeAttendanceController::class, 'index']);
     Route::get('/admin/attendance/export', [EmployeeAttendanceController::class, 'export']);
     Route::get('/admin/attendance/{attendance}/edit', [EmployeeAttendanceController::class, 'edit']);
