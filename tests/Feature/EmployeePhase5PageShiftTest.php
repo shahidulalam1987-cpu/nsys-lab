@@ -87,6 +87,17 @@ class EmployeePhase5PageShiftTest extends TestCase
         $profile->assertSee('Full Day Shift');
     }
 
+    public function test_default_nsys_shift_options_use_correct_times(): void
+    {
+        $morning = Shift::where('name', 'Morning Shift')->firstOrFail();
+        $night = Shift::where('name', 'Night Shift')->firstOrFail();
+        $fullDay = Shift::where('name', 'Full Day Shift')->firstOrFail();
+
+        $this->assertSame('09:00 AM - 05:00 PM', $morning->timeRange());
+        $this->assertSame('05:00 PM - 01:00 AM', $night->timeRange());
+        $this->assertSame('09:00 AM - 01:00 AM', $fullDay->timeRange());
+    }
+
     public function test_work_status_accepts_page_and_shift_and_employee_dashboard_shows_them(): void
     {
         $admin = $this->user('admin');

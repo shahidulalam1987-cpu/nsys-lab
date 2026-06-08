@@ -21,9 +21,9 @@ return new class extends Migration
         }
 
         foreach ([
-            ['name' => 'Morning Shift', 'start_time' => '09:00:00', 'end_time' => '13:00:00'],
-            ['name' => 'Full Day Shift', 'start_time' => '09:00:00', 'end_time' => '17:00:00'],
-            ['name' => 'Evening Shift', 'start_time' => '17:00:00', 'end_time' => '01:00:00'],
+            ['name' => 'Morning Shift', 'start_time' => '09:00:00', 'end_time' => '17:00:00'],
+            ['name' => 'Night Shift', 'start_time' => '17:00:00', 'end_time' => '01:00:00'],
+            ['name' => 'Full Day Shift', 'start_time' => '09:00:00', 'end_time' => '01:00:00'],
         ] as $shift) {
             DB::table('shifts')->updateOrInsert(
                 ['name' => $shift['name']],
