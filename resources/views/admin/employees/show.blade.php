@@ -156,6 +156,7 @@
     <div class="employee-tabs" role="tablist">
         <button class="employee-tab-button active" type="button" data-tab="overview">Overview</button>
         <button class="employee-tab-button" type="button" data-tab="salary">Salary</button>
+        <button class="employee-tab-button" type="button" data-tab="salary-ledger">Salary Ledger</button>
         <button class="employee-tab-button" type="button" data-tab="assignment">Assignment</button>
         <button class="employee-tab-button" type="button" data-tab="banking">Banking</button>
         <button class="employee-tab-button" type="button" data-tab="login">Login</button>
@@ -231,6 +232,60 @@
                         -
                     @endif
                 </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="employee-tab-panel" data-tab-panel="salary-ledger">
+        <div class="stats-grid" style="margin-top:0;">
+            <div class="stat-card"><p>Total Generated Salary</p><h2>BDT {{ number_format($salaryLedgerSummary['total_generated'], 2) }}</h2></div>
+            <div class="stat-card"><p>Total Paid Salary</p><h2>BDT {{ number_format($salaryLedgerSummary['total_paid'], 2) }}</h2></div>
+            <div class="stat-card"><p>Current Due</p><h2>BDT {{ number_format($salaryLedgerSummary['current_due'], 2) }}</h2></div>
+            <div class="stat-card"><p>Last Payment Date</p><h2>{{ $salaryLedgerSummary['last_payment_date']?->toDateString() ?: '-' }}</h2></div>
+        </div>
+
+        <div class="card" style="margin-top:0;">
+            <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px;">
+                <h2 style="margin:0;">Salary Ledger</h2>
+                <p style="margin:0;">
+                    <a class="btn" href="/admin/employees/{{ $employee->id }}/salary-ledger/export/csv">Export CSV</a>
+                    <a class="btn" href="/admin/employees/{{ $employee->id }}/salary-ledger/export/excel">Export Excel</a>
+                </p>
+            </div>
+
+            <div class="table-wrap" style="margin-top:16px;">
+                <table>
+                    <tr>
+                        <th>Month</th>
+                        <th>Client</th>
+                        <th>Working Days</th>
+                        <th>Non Working Days</th>
+                        <th>Generated Salary</th>
+                        <th>Paid Amount</th>
+                        <th>Due Amount</th>
+                        <th>Status</th>
+                        <th>Generated Date</th>
+                        <th>Paid Date</th>
+                    </tr>
+                    @forelse($salaryLedgerRows as $row)
+                        <tr>
+                            <td>
+                                <a href="/admin/payroll/{{ $row['payroll']->id }}">{{ $row['month'] }}</a>
+                            </td>
+                            <td>{{ $row['client'] }}</td>
+                            <td>{{ $row['working_days'] }}</td>
+                            <td>{{ $row['non_working_days'] }}</td>
+                            <td>BDT {{ number_format($row['generated_salary'], 2) }}</td>
+                            <td>BDT {{ number_format($row['paid_amount'], 2) }}</td>
+                            <td>BDT {{ number_format($row['due_amount'], 2) }}</td>
+                            <td>{{ $row['status'] }}</td>
+                            <td>{{ $row['generated_date'] }}</td>
+                            <td>{{ $row['paid_date'] }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="10">No salary ledger records found.</td></tr>
+                    @endforelse
+                </table>
             </div>
         </div>
     </div>

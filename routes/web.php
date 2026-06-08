@@ -78,6 +78,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/employees/{employee}/create-login', [EmployeeController::class, 'storeLogin']);
     Route::get('/admin/employees/{employee}/reset-login-password', [EmployeeController::class, 'resetLoginPassword']);
     Route::post('/admin/employees/{employee}/reset-login-password', [EmployeeController::class, 'updateLoginPassword']);
+    Route::get('/admin/employees/{employee}/salary-ledger/export/csv', [EmployeeController::class, 'salaryLedgerCsv']);
+    Route::get('/admin/employees/{employee}/salary-ledger/export/excel', [EmployeeController::class, 'salaryLedgerExcel']);
     Route::get('/admin/employees/{id}', [EmployeeController::class, 'show']);
     Route::get('/admin/employees/{id}/edit', [EmployeeController::class, 'edit']);
     Route::post('/admin/employees/{id}/update', [EmployeeController::class, 'update']);
@@ -129,6 +131,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/payroll/{id}', [EmployeePayrollController::class, 'show']);
     Route::get('/admin/payroll/{id}/edit', [EmployeePayrollController::class, 'edit']);
     Route::post('/admin/payroll/{id}/update', [EmployeePayrollController::class, 'update']);
+    Route::post('/admin/payroll/{payroll}/approve', [EmployeePayrollController::class, 'approve']);
+    Route::post('/admin/payroll/{payroll}/mark-paid', [EmployeePayrollController::class, 'markPaid']);
     Route::post('/admin/payroll/{payroll}/delete', [EmployeePayrollController::class, 'destroy']);
 
     Route::get('/admin/clients', [ClientController::class, 'index']);

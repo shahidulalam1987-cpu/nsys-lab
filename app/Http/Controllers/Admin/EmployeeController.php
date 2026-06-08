@@ -73,8 +73,18 @@ class EmployeeController extends Controller
         $employee = Employee::with(['user', 'assignments.client', 'salaryDays.client', 'payrolls.client'])->findOrFail($id);
         $clients = Client::orderBy('company_name')->get();
         $salarySummary = $this->salarySummary($employee);
+        $salaryLedgerRows = $this->salaryLedgerRows($employee);
+        $salaryLedgerSummary = [
+            'total_generated' => $salaryLedgerRows->sum('generated_salary'),
+            'total_paid' => $salaryLedgerRows->sum('paid_amount'),
+            'current_due' => $salaryLedgerRows->sum('due_amount'),
+            'last_payment_date' => $employee->payrolls
+                ->filter(fn ($payroll) => (float) $payroll->paid_amount > 0)
+                ->sortByDesc(fn ($payroll) => $payroll->payment_date ?: $payroll->paid_at ?: $payroll->created_at)
+                ->first()?->payment_date,
+        ];
 
-        return view('admin.employees.show', compact('employee', 'clients', 'salarySummary'));
+        return view('admin.employees.show', compact('employee', 'clients', 'salarySummary', 'salaryLedgerRows', 'salaryLedgerSummary'));
     }
 
     public function edit($id)
@@ -218,6 +228,44 @@ class EmployeeController extends Controller
             ->with('success', 'Employee login password reset successfully.');
     }
 
+    public function salaryLedgerCsv(Employee $employee)
+    {
+        $rows = $this->salaryLedgerRows($employee->load('payrolls.client'));
+
+        return response()->streamDownload(function () use ($rows) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Month', 'Client', 'Working Days', 'Non Working Days', 'Generated Salary', 'Paid Amount', 'Due Amount', 'Status', 'Generated Date', 'Paid Date']);
+
+            foreach ($rows as $row) {
+                fputcsv($handle, [
+                    $row['month'],
+                    $row['client'],
+                    $row['working_days'],
+                    $row['non_working_days'],
+                    number_format($row['generated_salary'], 2, '.', ''),
+                    number_format($row['paid_amount'], 2, '.', ''),
+                    number_format($row['due_amount'], 2, '.', ''),
+                    $row['status'],
+                    $row['generated_date'],
+                    $row['paid_date'],
+                ]);
+            }
+
+            fclose($handle);
+        }, 'employee-salary-ledger-' . $employee->id . '.csv', ['Content-Type' => 'text/csv']);
+    }
+
+    public function salaryLedgerExcel(Employee $employee)
+    {
+        return response()->view('admin.employees.salary-ledger-excel', [
+            'employee' => $employee,
+            'rows' => $this->salaryLedgerRows($employee->load('payrolls.client')),
+        ], 200, [
+            'Content-Type' => 'application/vnd.ms-excel',
+            'Content-Disposition' => 'attachment; filename="employee-salary-ledger-' . $employee->id . '.xls"',
+        ]);
+    }
+
     private function validatedEmployee(Request $request): array
     {
         return $request->validate([
@@ -339,5 +387,30 @@ class EmployeeController extends Controller
             'upcoming_salary_date' => $employee->nextSalaryDate(),
             'salary_status' => $employee->salaryStatusLabel(),
         ];
+    }
+
+    private function salaryLedgerRows(Employee $employee)
+    {
+        return $employee->payrolls
+            ->sortByDesc(fn ($payroll) => $payroll->salary_month ?: $payroll->created_at)
+            ->map(fn ($payroll) => [
+                'month' => $payroll->salary_month?->format('Y-m') ?: '-',
+                'client' => $payroll->client?->company_name ?: '-',
+                'working_days' => $payroll->working_days ?? 0,
+                'non_working_days' => $payroll->non_working_days ?? 0,
+                'generated_salary' => (float) $payroll->payable_salary,
+                'paid_amount' => (float) $payroll->paid_amount,
+                'due_amount' => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0),
+                'status' => $payroll->payrollStatusLabel() . ' / ' . ([
+                    'upcoming' => 'Upcoming',
+                    'unpaid' => 'Unpaid',
+                    'partial' => 'Partially Paid',
+                    'paid' => 'Paid',
+                ][$payroll->calculated_status] ?? ucfirst($payroll->calculated_status)),
+                'generated_date' => $payroll->created_at?->toDateString() ?: '-',
+                'paid_date' => $payroll->payment_date?->toDateString() ?: $payroll->paid_at?->toDateString() ?: '-',
+                'payroll' => $payroll,
+            ])
+            ->values();
     }
 }

@@ -44,22 +44,46 @@
 
     <div class="stats-grid">
         <div class="stat-card">
-            <p>Total Payable Salary (BDT)</p>
+            <p>Total Payroll Generated</p>
             <h2>BDT {{ number_format($summary['total_payable'], 2) }}</h2>
         </div>
         <div class="stat-card">
-            <p>Total Paid Salary</p>
+            <p>Total Payroll Paid</p>
             <h2>BDT {{ number_format($summary['total_paid'], 2) }}</h2>
         </div>
         <div class="stat-card">
-            <p>Total Remaining Due</p>
+            <p>Current Payroll Due</p>
             <h2>BDT {{ number_format($summary['total_due'], 2) }}</h2>
         </div>
         <div class="stat-card">
-            <p>Salary Records</p>
-            <h2>{{ number_format($summary['record_count'] ?? $payrolls->count()) }}</h2>
+            <p>Upcoming This Week</p>
+            <h2>{{ number_format($summary['upcoming_count'] ?? 0) }}</h2>
+        </div>
+        <div class="stat-card">
+            <p>Overdue Payroll</p>
+            <h2>{{ number_format($summary['overdue_count'] ?? 0) }}</h2>
         </div>
     </div>
+
+    <div class="card">
+        <h2>Current Month Summary</h2>
+        <p>
+            Generated: <strong>BDT {{ number_format($summary['current_month_payable'] ?? 0, 2) }}</strong>
+            &nbsp; | &nbsp;
+            Paid: <strong>BDT {{ number_format($summary['current_month_paid'] ?? 0, 2) }}</strong>
+            &nbsp; | &nbsp;
+            Due: <strong>BDT {{ number_format($summary['current_month_due'] ?? 0, 2) }}</strong>
+            &nbsp; | &nbsp;
+            Records: <strong>{{ number_format($summary['record_count'] ?? $payrolls->count()) }}</strong>
+        </p>
+    </div>
+
+    @if(($activeStatus === 'upcoming' || $activeStatus === 'due') && (($cycleEmployees ?? collect())->isNotEmpty() || $payrolls->isNotEmpty()))
+        <div class="card" style="border-color:{{ $activeStatus === 'due' ? '#ef4444' : '#f59e0b' }};">
+            <h2>{{ $activeStatus === 'due' ? 'Unpaid Salary Due' : 'Upcoming Salary This Week' }}</h2>
+            <p>{{ $activeStatus === 'due' ? 'Salary cycles past due or not fully paid.' : 'Salary cycles within the next 5 days.' }}</p>
+        </div>
+    @endif
 
     <div class="card">
         <table>
@@ -104,6 +128,8 @@
                     <th>Paid Salary</th>
                     <th>Remaining Due</th>
                     <th>Payment Status</th>
+                    <th>Payroll Status</th>
+                    <th>Generation</th>
                     <th>Payment Date</th>
                     <th>Proof</th>
                     <th>Action</th>
@@ -158,6 +184,8 @@
                         <td>BDT {{ number_format($payroll->paid_amount, 2) }}</td>
                         <td>BDT {{ number_format($remainingDue, 2) }}</td>
                         <td>{{ $statusLabels[$payroll->calculated_status] ?? ucfirst($payroll->calculated_status) }}</td>
+                        <td><span class="badge {{ $payroll->payrollStatusBadgeClass() }}">{{ $payroll->payrollStatusLabel() }}</span></td>
+                        <td><span class="badge {{ $payroll->generationStatusBadgeClass() }}">{{ $payroll->generationStatusLabel() }}</span></td>
                         <td>{{ $payroll->payment_date?->toDateString() ?: '-' }}</td>
                         <td>
                             @if($payroll->payment_proof)
@@ -179,7 +207,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="11">No salary records found.</td></tr>
+                <tr><td colspan="13">No salary records found.</td></tr>
             @endforelse
         </table>
     </div>

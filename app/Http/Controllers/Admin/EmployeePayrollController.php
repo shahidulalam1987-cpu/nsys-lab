@@ -129,10 +129,26 @@ class EmployeePayrollController extends Controller
             'payment_proof' => ['nullable', 'image', 'max:4096'],
             'transaction_id' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string'],
+            'confirm_regenerate' => ['nullable', 'boolean'],
         ]);
 
         $employee = Employee::findOrFail($data['employee_id']);
         $calculation = $this->calculatePayroll($employee, $data);
+        $existingPayroll = $this->existingPayrollForPeriod(
+            (int) $data['employee_id'],
+            (int) $data['client_id'],
+            $calculation['salary_month']
+        );
+
+        if ($existingPayroll && empty($data['confirm_regenerate'])) {
+            return view('admin.payroll.duplicate-warning', [
+                'existingPayroll' => $existingPayroll,
+                'requestData' => collect($request->except(['_token', 'payment_proof']))
+                    ->put('confirm_regenerate', 1)
+                    ->all(),
+            ]);
+        }
+
         $paidAmount = (float) ($data['paid_amount'] ?? 0);
         $paymentStatus = EmployeePayroll::paymentStatusFor(null, $calculation['payable_salary'], $paidAmount);
         $this->validatePaymentWorkflow($request, $paidAmount);
@@ -159,8 +175,17 @@ class EmployeePayrollController extends Controller
             'payment_proof' => $request->file('payment_proof')?->store('employee-payroll-proofs', 'public'),
             'transaction_id' => $data['transaction_id'] ?? null,
             'status' => EmployeePayroll::statusFor($calculation['payable_salary'], $paidAmount),
+            'payroll_status' => 'generated',
+            'generation_status' => $existingPayroll ? 'regenerated' : 'generated',
+            'regenerated_from_id' => $existingPayroll?->id,
             'note' => $data['note'] ?? null,
         ]);
+
+        $payroll->markAudit(
+            $existingPayroll ? 'salary_regenerated' : 'salary_generated',
+            auth()->id(),
+            $existingPayroll ? 'Regenerated from salary #' . $existingPayroll->id : null
+        );
 
         return redirect('/admin/payroll/' . $payroll->id)
             ->with('success', 'Employee payroll saved successfully.');
@@ -168,9 +193,10 @@ class EmployeePayrollController extends Controller
 
     public function show($id)
     {
-        $payroll = EmployeePayroll::with(['employee', 'client'])->findOrFail($id);
+        $payroll = EmployeePayroll::with(['employee', 'client', 'audits.user', 'approver', 'payer'])->findOrFail($id);
+        $workStatusSummary = $this->workStatusSummary($payroll);
 
-        return view('admin.payroll.show', compact('payroll'));
+        return view('admin.payroll.show', compact('payroll', 'workStatusSummary'));
     }
 
     public function edit($id, ClientFundDashboardService $clientFundDashboardService)
@@ -225,6 +251,51 @@ class EmployeePayrollController extends Controller
             ->with('success', 'Employee payroll updated successfully.');
     }
 
+    public function approve(EmployeePayroll $payroll)
+    {
+        if (! $payroll->canApprove()) {
+            return redirect('/admin/payroll/' . $payroll->id)
+                ->with('success', 'This salary is already approved or paid.');
+        }
+
+        $payroll->update([
+            'payroll_status' => 'approved',
+            'approved_at' => now(),
+            'approved_by' => auth()->id(),
+        ]);
+
+        $payroll->markAudit('salary_approved', auth()->id());
+
+        return redirect('/admin/payroll/' . $payroll->id)
+            ->with('success', 'Payroll approved successfully.');
+    }
+
+    public function markPaid(EmployeePayroll $payroll)
+    {
+        if (! $payroll->canMarkPaid()) {
+            return redirect('/admin/payroll/' . $payroll->id)
+                ->with('success', 'Approve payroll before marking it paid.');
+        }
+
+        if ((float) $payroll->paid_amount < (float) $payroll->payable_salary) {
+            return redirect('/admin/payroll/' . $payroll->id . '/edit')
+                ->with('success', 'Enter full paid salary, payment method, and payment date before marking paid.');
+        }
+
+        $payroll->update([
+            'payroll_status' => 'paid',
+            'payment_status' => 'paid',
+            'status' => 'paid',
+            'paid_at' => now(),
+            'paid_by' => auth()->id(),
+        ]);
+
+        $payroll->markAudit('salary_paid', auth()->id());
+
+        return redirect('/admin/payroll/' . $payroll->id)
+            ->with('success', 'Payroll marked as paid successfully.');
+    }
+
     public function destroy(EmployeePayroll $payroll)
     {
         $payroll->delete();
@@ -266,7 +337,42 @@ class EmployeePayrollController extends Controller
                 'total_due' => $payrolls->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0))
                     + $cycleEmployees->sum(fn (Employee $employee) => (float) $employee->monthly_salary),
                 'record_count' => $payrolls->count() + $cycleEmployees->count(),
+                'upcoming_count' => $payrolls->where('calculated_status', 'upcoming')->count() + (($filters['status'] ?? null) === 'upcoming' ? $cycleEmployees->count() : 0),
+                'overdue_count' => $payrolls->filter(fn (EmployeePayroll $payroll) => in_array($payroll->calculated_status, ['unpaid', 'partial'], true))->count()
+                    + (($filters['status'] ?? null) === 'due' ? $cycleEmployees->count() : 0),
+                'current_month_payable' => $payrolls
+                    ->filter(fn (EmployeePayroll $payroll) => $payroll->salary_month?->isSameMonth(now()))
+                    ->sum('payable_salary'),
+                'current_month_paid' => $payrolls
+                    ->filter(fn (EmployeePayroll $payroll) => $payroll->salary_month?->isSameMonth(now()))
+                    ->sum('paid_amount'),
+                'current_month_due' => $payrolls
+                    ->filter(fn (EmployeePayroll $payroll) => $payroll->salary_month?->isSameMonth(now()))
+                    ->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
             ],
+        ];
+    }
+
+    private function existingPayrollForPeriod(int $employeeId, int $clientId, Carbon $salaryMonth): ?EmployeePayroll
+    {
+        return EmployeePayroll::with(['employee', 'client'])
+            ->where('employee_id', $employeeId)
+            ->where('client_id', $clientId)
+            ->whereDate('salary_month', $salaryMonth->copy()->startOfMonth()->toDateString())
+            ->latest()
+            ->first();
+    }
+
+    private function workStatusSummary(EmployeePayroll $payroll): array
+    {
+        $adjustments = collect($payroll->salary_day_adjustments ?? []);
+
+        return [
+            'working_days' => (float) $adjustments->sum(fn (array $adjustment) => (float) ($adjustment['salary_count_value'] ?? (($adjustment['day_type'] ?? 'working') === 'working' ? 1 : 0))),
+            'half_days' => $adjustments->filter(fn (array $adjustment) => (float) ($adjustment['salary_count_value'] ?? 0) === 0.5)->count(),
+            'leave' => $adjustments->whereIn('reason', ['on_leave', 'sick_leave'])->count(),
+            'client_issue' => $adjustments->where('reason', 'client_issue')->count(),
+            'boosting_off' => $adjustments->where('reason', 'boosting_off')->count(),
         ];
     }
 

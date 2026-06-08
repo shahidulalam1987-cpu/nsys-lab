@@ -257,6 +257,7 @@
         .badge-warning { background: var(--warning); }
         .badge-danger { background: var(--danger); }
         .badge-info { background: var(--blue); }
+        .badge-neutral { background: #64748b; }
 
         button {
             padding: 8px 12px;

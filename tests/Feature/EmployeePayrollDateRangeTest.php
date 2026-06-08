@@ -98,6 +98,7 @@ class EmployeePayrollDateRangeTest extends TestCase
             'working_days' => 4,
             'non_working_days' => 0,
             'paid_amount' => 0,
+            'confirm_regenerate' => 1,
         ]);
 
         $payroll = $employee->payrolls()->orderByDesc('id')->first();

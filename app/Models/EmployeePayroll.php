@@ -31,6 +31,13 @@ class EmployeePayroll extends Model
         'payment_date',
         'status',
         'payment_status',
+        'payroll_status',
+        'generation_status',
+        'regenerated_from_id',
+        'approved_at',
+        'approved_by',
+        'paid_at',
+        'paid_by',
         'payment_proof',
         'transaction_id',
         'note',
@@ -52,6 +59,8 @@ class EmployeePayroll extends Model
             'payable_salary' => 'decimal:2',
             'paid_amount' => 'decimal:2',
             'payment_date' => 'date',
+            'approved_at' => 'datetime',
+            'paid_at' => 'datetime',
         ];
     }
 
@@ -63,6 +72,8 @@ class EmployeePayroll extends Model
                 (float) ($payroll->payable_salary ?? 0),
                 (float) ($payroll->paid_amount ?? 0)
             );
+            $payroll->attributes['payroll_status'] = $payroll->attributes['payroll_status'] ?? 'generated';
+            $payroll->attributes['generation_status'] = $payroll->attributes['generation_status'] ?? 'generated';
             $payroll->attributes['status'] = self::statusFor(
                 (float) ($payroll->payable_salary ?? 0),
                 (float) ($payroll->paid_amount ?? 0)
@@ -128,6 +139,65 @@ class EmployeePayroll extends Model
         return $this->calculation_type === 'monthly_cycle'
             ? 'Monthly Cycle'
             : 'Date To Date';
+    }
+
+    public function payrollStatusLabel(): string
+    {
+        return [
+            'draft' => 'Draft',
+            'generated' => 'Generated',
+            'approved' => 'Approved',
+            'paid' => 'Paid',
+        ][$this->payroll_status] ?? 'Generated';
+    }
+
+    public function payrollStatusBadgeClass(): string
+    {
+        return [
+            'draft' => 'badge-neutral',
+            'generated' => 'badge-info',
+            'approved' => 'badge-warning',
+            'paid' => 'badge-success',
+        ][$this->payroll_status] ?? 'badge-info';
+    }
+
+    public function generationStatusLabel(): string
+    {
+        return $this->generation_status === 'regenerated' ? 'Regenerated' : 'Generated';
+    }
+
+    public function generationStatusBadgeClass(): string
+    {
+        return $this->generation_status === 'regenerated' ? 'badge-warning' : 'badge-info';
+    }
+
+    public function canApprove(): bool
+    {
+        return in_array($this->payroll_status, ['draft', 'generated'], true);
+    }
+
+    public function canMarkPaid(): bool
+    {
+        return in_array($this->payroll_status, ['approved', 'paid'], true);
+    }
+
+    public function markAudit(string $action, ?int $userId = null, ?string $note = null): EmployeePayrollAudit
+    {
+        return $this->audits()->create([
+            'user_id' => $userId,
+            'action' => $action,
+            'note' => $note,
+        ]);
+    }
+
+    public function workflowActionLabel(string $action): string
+    {
+        return [
+            'salary_generated' => 'Salary Generated',
+            'salary_regenerated' => 'Salary Regenerated',
+            'salary_approved' => 'Salary Approved',
+            'salary_paid' => 'Salary Paid',
+        ][$action] ?? ucwords(str_replace('_', ' ', $action));
     }
 
     public function getStatusAttribute($value): string
@@ -273,5 +343,20 @@ class EmployeePayroll extends Model
     public function client()
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function audits()
+    {
+        return $this->hasMany(EmployeePayrollAudit::class)->latest();
+    }
+
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function payer()
+    {
+        return $this->belongsTo(User::class, 'paid_by');
     }
 }
