@@ -80,6 +80,8 @@ class EmployeePayrollDateRangeTest extends TestCase
             'working_days' => 30,
             'non_working_days' => 0,
             'paid_amount' => 10000,
+            'payment_method' => 'Bank Transfer',
+            'payment_date' => '2026-06-30',
         ]);
 
         $payroll = $employee->payrolls()->first();
@@ -266,11 +268,11 @@ class EmployeePayrollDateRangeTest extends TestCase
         $payroll = $employee->payrolls()->first();
 
         $response->assertRedirect('/admin/payroll/' . $payroll->id);
-        $this->assertSame('upcoming', $payroll->calculated_status);
+        $this->assertSame('unpaid', $payroll->calculated_status);
         $this->assertSame(10000.0, (float) $payroll->payable_salary);
         $this->assertDatabaseHas('employee_payrolls', [
             'id' => $payroll->id,
-            'payment_status' => 'upcoming',
+            'payment_status' => 'unpaid',
             'paid_amount' => 0,
             'payment_method' => null,
             'payment_date' => null,

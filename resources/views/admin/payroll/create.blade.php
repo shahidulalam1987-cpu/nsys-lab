@@ -264,14 +264,8 @@
 
             <div class="salary-section">
                 <h2>Payment Information</h2>
+                <p>Salary status is calculated automatically from salary date and paid salary.</p>
                 <div class="salary-form-grid payment-grid">
-                    <p class="salary-field">Payment Status<br>
-                        <select name="payment_status" id="payment_status" required>
-                            @foreach(['upcoming' => 'Upcoming', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'] as $value => $label)
-                                <option value="{{ $value }}" {{ old('payment_status', 'upcoming') === $value ? 'selected' : '' }}>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </p>
                     <p class="salary-field">Paid Salary<br><input type="number" step="0.01" min="0" name="paid_amount" id="paid_amount" value="{{ old('paid_amount', 0) }}"></p>
                     <p class="salary-field">Payment Method<br><input type="text" name="payment_method" id="payment_method" value="{{ old('payment_method') }}"></p>
                     <p class="salary-field">Payment Date<br><input type="date" name="payment_date" id="payment_date" value="{{ old('payment_date') }}"></p>
@@ -300,7 +294,6 @@
         const dateAdjustmentBody = document.getElementById('date_adjustment_body');
         const dateAdjustmentToggle = document.getElementById('date_adjustment_toggle');
         const dateAdjustmentRows = document.getElementById('date_adjustment_rows');
-        const paymentStatus = document.getElementById('payment_status');
         const paidAmount = document.getElementById('paid_amount');
         const paymentMethod = document.getElementById('payment_method');
         const paymentDate = document.getElementById('payment_date');
@@ -483,7 +476,7 @@
             const dailySalary = monthDays > 0 ? monthlySalary / monthDays : 0;
             const payableSalary = monthDays > 0 ? (monthlySalary * Number(workingDays.value || 0)) / monthDays : 0;
             const due = Math.max(payableSalary - Number(paidAmount.value || 0), 0);
-            const needsPaymentDetails = ['partial', 'paid'].includes(paymentStatus.value);
+            const needsPaymentDetails = Number(paidAmount.value || 0) > 0;
 
             monthlySalaryDisplay.value = money(monthlySalary);
             monthDaysDisplay.value = monthDays;
@@ -519,7 +512,7 @@
             field.addEventListener('change', syncDatesAndSalary);
         });
 
-        [employeeSelect, clientSelect, workingDays, paymentStatus, paidAmount].forEach((field) => {
+        [employeeSelect, clientSelect, workingDays, paidAmount].forEach((field) => {
             field.addEventListener('input', calculateSalary);
             field.addEventListener('change', calculateSalary);
         });

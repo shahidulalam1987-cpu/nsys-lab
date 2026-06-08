@@ -34,14 +34,7 @@
         <form method="POST" action="/admin/payroll/{{ $payroll->id }}/update" enctype="multipart/form-data">
             @csrf
 
-            <p>
-                Payment Status<br>
-                <select name="payment_status" id="payment_status" required>
-                    @foreach(['upcoming' => 'Upcoming', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'] as $value => $label)
-                        <option value="{{ $value }}" {{ old('payment_status', $payroll->calculated_status) === $value ? 'selected' : '' }}>{{ $label }}</option>
-                    @endforeach
-                </select>
-            </p>
+            <p>Salary status is calculated automatically from salary date and paid salary.</p>
 
             <p>
                 Paid Salary<br>
@@ -81,19 +74,19 @@
     </div>
 
     <script>
-        const paymentStatus = document.getElementById('payment_status');
         const paidAmount = document.getElementById('paid_amount');
         const paymentMethod = document.getElementById('payment_method');
         const paymentDate = document.getElementById('payment_date');
 
         function syncPaymentRequirements() {
-            const needsPaymentDetails = ['partial', 'paid'].includes(paymentStatus.value);
+            const needsPaymentDetails = Number(paidAmount.value || 0) > 0;
             paidAmount.required = needsPaymentDetails;
             paymentMethod.required = needsPaymentDetails;
             paymentDate.required = needsPaymentDetails;
         }
 
-        paymentStatus.addEventListener('change', syncPaymentRequirements);
+        paidAmount.addEventListener('input', syncPaymentRequirements);
+        paidAmount.addEventListener('change', syncPaymentRequirements);
         syncPaymentRequirements();
     </script>
 @endsection
