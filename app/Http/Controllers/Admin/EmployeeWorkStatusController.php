@@ -39,12 +39,29 @@ class EmployeeWorkStatusController extends Controller
 
     public function create()
     {
+        $employees = Employee::with(['activeAssignments.page', 'activeAssignments.shift'])
+            ->orderBy('name')
+            ->get();
+        $assignmentDefaults = $employees
+            ->mapWithKeys(function (Employee $employee) {
+                $assignment = $employee->activeAssignments->sortByDesc('assigned_from')->first();
+
+                return [$employee->id => [
+                    'employee_id' => $employee->id,
+                    'client_id' => $assignment?->client_id,
+                    'client_page_id' => $assignment?->client_page_id,
+                    'shift_id' => $assignment?->shift_id ?: $employee->shift_id,
+                ]];
+            })
+            ->all();
+
         return view('admin.work-status.create', [
-            'employees' => Employee::with(['activeAssignments.page', 'activeAssignments.shift'])->orderBy('name')->get(),
+            'employees' => $employees,
             'clients' => Client::orderBy('company_name')->get(),
             'clientPages' => ClientPage::orderBy('page_name')->get(),
             'shifts' => Shift::where('status', 'active')->orderBy('id')->get(),
             'statuses' => EmployeeWorkStatus::STATUSES,
+            'assignmentDefaults' => $assignmentDefaults,
         ]);
     }
 

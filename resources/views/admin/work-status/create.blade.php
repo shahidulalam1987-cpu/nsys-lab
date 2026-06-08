@@ -56,15 +56,7 @@
         </form>
     </div>
     <script>
-        const assignmentDefaults = @json($employees->mapWithKeys(function ($employee) {
-            $assignment = $employee->activeAssignments->sortByDesc('assigned_from')->first();
-
-            return [$employee->id => [
-                'client_id' => $assignment?->client_id,
-                'client_page_id' => $assignment?->client_page_id,
-                'shift_id' => $assignment?->shift_id ?: $employee->shift_id,
-            ]];
-        }));
+        const assignmentDefaults = @json($assignmentDefaults);
 
         document.querySelectorAll('.js-client-select').forEach((clientSelect) => {
             const pageSelect = document.getElementById(clientSelect.dataset.pageTarget);
