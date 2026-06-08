@@ -145,6 +145,11 @@ class Employee extends Model
         return self::STATUSES[$this->status] ?? ucwords(str_replace('_', ' ', $this->status));
     }
 
+    public function shortStatusLabel(): string
+    {
+        return self::STATUS_FILTERS[$this->status] ?? ucwords(str_replace('_', ' ', $this->status));
+    }
+
     public function nextSalaryDate(): ?Carbon
     {
         if (! $this->salaryCycleDay()) {

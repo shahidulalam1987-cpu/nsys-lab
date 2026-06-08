@@ -70,8 +70,8 @@ class EmployeePhase2AAdminTest extends TestCase
         $response->assertOk();
         $response->assertSee('Total Employees');
         $response->assertSee('All Employees');
-        $response->assertSee('Active-Working');
-        $response->assertSee('Inactive-Not Working');
+        $response->assertSee('Active');
+        $response->assertSee('Inactive');
         $response->assertSee('Terminated');
     }
 

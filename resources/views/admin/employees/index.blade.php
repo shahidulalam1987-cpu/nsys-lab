@@ -351,7 +351,7 @@
                         <td>BDT {{ number_format($employee->monthly_salary, 2) }}</td>
                         <td>
                             <span class="status-badge status-{{ $employee->status }}">
-                                {{ $employee->statusLabel() }}
+                                {{ $employee->shortStatusLabel() }}
                             </span>
                         </td>
                         <td>
