@@ -4,13 +4,13 @@
     <h1>My Attendance</h1>
     <p>Attendance is for shift monitoring only. Salary is calculated from Work Status records assigned by admin or team leader.</p>
 
-    @if ($errors->any())
-        <div class="card" style="color:#ef4444;">
-            @foreach ($errors->all() as $error)
-                <p>{{ $error }}</p>
-            @endforeach
-        </div>
-    @endif
+    <div class="stats-grid">
+        <div class="stat-card"><p>Today's Shift</p><h2>{{ $todayAttendance?->shift?->name ?: $primaryAssignment?->shift?->name ?: $employee->shift?->name ?: '-' }}</h2></div>
+        <div class="stat-card"><p>Today's Status</p><h2>{{ $todayAttendance?->statusLabel() ?: 'Not Marked' }}</h2></div>
+        <div class="stat-card"><p>Present Days</p><h2>{{ number_format($summary['present_days']) }}</h2></div>
+        <div class="stat-card"><p>Late Days</p><h2>{{ number_format($summary['late_days']) }}</h2></div>
+        <div class="stat-card"><p>Attendance Records</p><h2>{{ number_format($summary['records']) }}</h2></div>
+    </div>
 
     <div class="card">
         <h2>Mark Attendance</h2>
@@ -33,29 +33,19 @@
             <table>
                 <tr>
                     <th>Date</th>
-                    <th>Client</th>
-                    <th>Shift</th>
                     <th>Check In</th>
                     <th>Check Out</th>
-                    <th>Late</th>
                     <th>Status</th>
-                    <th>Day Type</th>
-                    <th>Note</th>
                 </tr>
                 @forelse($attendances as $attendance)
                     <tr>
                         <td>{{ $attendance->attendance_date?->toDateString() }}</td>
-                        <td>{{ $attendance->client?->company_name ?: '-' }}</td>
-                        <td>{{ $attendance->shift?->name ?: '-' }}</td>
                         <td>{{ $attendance->check_in_at?->format('h:i A') ?: '-' }}</td>
                         <td>{{ $attendance->check_out_at?->format('h:i A') ?: '-' }}</td>
-                        <td>{{ $attendance->is_late ? 'Yes' : 'No' }}</td>
                         <td>{{ $attendance->statusLabel() }}</td>
-                        <td>{{ $attendance->is_working_day ? 'Working Day' : 'Non Working Day' }}</td>
-                        <td>{{ $attendance->note ?: '-' }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="9">No attendance records found.</td></tr>
+                    <tr><td colspan="4">No attendance records found.</td></tr>
                 @endforelse
             </table>
         </div>

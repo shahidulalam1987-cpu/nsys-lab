@@ -63,13 +63,27 @@
     <div class="layout">
         <div class="sidebar">
             <a class="{{ request()->is('employee/dashboard') ? 'active-menu' : '' }}" href="/employee/dashboard">Dashboard</a>
+            <a class="{{ request()->is('employee/work-status*') ? 'active-menu' : '' }}" href="/employee/work-status">My Work Status</a>
             <a class="{{ request()->is('employee/attendance*') ? 'active-menu' : '' }}" href="/employee/attendance">My Attendance</a>
-            <a class="{{ request()->is('employee/salary') ? 'active-menu' : '' }}" href="/employee/salary">My Salary</a>
+            <a class="{{ request()->is('employee/salary*') ? 'active-menu' : '' }}" href="/employee/salary">My Salary</a>
             <a class="{{ request()->is('employee/assignments') ? 'active-menu' : '' }}" href="/employee/assignments">My Assignments</a>
-            <a class="{{ request()->is('employee/profile') ? 'active-menu' : '' }}" href="/employee/profile">My Profile</a>
+            <a class="{{ request()->is('employee/documents') ? 'active-menu' : '' }}" href="/employee/documents">My Documents</a>
             <a class="{{ request()->is('employee/notices') ? 'active-menu' : '' }}" href="/employee/notices">Notices</a>
+            <a class="{{ request()->is('employee/profile') ? 'active-menu' : '' }}" href="/employee/profile">My Profile</a>
         </div>
         <div class="content">
+            @if(session('success'))
+                <div class="card" style="background: rgba(34,197,94,.15); border:1px solid #22c55e; color:#22c55e;">
+                    {{ session('success') }}
+                </div>
+            @endif
+            @if ($errors->any())
+                <div class="card" style="color:#ef4444;">
+                    @foreach($errors->all() as $error)
+                        <p>{{ $error }}</p>
+                    @endforeach
+                </div>
+            @endif
             @yield('content')
         </div>
     </div>

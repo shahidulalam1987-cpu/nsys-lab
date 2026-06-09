@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Employee;
 
 use App\Http\Controllers\Controller;
+use App\Models\EmployeeNotice;
+use App\Models\EmployeeNoticeRead;
 
 class DashboardController extends Controller
 {
@@ -44,6 +46,18 @@ class DashboardController extends Controller
         $activeAssignments = $employee->assignments->where('status', 'active');
         $primaryAssignment = $activeAssignments->sortByDesc('assigned_from')->first();
         $payrolls = $employee->payrolls->sortByDesc('salary_month');
+        $salarySummary = [
+            'generated_salary' => (float) $payrolls->sum('payable_salary'),
+            'paid_salary' => (float) $payrolls->sum('paid_amount'),
+            'due_salary' => $payrolls->sum(fn ($payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
+        ];
+        $latestNotices = EmployeeNotice::latest('published_at')->latest()->take(5)->get();
+        $unreadNoticeCount = EmployeeNotice::whereDoesntHave('reads', function ($query) use ($employee) {
+            $query->where('employee_id', $employee->id);
+        })->count();
+        $pendingWorkStatusCount = $employee->assignments
+            ->where('status', 'active')
+            ->count() > 0 && ! $todayWorkStatus ? 1 : 0;
 
         return view('employee.dashboard', compact(
             'employee',
@@ -52,7 +66,11 @@ class DashboardController extends Controller
             'todayAttendance',
             'activeAssignments',
             'primaryAssignment',
-            'payrolls'
+            'payrolls',
+            'salarySummary',
+            'latestNotices',
+            'unreadNoticeCount',
+            'pendingWorkStatusCount'
         ));
     }
 }

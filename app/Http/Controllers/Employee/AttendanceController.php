@@ -14,13 +14,27 @@ class AttendanceController extends Controller
 {
     public function index()
     {
-        $employee = $this->employee();
+        $employee = $this->employee()->load(['shift', 'assignments.shift']);
         $attendances = $employee->attendances()
             ->with(['client', 'shift'])
             ->latest('attendance_date')
             ->paginate(20);
+        $todayAttendance = $employee->attendances()
+            ->with('shift')
+            ->whereDate('attendance_date', today())
+            ->first();
+        $monthlyAttendances = $employee->attendances()
+            ->whereDate('attendance_date', '>=', now()->startOfMonth()->toDateString())
+            ->whereDate('attendance_date', '<=', now()->endOfMonth()->toDateString())
+            ->get();
+        $primaryAssignment = $employee->assignments->where('status', 'active')->sortByDesc('assigned_from')->first();
+        $summary = [
+            'present_days' => $monthlyAttendances->where('status', 'present')->count(),
+            'late_days' => $monthlyAttendances->where('is_late', true)->count(),
+            'records' => $monthlyAttendances->count(),
+        ];
 
-        return view('employee.attendance.index', compact('employee', 'attendances'));
+        return view('employee.attendance.index', compact('employee', 'attendances', 'todayAttendance', 'primaryAssignment', 'summary'));
     }
 
     public function store(Request $request)

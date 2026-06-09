@@ -3,50 +3,49 @@
 @section('content')
     <h1>Employee Dashboard</h1>
 
-    <div class="card">
-        <h2>{{ $employee->name }} ({{ $employee->employee_id }})</h2>
-        <p><strong>Status:</strong> {{ ucwords(str_replace('_', ' ', $employee->status)) }}</p>
-        <p><strong>Joining Date:</strong> {{ $employee->joining_date?->toDateString() }}</p>
-        <p><strong>Confirmation Status:</strong> {{ $employee->confirmation_date ? 'Confirmed on ' . $employee->confirmation_date->toDateString() : 'Not Confirmed' }}</p>
-        <p><strong>Monthly Salary:</strong> BDT {{ number_format($employee->monthly_salary, 2) }}</p>
-        <p><strong>Assigned Client:</strong> {{ $primaryAssignment?->client?->company_name ?: '-' }}</p>
-        <p><strong>Assigned Page:</strong> {{ $primaryAssignment?->page?->page_name ?: '-' }}</p>
-        <p><strong>Shift:</strong> {{ $primaryAssignment?->shift?->name ?: $employee->shift?->name ?: '-' }}</p>
-        <p><strong>Shift Time:</strong> {{ $primaryAssignment?->shift?->timeRange() ?: $employee->shift?->timeRange() ?: '-' }}</p>
-    </div>
-
     <div class="stats-grid">
-        <div class="stat-card"><p>Working Days</p><h2>{{ number_format($workStatusSummary['working_days'], 2) }}</h2></div>
-        <div class="stat-card"><p>Half Days</p><h2>{{ number_format($workStatusSummary['half_days']) }}</h2></div>
-        <div class="stat-card"><p>Salary Status</p><h2>{{ $employee->salaryStatusLabel() }}</h2></div>
+        <div class="stat-card"><p>Assigned Client</p><h2>{{ $primaryAssignment?->client?->company_name ?: '-' }}</h2></div>
+        <div class="stat-card"><p>Assigned Page</p><h2>{{ $primaryAssignment?->page?->page_name ?: '-' }}</h2></div>
+        <div class="stat-card"><p>Current Shift</p><h2>{{ $primaryAssignment?->shift?->name ?: $employee->shift?->name ?: '-' }}</h2></div>
+        <div class="stat-card"><p>Today's Work Status</p><h2>{{ $todayWorkStatus?->statusLabel() ?: 'Pending' }}</h2></div>
+        <div class="stat-card"><p>This Month Working Days</p><h2>{{ number_format($workStatusSummary['working_days'], 2) }}</h2></div>
         <div class="stat-card"><p>Next Salary Date</p><h2>{{ $employee->nextSalaryDate()?->toDateString() ?: '-' }}</h2></div>
     </div>
 
-    <div class="card">
-        <h2>Today's Work Status</h2>
-        <p><strong>Status:</strong> {{ $todayWorkStatus?->statusLabel() ?: 'Not Assigned' }}</p>
-        <p><strong>Client:</strong> {{ $todayWorkStatus?->client?->company_name ?: '-' }}</p>
-        <p><strong>Page:</strong> {{ $todayWorkStatus?->page?->page_name ?: '-' }}</p>
-        <p><strong>Shift:</strong> {{ $todayWorkStatus?->shift?->name ?: ($primaryAssignment?->shift?->name ?: '-') }}</p>
-        <p><strong>Salary Count Value:</strong> {{ $todayWorkStatus ? number_format($todayWorkStatus->salary_count_value, 2) : '-' }}</p>
-        <p><strong>Note:</strong> {{ $todayWorkStatus?->note ?: '-' }}</p>
+    <div class="stats-grid">
+        <div class="stat-card"><p>Upcoming Salary</p><h2>{{ $employee->salaryStatusLabel() === 'Upcoming' ? 'Yes' : 'No' }}</h2></div>
+        <div class="stat-card"><p>Unread Notices</p><h2>{{ number_format($unreadNoticeCount) }}</h2></div>
+        <div class="stat-card"><p>Pending Work Status</p><h2>{{ number_format($pendingWorkStatusCount) }}</h2></div>
+        <div class="stat-card"><p>Attendance Today</p><h2>{{ $todayAttendance?->statusLabel() ?: 'Not Marked' }}</h2></div>
     </div>
 
-    <div class="stats-grid">
-        <div class="stat-card"><p>Leave</p><h2>{{ number_format($workStatusSummary['leave']) }}</h2></div>
-        <div class="stat-card"><p>Client Issue</p><h2>{{ number_format($workStatusSummary['client_issue']) }}</h2></div>
-        <div class="stat-card"><p>Boosting OFF</p><h2>{{ number_format($workStatusSummary['boosting_off']) }}</h2></div>
-        <div class="stat-card"><p>Assignments</p><h2>{{ $activeAssignments->count() }}</h2></div>
+    <div class="card">
+        <h2>Current Month Work Summary</h2>
+        <div class="stats-grid" style="margin-bottom:0;">
+            <div class="stat-card"><p>Working Days</p><h2>{{ number_format($workStatusSummary['working_days'], 2) }}</h2></div>
+            <div class="stat-card"><p>Half Days</p><h2>{{ number_format($workStatusSummary['half_days']) }}</h2></div>
+            <div class="stat-card"><p>Leave Days</p><h2>{{ number_format($workStatusSummary['leave']) }}</h2></div>
+            <div class="stat-card"><p>Client Issue Days</p><h2>{{ number_format($workStatusSummary['client_issue']) }}</h2></div>
+            <div class="stat-card"><p>Boosting OFF Days</p><h2>{{ number_format($workStatusSummary['boosting_off']) }}</h2></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Salary Summary</h2>
+        <div class="stats-grid" style="margin-bottom:0;">
+            <div class="stat-card"><p>Generated Salary</p><h2>BDT {{ number_format($salarySummary['generated_salary'], 2) }}</h2></div>
+            <div class="stat-card"><p>Paid Salary</p><h2>BDT {{ number_format($salarySummary['paid_salary'], 2) }}</h2></div>
+            <div class="stat-card"><p>Due Salary</p><h2>BDT {{ number_format($salarySummary['due_salary'], 2) }}</h2></div>
+        </div>
     </div>
 
     <div class="card">
         <h2>Today Attendance</h2>
         <p>Attendance is for shift monitoring only. Salary is calculated from Work Status records.</p>
-        <p><strong>Status:</strong> {{ $todayAttendance?->statusLabel() ?: 'Not Marked' }}</p>
+        <p><strong>Today's Shift:</strong> {{ $todayAttendance?->shift?->name ?: ($primaryAssignment?->shift?->name ?: $employee->shift?->name ?: '-') }}</p>
         <p><strong>Check In:</strong> {{ $todayAttendance?->check_in_at?->format('h:i A') ?: '-' }}</p>
         <p><strong>Check Out:</strong> {{ $todayAttendance?->check_out_at?->format('h:i A') ?: '-' }}</p>
-        <p><strong>Shift:</strong> {{ $todayAttendance?->shift?->name ?: ($primaryAssignment?->shift?->name ?: $employee->shift?->name ?: '-') }}</p>
-        <p><strong>Late:</strong> {{ $todayAttendance?->is_late ? 'Yes' : 'No' }}</p>
+        <p><strong>Today's Status:</strong> {{ $todayAttendance?->statusLabel() ?: 'Not Marked' }}</p>
 
         <form method="POST" action="/employee/attendance/check-in" style="display:inline;">
             @csrf
@@ -59,52 +58,24 @@
     </div>
 
     <div class="card">
-        <h2>My Assignment</h2>
-        <table>
-            <tr>
-                <th>Client</th>
-                <th>Page</th>
-                <th>Shift</th>
-                <th>From</th>
-                <th>To</th>
-                <th>Status</th>
-            </tr>
-            @forelse($employee->assignments->sortByDesc('assigned_from') as $assignment)
+        <h2>Latest Notices</h2>
+        <div class="table-wrap">
+            <table>
                 <tr>
-                    <td>{{ $assignment->client?->company_name }}</td>
-                    <td>{{ $assignment->page?->page_name ?: '-' }}</td>
-                    <td>{{ $assignment->shift?->name ?: '-' }}</td>
-                    <td>{{ $assignment->assigned_from?->toDateString() }}</td>
-                    <td>{{ $assignment->assigned_to?->toDateString() ?: '-' }}</td>
-                    <td>{{ ucfirst($assignment->status) }}</td>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Date</th>
                 </tr>
-            @empty
-                <tr><td colspan="6">No assignment found.</td></tr>
-            @endforelse
-        </table>
-    </div>
-
-    <div class="card">
-        <h2>My Salary History</h2>
-        <table>
-            <tr>
-                <th>Salary Period</th>
-                <th>Month</th>
-                <th>Payable Salary (BDT)</th>
-                <th>Paid Salary</th>
-                <th>Status</th>
-            </tr>
-            @forelse($payrolls as $payroll)
-                <tr>
-                    <td>{{ $payroll->salary_period }}</td>
-                    <td>{{ $payroll->salary_month?->format('Y-m') }}</td>
-                    <td>BDT {{ number_format($payroll->payable_salary, 2) }}</td>
-                    <td>BDT {{ number_format($payroll->paid_amount, 2) }}</td>
-                    <td>{{ ['upcoming' => 'Upcoming', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'][$payroll->calculated_status] ?? ucfirst($payroll->calculated_status) }}</td>
-                </tr>
-            @empty
-                <tr><td colspan="5">No salary history found.</td></tr>
-            @endforelse
-        </table>
+                @forelse($latestNotices as $notice)
+                    <tr>
+                        <td>{{ $notice->title }}</td>
+                        <td>{{ $notice->categoryLabel() }}</td>
+                        <td>{{ $notice->published_at?->toDateString() ?: $notice->created_at?->toDateString() }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="3">No notices found.</td></tr>
+                @endforelse
+            </table>
+        </div>
     </div>
 @endsection

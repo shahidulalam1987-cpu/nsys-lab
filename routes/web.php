@@ -16,6 +16,8 @@ use App\Http\Controllers\Client\EmployeeController as ClientEmployeeController;
 use App\Http\Controllers\Employee\DashboardController as EmployeeDashboardController;
 use App\Http\Controllers\Employee\AttendanceController as EmployeeAttendancePortalController;
 use App\Http\Controllers\Employee\PortalController as EmployeePortalController;
+use App\Http\Controllers\Employee\WorkStatusController as EmployeeWorkStatusPortalController;
+use App\Http\Controllers\Employee\SalarySlipController as EmployeeSalarySlipController;
 use App\Http\Controllers\Admin\ExportController;
 use App\Http\Controllers\Admin\InvoiceController;
 use App\Http\Controllers\Client\InvoiceController as ClientInvoiceController;
@@ -29,6 +31,7 @@ use App\Http\Controllers\Admin\EmployeeAttendanceController;
 use App\Http\Controllers\Admin\EmployeeWorkStatusController;
 use App\Http\Controllers\Admin\ClientFundController;
 use App\Http\Controllers\Admin\ClientPageController;
+use App\Http\Controllers\Admin\EmployeeNoticeController;
 
 Route::get('/', [DashboardController::class, 'index']);
 
@@ -122,6 +125,13 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/client-pages/{page}/update', [ClientPageController::class, 'update']);
     Route::post('/admin/client-pages/{page}/delete', [ClientPageController::class, 'destroy']);
 
+    Route::get('/admin/employee-notices', [EmployeeNoticeController::class, 'index']);
+    Route::get('/admin/employee-notices/create', [EmployeeNoticeController::class, 'create']);
+    Route::post('/admin/employee-notices', [EmployeeNoticeController::class, 'store']);
+    Route::get('/admin/employee-notices/{notice}/edit', [EmployeeNoticeController::class, 'edit']);
+    Route::post('/admin/employee-notices/{notice}/update', [EmployeeNoticeController::class, 'update']);
+    Route::post('/admin/employee-notices/{notice}/delete', [EmployeeNoticeController::class, 'destroy']);
+
     Route::get('/admin/client-fund', [ClientFundController::class, 'dashboard']);
     Route::get('/admin/client-fund/export/csv', [ClientFundController::class, 'exportCsv']);
     Route::get('/admin/client-fund/export/excel', [ClientFundController::class, 'exportExcel']);
@@ -202,14 +212,20 @@ Route::middleware(['auth', 'client', 'client.status'])->group(function () {
 
 Route::middleware(['auth', 'employee'])->group(function () {
     Route::get('/employee/dashboard', [EmployeeDashboardController::class, 'index']);
+    Route::get('/employee/work-status', [EmployeeWorkStatusPortalController::class, 'index']);
     Route::get('/employee/attendance', [EmployeeAttendancePortalController::class, 'index']);
     Route::post('/employee/attendance', [EmployeeAttendancePortalController::class, 'store']);
     Route::post('/employee/attendance/check-in', [EmployeeAttendancePortalController::class, 'checkIn']);
     Route::post('/employee/attendance/check-out', [EmployeeAttendancePortalController::class, 'checkOut']);
     Route::get('/employee/salary', [EmployeePortalController::class, 'salary']);
+    Route::get('/employee/salary/{payroll}/slip', [EmployeeSalarySlipController::class, 'download']);
     Route::get('/employee/assignments', [EmployeePortalController::class, 'assignments']);
+    Route::get('/employee/documents', [EmployeePortalController::class, 'documents']);
     Route::get('/employee/profile', [EmployeePortalController::class, 'profile']);
+    Route::post('/employee/profile', [EmployeePortalController::class, 'updateProfile']);
+    Route::post('/employee/profile/password', [EmployeePortalController::class, 'updatePassword']);
     Route::get('/employee/notices', [EmployeePortalController::class, 'notices']);
+    Route::post('/employee/notices/{notice}/read', [EmployeePortalController::class, 'markNoticeRead']);
 });
 
 require __DIR__.'/auth.php';

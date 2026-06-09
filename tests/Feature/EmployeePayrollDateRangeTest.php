@@ -478,7 +478,7 @@ class EmployeePayrollDateRangeTest extends TestCase
             'status' => 'paid',
         ]);
 
-        $response = $this->actingAs($employeeUser)->get('/employee/dashboard');
+        $response = $this->actingAs($employeeUser)->get('/employee/salary');
 
         $response->assertOk();
         $response->assertSee('Salary Period');

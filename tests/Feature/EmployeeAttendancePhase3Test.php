@@ -56,7 +56,7 @@ class EmployeeAttendancePhase3Test extends TestCase
             ->get('/employee/attendance')
             ->assertOk()
             ->assertSee('Present')
-            ->assertSee('Working Day');
+            ->assertSee('Attendance is for shift monitoring only');
     }
 
     public function test_admin_can_filter_update_delete_and_export_attendance(): void

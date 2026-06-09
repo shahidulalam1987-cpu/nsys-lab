@@ -8,18 +8,18 @@
             <table>
                 <tr>
                     <th>Client</th>
-                    <th>From</th>
-                    <th>To</th>
+                    <th>Assigned Page</th>
+                    <th>Shift</th>
+                    <th>Assignment Date</th>
                     <th>Status</th>
-                    <th>Note</th>
                 </tr>
                 @forelse($employee->assignments->sortByDesc('assigned_from') as $assignment)
                     <tr>
                         <td>{{ $assignment->client?->company_name ?: '-' }}</td>
-                        <td>{{ $assignment->assigned_from?->toDateString() }}</td>
-                        <td>{{ $assignment->assigned_to?->toDateString() ?: '-' }}</td>
-                        <td>{{ ucfirst($assignment->status) }}</td>
-                        <td>{{ $assignment->note ?: '-' }}</td>
+                        <td>{{ $assignment->page?->page_name ?: '-' }}</td>
+                        <td>{{ $assignment->shift?->name ?: '-' }}</td>
+                        <td>{{ $assignment->assigned_from?->toDateString() ?: '-' }}</td>
+                        <td>{{ $assignment->statusLabel() }}</td>
                     </tr>
                 @empty
                     <tr><td colspan="5">No assignment found.</td></tr>
