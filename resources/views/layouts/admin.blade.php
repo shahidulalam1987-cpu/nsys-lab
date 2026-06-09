@@ -56,6 +56,7 @@
         .department-tabs {
             display: flex;
             gap: 8px;
+            flex-wrap: wrap;
         }
 
         .department-tab {
@@ -74,6 +75,19 @@
             color: white;
             background: linear-gradient(90deg, var(--blue), var(--cyan));
             box-shadow: 0 10px 30px rgba(47, 140, 255, 0.25);
+        }
+
+        .header-count-badge {
+            background: var(--danger);
+            border-radius: 999px;
+            color: #fff;
+            display: inline-block;
+            font-size: 11px;
+            line-height: 1;
+            margin-left: 6px;
+            min-width: 20px;
+            padding: 4px 6px;
+            text-align: center;
         }
 
         .logout-btn {
@@ -368,11 +382,23 @@
     overflow-x: auto;
 }
 
-@media (max-width: 900px) {
-    table {
-        min-width: 800px;
-    }
-}
+        @media (max-width: 900px) {
+            .topbar {
+                align-items: flex-start;
+                height: auto;
+                padding: 16px;
+            }
+
+            .topbar-left {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            table {
+                min-width: 800px;
+            }
+        }
     </style>
 </head>
 
@@ -389,6 +415,8 @@
             || request()->is('admin/client-pages*')
             || request()->is('admin/employee-notices*')
             || request()->is('admin/payroll*');
+        $isBugTracker = request()->is('admin/bug-tracker*');
+        $openBugCount = \App\Models\BugReport::where('status', 'open')->count();
         $clientFundBadges = $isEmployeeDepartment
             ? app(\App\Services\ClientFundDashboardService::class)->sidebarBadges()
             : ['upcoming_salary_count' => 0, 'unpaid_salary_count' => 0, 'pending_payment_count' => 0];
@@ -399,8 +427,14 @@
             <div class="brand">NSYS Agency Admin</div>
 
             <div class="department-tabs">
-                <a class="department-tab {{ ! $isEmployeeDepartment ? 'active-department' : '' }}" href="/admin/dashboard">Boosting Department</a>
+                <a class="department-tab {{ ! $isEmployeeDepartment && ! $isBugTracker ? 'active-department' : '' }}" href="/admin/dashboard">Boosting Department</a>
                 <a class="department-tab {{ $isEmployeeDepartment ? 'active-department' : '' }}" href="/admin/employee-dashboard">Employee Department</a>
+                <a class="department-tab {{ $isBugTracker ? 'active-department' : '' }}" href="/admin/bug-tracker">
+                    Bug Tracker
+                    @if($openBugCount > 0)
+                        <span class="header-count-badge">{{ $openBugCount }}</span>
+                    @endif
+                </a>
             </div>
         </div>
 
@@ -448,7 +482,6 @@
                 <a class="{{ request()->is('admin/salary-payments') && ! request()->filled('status') ? 'active-menu' : '' }}" href="/admin/salary-payments">Payment History</a>
             @else
                 <a class="{{ request()->is('admin/dashboard') ? 'active-menu' : '' }}" href="/admin/dashboard">Dashboard</a>
-                <a class="{{ request()->is('admin/bug-tracker*') ? 'active-menu' : '' }}" href="/admin/bug-tracker">Bug Tracker</a>
                 <a class="{{ request()->is('admin/clients*') ? 'active-menu' : '' }}" href="/admin/clients">Clients</a>
                 <a class="{{ request()->is('admin/client-users*') ? 'active-menu' : '' }}" href="/admin/client-users">Client Users</a>
                 <a class="{{ request()->is('admin/payments') ? 'active-menu' : '' }}" href="/admin/payments">All Payments</a>

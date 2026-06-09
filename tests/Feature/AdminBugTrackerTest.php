@@ -14,11 +14,20 @@ class AdminBugTrackerTest extends TestCase
     public function test_admin_can_create_update_status_edit_and_delete_bug(): void
     {
         $admin = $this->user('admin');
+        BugReport::create([
+            'bug_id' => 'BUG-0099',
+            'module' => 'Dashboard',
+            'title' => 'Open dashboard test bug',
+            'priority' => 'medium',
+            'status' => 'open',
+        ]);
 
         $this->actingAs($admin)
             ->get('/admin/bug-tracker')
             ->assertOk()
             ->assertSee('Bug Tracker')
+            ->assertSee('header-count-badge', false)
+            ->assertSee('>1<', false)
             ->assertSee('Add Bug');
 
         $create = $this->actingAs($admin)->post('/admin/bug-tracker', [
@@ -35,9 +44,10 @@ class AdminBugTrackerTest extends TestCase
         $bug = BugReport::firstOrFail();
 
         $create->assertRedirect('/admin/bug-tracker');
-        $this->assertSame('BUG-0001', $bug->bug_id);
+        $bug = BugReport::where('title', 'Salary slip button not visible')->firstOrFail();
+        $this->assertSame('BUG-0100', $bug->bug_id);
         $this->assertDatabaseHas('bug_reports', [
-            'bug_id' => 'BUG-0001',
+            'bug_id' => 'BUG-0100',
             'module' => 'Employee Portal',
             'priority' => 'high',
             'status' => 'open',
@@ -77,7 +87,7 @@ class AdminBugTrackerTest extends TestCase
         $this->actingAs($admin)
             ->get('/admin/bug-tracker?status=fixed')
             ->assertOk()
-            ->assertSee('BUG-0001')
+            ->assertSee('BUG-0100')
             ->assertSee('Salary slip button fixed');
 
         $this->actingAs($admin)
