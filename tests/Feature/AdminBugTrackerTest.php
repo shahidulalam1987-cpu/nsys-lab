@@ -28,6 +28,9 @@ class AdminBugTrackerTest extends TestCase
             ->assertSee('Bug Tracker')
             ->assertSee('header-count-badge', false)
             ->assertSee('>1<', false)
+            ->assertSee('System Tools')
+            ->assertDontSee('Clients')
+            ->assertDontSee('Employee List')
             ->assertSee('Add Bug');
 
         $create = $this->actingAs($admin)->post('/admin/bug-tracker', [

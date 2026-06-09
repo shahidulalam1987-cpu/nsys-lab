@@ -446,7 +446,10 @@
 
     <div class="layout">
         <div class="sidebar">
-            @if($isEmployeeDepartment)
+            @if($isBugTracker)
+                <div class="sidebar-section-title">System Tools</div>
+                <a class="{{ request()->is('admin/bug-tracker*') ? 'active-menu' : '' }}" href="/admin/bug-tracker">Bug Tracker</a>
+            @elseif($isEmployeeDepartment)
                 <div class="sidebar-section-title">Employee</div>
                 <a class="{{ request()->is('admin/employees*') ? 'active-menu' : '' }}" href="/admin/employees">Employee List</a>
                 <a class="{{ request()->is('admin/assignments*') ? 'active-menu' : '' }}" href="/admin/assignments">Assignment Management</a>
