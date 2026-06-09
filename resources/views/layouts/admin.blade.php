@@ -427,14 +427,14 @@
             <div class="brand">NSYS Agency Admin</div>
 
             <div class="department-tabs">
-                <a class="department-tab {{ ! $isEmployeeDepartment && ! $isBugTracker ? 'active-department' : '' }}" href="/admin/dashboard">Boosting Department</a>
-                <a class="department-tab {{ $isEmployeeDepartment ? 'active-department' : '' }}" href="/admin/employee-dashboard">Employee Department</a>
                 <a class="department-tab {{ $isBugTracker ? 'active-department' : '' }}" href="/admin/bug-tracker">
-                    Bug Tracker
+                    System Tools
                     @if($openBugCount > 0)
                         <span class="header-count-badge">{{ $openBugCount }}</span>
                     @endif
                 </a>
+                <a class="department-tab {{ ! $isEmployeeDepartment && ! $isBugTracker ? 'active-department' : '' }}" href="/admin/dashboard">Boosting Department</a>
+                <a class="department-tab {{ $isEmployeeDepartment ? 'active-department' : '' }}" href="/admin/employees">Employee Department</a>
             </div>
         </div>
 
