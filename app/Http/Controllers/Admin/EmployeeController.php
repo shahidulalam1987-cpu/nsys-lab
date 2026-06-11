@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Campaign;
 use App\Models\Client;
 use App\Models\ClientPage;
 use App\Models\Employee;
@@ -81,12 +82,14 @@ class EmployeeController extends Controller
             'shift',
             'assignments.client',
             'assignments.page',
+            'assignments.campaignRecord',
             'assignments.shift',
             'salaryDays.client',
             'payrolls.client',
         ])->findOrFail($id);
         $clients = Client::orderBy('company_name')->get();
         $clientPages = ClientPage::with('client')->orderBy('page_name')->get();
+        $campaigns = Campaign::with(['client', 'page'])->orderBy('campaign_name')->get();
         $shifts = Shift::where('status', 'active')->orderBy('id')->get();
         $salarySummary = $this->salarySummary($employee);
         $salaryLedgerRows = $this->salaryLedgerRows($employee);
@@ -100,7 +103,7 @@ class EmployeeController extends Controller
                 ->first()?->payment_date,
         ];
 
-        return view('admin.employees.show', compact('employee', 'clients', 'clientPages', 'shifts', 'salarySummary', 'salaryLedgerRows', 'salaryLedgerSummary'));
+        return view('admin.employees.show', compact('employee', 'clients', 'clientPages', 'campaigns', 'shifts', 'salarySummary', 'salaryLedgerRows', 'salaryLedgerSummary'));
     }
 
     public function edit($id)

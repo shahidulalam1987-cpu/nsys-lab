@@ -33,6 +33,12 @@
                     <option value="{{ $client->id }}" {{ ($filters['client_id'] ?? '') == $client->id ? 'selected' : '' }}>{{ $client->company_name }}</option>
                 @endforeach
             </select>
+            <select name="campaign_id">
+                <option value="">All Campaigns</option>
+                @foreach($campaigns as $campaign)
+                    <option value="{{ $campaign->id }}" {{ ($filters['campaign_id'] ?? '') == $campaign->id ? 'selected' : '' }}>{{ $campaign->campaign_name }}</option>
+                @endforeach
+            </select>
             <input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}">
             <input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}">
             <select name="status">
@@ -54,6 +60,7 @@
                     <th>Employee</th>
                     <th>Client</th>
                     <th>Page</th>
+                    <th>Campaign</th>
                     <th>Shift</th>
                     <th>Status</th>
                     <th>Salary Count Value</th>
@@ -69,6 +76,7 @@
                         </td>
                         <td>{{ $workStatus->client?->company_name ?: '-' }}</td>
                         <td>{{ $workStatus->page?->page_name ?: '-' }}</td>
+                        <td>{{ $workStatus->campaign?->campaign_name ?: '-' }}</td>
                         <td>{{ $workStatus->shift?->name ?: '-' }}</td>
                         <td>{{ $workStatus->statusLabel() }}</td>
                         <td>{{ number_format($workStatus->salary_count_value, 2) }}</td>
@@ -83,7 +91,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="9">No work status records found.</td></tr>
+                    <tr><td colspan="10">No work status records found.</td></tr>
                 @endforelse
             </table>
         </div>

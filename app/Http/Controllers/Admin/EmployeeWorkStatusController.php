@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Campaign;
 use App\Models\Client;
 use App\Models\ClientPage;
 use App\Models\Employee;
@@ -27,6 +28,7 @@ class EmployeeWorkStatusController extends Controller
             'employees' => Employee::orderBy('name')->get(),
             'clients' => Client::orderBy('company_name')->get(),
             'clientPages' => ClientPage::orderBy('page_name')->get(),
+            'campaigns' => Campaign::orderBy('campaign_name')->get(),
             'shifts' => Shift::where('status', 'active')->orderBy('id')->get(),
             'statuses' => EmployeeWorkStatus::STATUSES,
             'filters' => $filters,
@@ -42,7 +44,7 @@ class EmployeeWorkStatusController extends Controller
 
     public function create()
     {
-        $employees = Employee::with(['activeAssignments.page', 'activeAssignments.shift'])
+        $employees = Employee::with(['activeAssignments.page', 'activeAssignments.campaignRecord', 'activeAssignments.shift'])
             ->orderBy('name')
             ->get();
         $assignmentDefaults = $employees
@@ -53,6 +55,7 @@ class EmployeeWorkStatusController extends Controller
                     'employee_id' => $employee->id,
                     'client_id' => $assignment?->client_id,
                     'client_page_id' => $assignment?->client_page_id,
+                    'campaign_id' => $assignment?->campaign_id,
                     'shift_id' => $assignment?->shift_id ?: $employee->shift_id,
                 ]];
             })
@@ -62,6 +65,7 @@ class EmployeeWorkStatusController extends Controller
             'employees' => $employees,
             'clients' => Client::orderBy('company_name')->get(),
             'clientPages' => ClientPage::orderBy('page_name')->get(),
+            'campaigns' => Campaign::orderBy('campaign_name')->get(),
             'shifts' => Shift::where('status', 'active')->orderBy('id')->get(),
             'statuses' => EmployeeWorkStatus::STATUSES,
             'assignmentDefaults' => $assignmentDefaults,
@@ -147,6 +151,7 @@ class EmployeeWorkStatusController extends Controller
         $workStatus->fill([
             'client_id' => $data['client_id'] ?? null,
             'client_page_id' => $data['client_page_id'] ?? null,
+            'campaign_id' => $data['campaign_id'] ?? null,
             'shift_id' => $data['shift_id'] ?? null,
             'status' => $data['status'],
             'salary_count_value' => EmployeeWorkStatus::salaryCountFor($data['status']),
@@ -160,10 +165,11 @@ class EmployeeWorkStatusController extends Controller
     public function edit(EmployeeWorkStatus $workStatus)
     {
         return view('admin.work-status.edit', [
-            'workStatus' => $workStatus->load(['employee', 'client', 'page', 'shift']),
+            'workStatus' => $workStatus->load(['employee', 'client', 'page', 'campaign', 'shift']),
             'employees' => Employee::orderBy('name')->get(),
             'clients' => Client::orderBy('company_name')->get(),
             'clientPages' => ClientPage::orderBy('page_name')->get(),
+            'campaigns' => Campaign::orderBy('campaign_name')->get(),
             'shifts' => Shift::where('status', 'active')->orderBy('id')->get(),
             'statuses' => EmployeeWorkStatus::STATUSES,
         ]);
@@ -174,6 +180,7 @@ class EmployeeWorkStatusController extends Controller
         $data = $request->validate([
             'client_id' => ['nullable', 'exists:clients,id'],
             'client_page_id' => ['nullable', 'exists:client_pages,id'],
+            'campaign_id' => ['nullable', 'exists:campaigns,id'],
             'shift_id' => ['nullable', 'exists:shifts,id'],
             'status' => ['required', Rule::in(array_keys(EmployeeWorkStatus::STATUSES))],
             'salary_count_value' => ['nullable', 'numeric', 'min:0', 'max:1'],
@@ -183,6 +190,7 @@ class EmployeeWorkStatusController extends Controller
         $workStatus->fill([
             'client_id' => $data['client_id'] ?? null,
             'client_page_id' => $data['client_page_id'] ?? null,
+            'campaign_id' => $data['campaign_id'] ?? null,
             'shift_id' => $data['shift_id'] ?? null,
             'status' => $data['status'],
             'salary_count_value' => array_key_exists('salary_count_value', $data)
@@ -215,7 +223,7 @@ class EmployeeWorkStatusController extends Controller
 
         return response()->streamDownload(function () use ($rows) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Date', 'Employee', 'Client', 'Page', 'Shift', 'Status', 'Salary Count Value', 'Note']);
+            fputcsv($handle, ['Date', 'Employee', 'Client', 'Page', 'Campaign', 'Shift', 'Status', 'Salary Count Value', 'Note']);
 
             foreach ($rows as $row) {
                 fputcsv($handle, [
@@ -223,6 +231,7 @@ class EmployeeWorkStatusController extends Controller
                     trim(($row->employee?->employee_id ?: '-') . ' ' . ($row->employee?->name ?: '')),
                     $row->client?->company_name ?: '-',
                     $row->page?->page_name ?: '-',
+                    $row->campaign?->campaign_name ?: '-',
                     $row->shift?->name ?: '-',
                     $row->statusLabel(),
                     number_format((float) $row->salary_count_value, 2, '.', ''),
@@ -239,6 +248,7 @@ class EmployeeWorkStatusController extends Controller
         return $request->validate([
             'employee_id' => ['nullable', 'exists:employees,id'],
             'client_id' => ['nullable', 'exists:clients,id'],
+            'campaign_id' => ['nullable', 'exists:campaigns,id'],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
             'status' => ['nullable', Rule::in(array_keys(EmployeeWorkStatus::STATUSES))],
@@ -247,9 +257,10 @@ class EmployeeWorkStatusController extends Controller
 
     private function filteredQuery(array $filters)
     {
-        return EmployeeWorkStatus::with(['employee', 'client', 'page', 'shift'])
+        return EmployeeWorkStatus::with(['employee', 'client', 'page', 'campaign', 'shift'])
             ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
             ->when($filters['client_id'] ?? null, fn ($query, $clientId) => $query->where('client_id', $clientId))
+            ->when($filters['campaign_id'] ?? null, fn ($query, $campaignId) => $query->where('campaign_id', $campaignId))
             ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->whereDate('work_date', '>=', $date))
             ->when($filters['date_to'] ?? null, fn ($query, $date) => $query->whereDate('work_date', '<=', $date))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status));
@@ -262,6 +273,7 @@ class EmployeeWorkStatusController extends Controller
             'employee_id' => ['required', 'exists:employees,id'],
             'client_id' => ['nullable', 'exists:clients,id'],
             'client_page_id' => ['nullable', 'exists:client_pages,id'],
+            'campaign_id' => ['nullable', 'exists:campaigns,id'],
             'shift_id' => ['nullable', 'exists:shifts,id'],
             'work_date' => ['required_if:entry_mode,single', 'nullable', 'date'],
             'from_date' => ['required_if:entry_mode,range', 'nullable', 'date'],

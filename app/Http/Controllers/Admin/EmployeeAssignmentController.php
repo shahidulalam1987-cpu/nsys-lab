@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Campaign;
 use App\Models\Client;
 use App\Models\ClientPage;
 use App\Models\Employee;
@@ -16,7 +17,7 @@ class EmployeeAssignmentController extends Controller
 {
     public function index(Request $request)
     {
-        $query = EmployeeAssignment::with(['employee', 'client', 'page', 'shift'])
+        $query = EmployeeAssignment::with(['employee', 'client', 'page', 'campaignRecord', 'shift'])
             ->when($request->employee_id, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
             ->when($request->client_id, fn ($query, $clientId) => $query->where('client_id', $clientId))
             ->when($request->status, fn ($query, $status) => $query->where('status', $status));
@@ -58,14 +59,14 @@ class EmployeeAssignmentController extends Controller
     public function show(EmployeeAssignment $assignment)
     {
         return view('admin.assignments.show', [
-            'assignment' => $assignment->load(['employee', 'client', 'page', 'shift']),
+            'assignment' => $assignment->load(['employee', 'client', 'page', 'campaignRecord', 'shift']),
         ]);
     }
 
     public function edit(EmployeeAssignment $assignment)
     {
         return view('admin.assignments.edit', array_merge($this->formData(), [
-            'assignment' => $assignment->load(['employee', 'client', 'page', 'shift']),
+            'assignment' => $assignment->load(['employee', 'client', 'page', 'campaignRecord', 'shift']),
         ]));
     }
 
@@ -86,6 +87,7 @@ class EmployeeAssignmentController extends Controller
         $data = $request->validate([
             'client_id' => ['required', 'exists:clients,id'],
             'client_page_id' => ['nullable', 'exists:client_pages,id'],
+            'campaign_id' => ['nullable', 'exists:campaigns,id'],
             'campaign' => ['nullable', 'string', 'max:255'],
             'shift_id' => ['nullable', 'exists:shifts,id'],
             'assigned_from' => ['required', 'date'],
@@ -121,6 +123,7 @@ class EmployeeAssignmentController extends Controller
     {
         $data = $request->validate([
             'client_page_id' => ['nullable', 'exists:client_pages,id'],
+            'campaign_id' => ['nullable', 'exists:campaigns,id'],
             'campaign' => ['nullable', 'string', 'max:255'],
             'shift_id' => ['nullable', 'exists:shifts,id'],
             'assigned_to' => ['nullable', 'date', 'after_or_equal:' . $assignment->assigned_from->toDateString()],
@@ -168,6 +171,7 @@ class EmployeeAssignmentController extends Controller
             'employees' => Employee::orderBy('name')->get(),
             'clients' => Client::orderBy('company_name')->get(),
             'clientPages' => ClientPage::with('client')->orderBy('page_name')->get(),
+            'campaigns' => Campaign::with(['client', 'page'])->orderBy('campaign_name')->get(),
             'shifts' => Shift::where('status', 'active')->orderBy('id')->get(),
         ];
     }
@@ -178,6 +182,7 @@ class EmployeeAssignmentController extends Controller
             'employee_id' => ['required', 'exists:employees,id'],
             'client_id' => ['required', 'exists:clients,id'],
             'client_page_id' => [$requirePage ? 'required' : 'nullable', 'exists:client_pages,id'],
+            'campaign_id' => ['nullable', 'exists:campaigns,id'],
             'campaign' => ['nullable', 'string', 'max:255'],
             'shift_id' => ['required', 'exists:shifts,id'],
             'assigned_from' => ['required', 'date'],

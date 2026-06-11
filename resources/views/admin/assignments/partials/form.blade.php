@@ -49,7 +49,17 @@
             </p>
 
             <p>Campaign<br>
-                <input type="text" name="campaign" value="{{ old('campaign', $assignment?->campaign) }}" placeholder="Campaign name">
+                <select name="campaign_id" id="assignment-campaign-select">
+                    <option value="">No Campaign</option>
+                    @foreach($campaigns as $campaign)
+                        <option value="{{ $campaign->id }}" data-client-id="{{ $campaign->client_id }}" data-page-id="{{ $campaign->client_page_id }}" {{ old('campaign_id', $assignment?->campaign_id) == $campaign->id ? 'selected' : '' }}>
+                            {{ $campaign->campaign_name }} - {{ $campaign->campaign_id }}
+                        </option>
+                    @endforeach
+                </select>
+                @if(old('campaign', $assignment?->campaign))
+                    <input type="hidden" name="campaign" value="{{ old('campaign', $assignment?->campaign) }}">
+                @endif
             </p>
 
             <p>Shift<br>
@@ -84,9 +94,11 @@
     const clientSelect = document.querySelector('.js-client-select');
     const pageSelect = document.getElementById('assignment-page-select');
     const pageSearch = document.getElementById('assignment-page-search');
+    const campaignSelect = document.getElementById('assignment-campaign-select');
 
-    function filterAssignmentPages() {
+    function filterAssignmentRelations() {
         const clientId = clientSelect.value;
+        const pageId = pageSelect.value;
         const term = pageSearch.value.trim().toLowerCase();
 
         pageSelect.querySelectorAll('option[data-client-id]').forEach((option) => {
@@ -98,9 +110,20 @@
         if (pageSelect.selectedOptions[0]?.hidden) {
             pageSelect.value = '';
         }
+
+        campaignSelect.querySelectorAll('option[data-client-id]').forEach((option) => {
+            const clientMatches = !clientId || option.dataset.clientId === clientId;
+            const pageMatches = !pageId || option.dataset.pageId === pageId;
+            option.hidden = !(clientMatches && pageMatches);
+        });
+
+        if (campaignSelect.selectedOptions[0]?.hidden) {
+            campaignSelect.value = '';
+        }
     }
 
-    clientSelect.addEventListener('change', filterAssignmentPages);
-    pageSearch.addEventListener('input', filterAssignmentPages);
-    filterAssignmentPages();
+    clientSelect.addEventListener('change', filterAssignmentRelations);
+    pageSelect.addEventListener('change', filterAssignmentRelations);
+    pageSearch.addEventListener('input', filterAssignmentRelations);
+    filterAssignmentRelations();
 </script>

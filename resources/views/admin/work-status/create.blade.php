@@ -48,6 +48,16 @@
                     @endforeach
                 </select>
             </p>
+            <p>Campaign<br>
+                <select id="work-status-campaign-create" name="campaign_id">
+                    <option value="">No Campaign</option>
+                    @foreach($campaigns as $campaign)
+                        <option value="{{ $campaign->id }}" data-client-id="{{ $campaign->client_id }}" data-page-id="{{ $campaign->client_page_id }}" {{ old('campaign_id') == $campaign->id ? 'selected' : '' }}>
+                            {{ $campaign->campaign_name }} - {{ $campaign->campaign_id }}
+                        </option>
+                    @endforeach
+                </select>
+            </p>
             <p>Shift<br>
                 <select name="shift_id">
                     <option value="">No Shift</option>
@@ -103,23 +113,36 @@
 
         document.querySelectorAll('.js-client-select').forEach((clientSelect) => {
             const pageSelect = document.getElementById(clientSelect.dataset.pageTarget);
-            const filterPages = () => {
+            const campaignSelect = document.getElementById('work-status-campaign-create');
+            const filterRelations = () => {
                 const clientId = clientSelect.value;
+                const pageId = pageSelect.value;
                 pageSelect.querySelectorAll('option[data-client-id]').forEach((option) => {
                     option.hidden = clientId && option.dataset.clientId !== clientId;
                 });
                 if (pageSelect.selectedOptions[0]?.hidden) {
                     pageSelect.value = '';
                 }
+
+                campaignSelect.querySelectorAll('option[data-client-id]').forEach((option) => {
+                    const clientMatches = !clientId || option.dataset.clientId === clientId;
+                    const pageMatches = !pageId || option.dataset.pageId === pageId;
+                    option.hidden = !(clientMatches && pageMatches);
+                });
+                if (campaignSelect.selectedOptions[0]?.hidden) {
+                    campaignSelect.value = '';
+                }
             };
-            clientSelect.addEventListener('change', filterPages);
-            filterPages();
+            clientSelect.addEventListener('change', filterRelations);
+            pageSelect.addEventListener('change', filterRelations);
+            filterRelations();
         });
 
         document.getElementById('work-status-employee')?.addEventListener('change', (event) => {
             const defaults = assignmentDefaults[event.target.value] || {};
             const clientSelect = document.querySelector('select[name="client_id"]');
             const pageSelect = document.querySelector('select[name="client_page_id"]');
+            const campaignSelect = document.querySelector('select[name="campaign_id"]');
             const shiftSelect = document.querySelector('select[name="shift_id"]');
 
             if (defaults.client_id) {
@@ -129,6 +152,10 @@
 
             if (defaults.client_page_id) {
                 pageSelect.value = defaults.client_page_id;
+            }
+
+            if (defaults.campaign_id) {
+                campaignSelect.value = defaults.campaign_id;
             }
 
             if (defaults.shift_id) {

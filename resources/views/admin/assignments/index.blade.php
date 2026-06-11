@@ -62,7 +62,7 @@
                         </td>
                         <td>{{ $assignment->client?->company_name ?: '-' }}</td>
                         <td>{{ $assignment->page?->page_name ?: '-' }}</td>
-                        <td>{{ $assignment->campaign ?: '-' }}</td>
+                        <td>{{ $assignment->campaignRecord?->campaign_name ?: ($assignment->campaign ?: '-') }}</td>
                         <td>{{ $assignment->shift?->name ?: '-' }}</td>
                         <td>{{ $assignment->assigned_from?->toDateString() ?: '-' }}</td>
                         <td>{{ $assignment->statusLabel() }}</td>

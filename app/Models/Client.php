@@ -50,6 +50,11 @@ class Client extends Model
         return $this->hasMany(AdAccount::class);
     }
 
+    public function campaigns()
+    {
+        return $this->hasMany(Campaign::class);
+    }
+
     public function salaryDays()
     {
         return $this->hasMany(SalaryDay::class);

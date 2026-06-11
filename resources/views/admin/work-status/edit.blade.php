@@ -26,6 +26,16 @@
                     @endforeach
                 </select>
             </p>
+            <p>Campaign<br>
+                <select id="work-status-campaign-edit" name="campaign_id">
+                    <option value="">No Campaign</option>
+                    @foreach($campaigns as $campaign)
+                        <option value="{{ $campaign->id }}" data-client-id="{{ $campaign->client_id }}" data-page-id="{{ $campaign->client_page_id }}" {{ old('campaign_id', $workStatus->campaign_id) == $campaign->id ? 'selected' : '' }}>
+                            {{ $campaign->campaign_name }} - {{ $campaign->campaign_id }}
+                        </option>
+                    @endforeach
+                </select>
+            </p>
             <p>Shift<br>
                 <select name="shift_id">
                     <option value="">No Shift</option>
@@ -51,17 +61,29 @@
     <script>
         document.querySelectorAll('.js-client-select').forEach((clientSelect) => {
             const pageSelect = document.getElementById(clientSelect.dataset.pageTarget);
-            const filterPages = () => {
+            const campaignSelect = document.getElementById('work-status-campaign-edit');
+            const filterRelations = () => {
                 const clientId = clientSelect.value;
+                const pageId = pageSelect.value;
                 pageSelect.querySelectorAll('option[data-client-id]').forEach((option) => {
                     option.hidden = clientId && option.dataset.clientId !== clientId;
                 });
                 if (pageSelect.selectedOptions[0]?.hidden) {
                     pageSelect.value = '';
                 }
+
+                campaignSelect.querySelectorAll('option[data-client-id]').forEach((option) => {
+                    const clientMatches = !clientId || option.dataset.clientId === clientId;
+                    const pageMatches = !pageId || option.dataset.pageId === pageId;
+                    option.hidden = !(clientMatches && pageMatches);
+                });
+                if (campaignSelect.selectedOptions[0]?.hidden) {
+                    campaignSelect.value = '';
+                }
             };
-            clientSelect.addEventListener('change', filterPages);
-            filterPages();
+            clientSelect.addEventListener('change', filterRelations);
+            pageSelect.addEventListener('change', filterRelations);
+            filterRelations();
         });
     </script>
 @endsection

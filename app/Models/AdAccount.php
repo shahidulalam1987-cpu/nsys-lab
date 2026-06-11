@@ -65,6 +65,11 @@ class AdAccount extends Model
         return $this->hasMany(ClientPage::class);
     }
 
+    public function campaigns()
+    {
+        return $this->hasMany(Campaign::class);
+    }
+
     public function ledgers()
     {
         return $this->hasMany(AdAccountLedger::class);

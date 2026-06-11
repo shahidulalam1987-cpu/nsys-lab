@@ -36,6 +36,7 @@ use App\Http\Controllers\Admin\BugReportController;
 use App\Http\Controllers\Admin\SystemToolsController;
 use App\Http\Controllers\Admin\BusinessManagerController;
 use App\Http\Controllers\Admin\AdAccountController;
+use App\Http\Controllers\Admin\CampaignController;
 
 Route::get('/', [DashboardController::class, 'index']);
 
@@ -211,6 +212,14 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/ad-accounts/{adAccount}/edit', [AdAccountController::class, 'edit']);
     Route::post('/admin/ad-accounts/{adAccount}/update', [AdAccountController::class, 'update']);
     Route::post('/admin/ad-accounts/{adAccount}/delete', [AdAccountController::class, 'destroy']);
+
+    Route::get('/admin/campaigns', [CampaignController::class, 'index']);
+    Route::get('/admin/campaigns/create', [CampaignController::class, 'create']);
+    Route::post('/admin/campaigns', [CampaignController::class, 'store']);
+    Route::get('/admin/campaigns/{campaign}', [CampaignController::class, 'show']);
+    Route::get('/admin/campaigns/{campaign}/edit', [CampaignController::class, 'edit']);
+    Route::post('/admin/campaigns/{campaign}/update', [CampaignController::class, 'update']);
+    Route::post('/admin/campaigns/{campaign}/delete', [CampaignController::class, 'destroy']);
 
     Route::get('/admin/payments', [AdminPaymentController::class, 'index']);
     Route::get('/admin/payments/pending', [AdminPaymentController::class, 'pending']);

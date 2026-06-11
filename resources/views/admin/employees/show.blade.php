@@ -312,13 +312,20 @@
                             </option>
                         @endforeach
                     </select>
+                    <select id="assignment-campaign-create" name="campaign_id">
+                        <option value="">No Campaign</option>
+                        @foreach($campaigns as $campaign)
+                            <option value="{{ $campaign->id }}" data-client-id="{{ $campaign->client_id }}" data-page-id="{{ $campaign->client_page_id }}">
+                                {{ $campaign->campaign_name }} - {{ $campaign->campaign_id }}
+                            </option>
+                        @endforeach
+                    </select>
                     <select name="shift_id">
                         <option value="">Default / No Shift</option>
                         @foreach($shifts as $shift)
                             <option value="{{ $shift->id }}">{{ $shift->name }}: {{ $shift->timeRange() }}</option>
                         @endforeach
                     </select>
-                    <input type="text" name="campaign" placeholder="Campaign">
                     <input type="date" name="assigned_from" required>
                     <input type="date" name="assigned_to">
                     <select name="status" required>
@@ -350,7 +357,7 @@
                         <tr>
                             <td>{{ $assignment->client?->company_name }}</td>
                             <td>{{ $assignment->page?->page_name ?: '-' }}</td>
-                            <td>{{ $assignment->campaign ?: '-' }}</td>
+                            <td>{{ $assignment->campaignRecord?->campaign_name ?: ($assignment->campaign ?: '-') }}</td>
                             <td>{{ $assignment->shift?->name ?: '-' }}</td>
                             <td>{{ $assignment->assigned_from?->toDateString() }}</td>
                             <td>{{ $assignment->assigned_to?->toDateString() ?: '-' }}</td>
@@ -375,7 +382,17 @@
                                             </option>
                                         @endforeach
                                     </select>
-                                    <input type="text" name="campaign" value="{{ $assignment->campaign }}" placeholder="Campaign">
+                                    <select name="campaign_id">
+                                        <option value="">No Campaign</option>
+                                        @foreach($campaigns->where('client_id', $assignment->client_id) as $campaign)
+                                            <option value="{{ $campaign->id }}" {{ $assignment->campaign_id == $campaign->id ? 'selected' : '' }}>
+                                                {{ $campaign->campaign_name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @if($assignment->campaign)
+                                        <input type="hidden" name="campaign" value="{{ $assignment->campaign }}">
+                                    @endif
                                     <input type="date" name="assigned_to" value="{{ $assignment->assigned_to?->toDateString() }}">
                                     <select name="status">
                                         <option value="active" {{ $assignment->status == 'active' ? 'selected' : '' }}>Active</option>
@@ -484,18 +501,32 @@
 
         document.querySelectorAll('.js-client-select').forEach((clientSelect) => {
             const pageSelect = document.getElementById(clientSelect.dataset.pageTarget);
-            const filterPages = () => {
+            const campaignSelect = document.getElementById('assignment-campaign-create');
+            const filterRelations = () => {
                 const clientId = clientSelect.value;
+                const pageId = pageSelect.value;
                 pageSelect.querySelectorAll('option[data-client-id]').forEach((option) => {
                     option.hidden = clientId && option.dataset.clientId !== clientId;
                 });
                 if (pageSelect.selectedOptions[0]?.hidden) {
                     pageSelect.value = '';
                 }
+
+                if (campaignSelect) {
+                    campaignSelect.querySelectorAll('option[data-client-id]').forEach((option) => {
+                        const clientMatches = !clientId || option.dataset.clientId === clientId;
+                        const pageMatches = !pageId || option.dataset.pageId === pageId;
+                        option.hidden = !(clientMatches && pageMatches);
+                    });
+                    if (campaignSelect.selectedOptions[0]?.hidden) {
+                        campaignSelect.value = '';
+                    }
+                }
             };
 
-            clientSelect.addEventListener('change', filterPages);
-            filterPages();
+            clientSelect.addEventListener('change', filterRelations);
+            pageSelect.addEventListener('change', filterRelations);
+            filterRelations();
         });
     </script>
 @endsection

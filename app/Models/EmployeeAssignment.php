@@ -10,6 +10,7 @@ class EmployeeAssignment extends Model
         'employee_id',
         'client_id',
         'client_page_id',
+        'campaign_id',
         'campaign',
         'shift_id',
         'assigned_from',
@@ -39,6 +40,11 @@ class EmployeeAssignment extends Model
     public function page()
     {
         return $this->belongsTo(ClientPage::class, 'client_page_id');
+    }
+
+    public function campaignRecord()
+    {
+        return $this->belongsTo(Campaign::class, 'campaign_id');
     }
 
     public function shift()

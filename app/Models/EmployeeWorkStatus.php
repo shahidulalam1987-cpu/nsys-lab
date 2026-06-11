@@ -32,6 +32,7 @@ class EmployeeWorkStatus extends Model
         'employee_id',
         'client_id',
         'client_page_id',
+        'campaign_id',
         'shift_id',
         'work_date',
         'status',
@@ -81,6 +82,11 @@ class EmployeeWorkStatus extends Model
     public function page()
     {
         return $this->belongsTo(ClientPage::class, 'client_page_id');
+    }
+
+    public function campaign()
+    {
+        return $this->belongsTo(Campaign::class);
     }
 
     public function shift()

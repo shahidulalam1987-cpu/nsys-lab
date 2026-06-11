@@ -34,4 +34,9 @@ class ClientPage extends Model
     {
         return $this->belongsTo(AdAccount::class);
     }
+
+    public function campaigns()
+    {
+        return $this->hasMany(Campaign::class);
+    }
 }

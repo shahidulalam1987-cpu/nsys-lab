@@ -38,6 +38,11 @@ class BusinessManager extends Model
         return $this->hasMany(ClientPage::class);
     }
 
+    public function campaigns()
+    {
+        return $this->hasMany(Campaign::class);
+    }
+
     public function verificationStatusLabel(): string
     {
         return self::VERIFICATION_STATUSES[$this->verification_status] ?? ucwords(str_replace('_', ' ', $this->verification_status));
