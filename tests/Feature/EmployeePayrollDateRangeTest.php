@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Client;
 use App\Models\Employee;
+use App\Models\EmployeeWorkStatus;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -61,6 +62,141 @@ class EmployeePayrollDateRangeTest extends TestCase
             'paid_amount' => 5000,
             'status' => 'partial',
         ]);
+    }
+
+    public function test_admin_can_preview_and_generate_salary_from_work_status_records(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $employee = $this->employee([
+            'name' => 'Work Status Salary Employee',
+            'monthly_salary' => 5000,
+        ]);
+
+        foreach (range(1, 14) as $day) {
+            $this->workStatus($employee, $client, '2026-06-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT), 'working');
+        }
+        $this->workStatus($employee, $client, '2026-06-15', 'half_day');
+        $this->workStatus($employee, $client, '2026-06-16', 'on_leave');
+
+        $preview = $this->actingAs($admin)->post('/admin/payroll', [
+            'generation_mode' => 'work_status',
+            'work_status_action' => 'preview',
+            'salary_month' => '2026-06',
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+        ]);
+
+        $preview->assertOk();
+        $preview->assertSee('Salary Preview');
+        $preview->assertSee('Work Status Salary Employee');
+        $preview->assertSee('14.50');
+        $preview->assertSee('BDT 2,416.72');
+        $preview->assertSee('No');
+
+        $generate = $this->actingAs($admin)->post('/admin/payroll', [
+            'generation_mode' => 'work_status',
+            'work_status_action' => 'generate',
+            'salary_month' => '2026-06',
+            'rows' => [
+                [
+                    'employee_id' => $employee->id,
+                    'client_id' => $client->id,
+                    'action' => 'generate',
+                ],
+            ],
+        ]);
+
+        $payroll = $employee->payrolls()->first();
+
+        $generate->assertRedirect('/admin/payroll');
+        $generate->assertSessionHas('success', 'Work Status salary generation complete. Created: 1, Regenerated: 0, Skipped: 0.');
+        $this->assertSame('monthly_cycle', $payroll->calculation_type);
+        $this->assertSame(14.5, (float) $payroll->working_days);
+        $this->assertSame(1.0, (float) $payroll->non_working_days);
+        $this->assertSame(30, $payroll->month_days);
+        $this->assertSame(166.67, (float) $payroll->daily_salary);
+        $this->assertSame(2416.72, (float) $payroll->payable_salary);
+        $this->assertCount(16, $payroll->salary_day_adjustments);
+    }
+
+    public function test_work_status_salary_preview_marks_existing_payroll_and_can_skip_or_regenerate(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $employee = $this->employee([
+            'monthly_salary' => 30000,
+        ]);
+
+        foreach (range(1, 10) as $day) {
+            $this->workStatus($employee, $client, '2026-06-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT), 'working');
+        }
+
+        $existing = $employee->payrolls()->create([
+            'client_id' => $client->id,
+            'calculation_type' => 'monthly_cycle',
+            'salary_month' => '2026-06-01',
+            'salary_period_from' => '2026-06-01',
+            'salary_period_to' => '2026-06-30',
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-30',
+            'working_days' => 10,
+            'non_working_days' => 0,
+            'month_days' => 30,
+            'daily_salary' => 1000,
+            'payable_salary' => 10000,
+            'paid_amount' => 0,
+        ]);
+
+        $preview = $this->actingAs($admin)->post('/admin/payroll', [
+            'generation_mode' => 'work_status',
+            'work_status_action' => 'preview',
+            'salary_month' => '2026-06',
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+        ]);
+
+        $preview->assertOk();
+        $preview->assertSee('Yes - #' . $existing->id);
+        $preview->assertSee('Regenerate');
+
+        $skip = $this->actingAs($admin)->post('/admin/payroll', [
+            'generation_mode' => 'work_status',
+            'work_status_action' => 'generate',
+            'salary_month' => '2026-06',
+            'rows' => [
+                [
+                    'employee_id' => $employee->id,
+                    'client_id' => $client->id,
+                    'action' => 'skip',
+                ],
+            ],
+        ]);
+
+        $skip->assertRedirect('/admin/payroll');
+        $skip->assertSessionHas('success', 'Work Status salary generation complete. Created: 0, Regenerated: 0, Skipped: 1.');
+        $this->assertSame(1, $employee->payrolls()->count());
+
+        $regenerate = $this->actingAs($admin)->post('/admin/payroll', [
+            'generation_mode' => 'work_status',
+            'work_status_action' => 'generate',
+            'salary_month' => '2026-06',
+            'rows' => [
+                [
+                    'employee_id' => $employee->id,
+                    'client_id' => $client->id,
+                    'action' => 'regenerate',
+                ],
+            ],
+        ]);
+
+        $latest = $employee->payrolls()->orderByDesc('id')->first();
+
+        $regenerate->assertRedirect('/admin/payroll');
+        $regenerate->assertSessionHas('success', 'Work Status salary generation complete. Created: 0, Regenerated: 1, Skipped: 0.');
+        $this->assertSame(2, $employee->payrolls()->count());
+        $this->assertSame('regenerated', $latest->generation_status);
+        $this->assertSame($existing->id, $latest->regenerated_from_id);
     }
 
     public function test_payable_salary_uses_fixed_thirty_day_daily_rate(): void
@@ -576,6 +712,15 @@ class EmployeePayrollDateRangeTest extends TestCase
             'client_rate' => 100,
             'buy_rate' => 80,
             'status' => 'active',
+        ]);
+    }
+
+    private function workStatus(Employee $employee, Client $client, string $date, string $status): EmployeeWorkStatus
+    {
+        return $employee->workStatuses()->create([
+            'client_id' => $client->id,
+            'work_date' => $date,
+            'status' => $status,
         ]);
     }
 }

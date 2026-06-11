@@ -88,12 +88,22 @@ class EmployeePayrollController extends Controller
                 'note' => $workStatus->note,
             ])
             ->values();
+        $workStatusPreviewRows = null;
+        $workStatusFilters = [
+            'salary_month' => now()->format('Y-m'),
+            'employee_id' => null,
+            'client_id' => null,
+        ];
 
-        return view('admin.payroll.create', compact('employees', 'clients', 'clientBalances', 'workStatusRecords'));
+        return view('admin.payroll.create', compact('employees', 'clients', 'clientBalances', 'workStatusRecords', 'workStatusPreviewRows', 'workStatusFilters'));
     }
 
     public function store(Request $request)
     {
+        if ($request->input('generation_mode') === 'work_status') {
+            return $this->storeFromWorkStatus($request);
+        }
+
         $data = $request->validate([
             'employee_id' => ['required', 'exists:employees,id'],
             'client_id' => ['required', 'exists:clients,id'],
@@ -189,6 +199,111 @@ class EmployeePayrollController extends Controller
 
         return redirect('/admin/payroll/' . $payroll->id)
             ->with('success', 'Employee payroll saved successfully.');
+    }
+
+    private function storeFromWorkStatus(Request $request)
+    {
+        $action = $request->input('work_status_action', 'preview');
+
+        if ($action === 'generate') {
+            $data = $request->validate([
+                'salary_month' => ['required', 'date_format:Y-m'],
+                'rows' => ['nullable', 'array'],
+                'rows.*.employee_id' => ['required', 'exists:employees,id'],
+                'rows.*.client_id' => ['required', 'exists:clients,id'],
+                'rows.*.action' => ['required', Rule::in(['skip', 'generate', 'regenerate'])],
+            ]);
+
+            $created = 0;
+            $regenerated = 0;
+            $skipped = collect($data['rows'] ?? [])->where('action', 'skip')->count();
+            $salaryMonth = Carbon::createFromFormat('Y-m', $data['salary_month'])->startOfMonth();
+            $selectedRows = collect($data['rows'] ?? [])
+                ->filter(fn (array $row) => in_array($row['action'], ['generate', 'regenerate'], true));
+
+            foreach ($selectedRows as $row) {
+                $existingPayroll = $this->existingPayrollForPeriod((int) $row['employee_id'], (int) $row['client_id'], $salaryMonth);
+
+                if ($existingPayroll && $row['action'] !== 'regenerate') {
+                    $skipped++;
+                    continue;
+                }
+
+                $previewRow = collect($this->workStatusPreviewRows([
+                    'salary_month' => $data['salary_month'],
+                    'employee_id' => $row['employee_id'],
+                    'client_id' => $row['client_id'],
+                ]))->first();
+
+                if (! $previewRow || $previewRow['working_count'] <= 0) {
+                    $skipped++;
+                    continue;
+                }
+
+                $payroll = EmployeePayroll::create([
+                    'employee_id' => $previewRow['employee']->id,
+                    'client_id' => $previewRow['client']->id,
+                    'calculation_type' => 'monthly_cycle',
+                    'salary_period_from' => $salaryMonth->toDateString(),
+                    'salary_period_to' => $salaryMonth->copy()->endOfMonth()->toDateString(),
+                    'from_date' => $salaryMonth->toDateString(),
+                    'to_date' => $salaryMonth->copy()->endOfMonth()->toDateString(),
+                    'working_days' => $previewRow['working_count'],
+                    'non_working_days' => $previewRow['non_working_count'],
+                    'month_days' => EmployeePayroll::FIXED_SALARY_MONTH_DAYS,
+                    'daily_salary' => $previewRow['daily_salary'],
+                    'salary_day_adjustments' => $previewRow['adjustments'],
+                    'salary_month' => $salaryMonth->toDateString(),
+                    'payable_salary' => $previewRow['payable_salary'],
+                    'paid_amount' => 0,
+                    'payment_status' => EmployeePayroll::paymentStatusFor(null, $previewRow['payable_salary'], 0),
+                    'status' => EmployeePayroll::statusFor($previewRow['payable_salary'], 0),
+                    'payroll_status' => 'generated',
+                    'generation_status' => $existingPayroll ? 'regenerated' : 'generated',
+                    'regenerated_from_id' => $existingPayroll?->id,
+                    'note' => 'Generated from Work Status records.',
+                ]);
+
+                $payroll->markAudit(
+                    $existingPayroll ? 'salary_regenerated' : 'salary_generated',
+                    auth()->id(),
+                    'Generated from Work Status records.'
+                );
+
+                $existingPayroll ? $regenerated++ : $created++;
+            }
+
+            return redirect('/admin/payroll')->with(
+                'success',
+                "Work Status salary generation complete. Created: {$created}, Regenerated: {$regenerated}, Skipped: {$skipped}."
+            );
+        }
+
+        $filters = $request->validate([
+            'salary_month' => ['required', 'date_format:Y-m'],
+            'employee_id' => ['nullable', 'exists:employees,id'],
+            'client_id' => ['nullable', 'exists:clients,id'],
+        ]);
+
+        $employees = Employee::orderBy('name')->get();
+        $clients = Client::orderBy('company_name')->get();
+        $clientBalances = app(ClientFundDashboardService::class)->clientBalanceMap();
+        $workStatusRecords = EmployeeWorkStatus::orderBy('work_date')
+            ->get()
+            ->map(fn (EmployeeWorkStatus $workStatus) => [
+                'employee_id' => $workStatus->employee_id,
+                'client_id' => $workStatus->client_id,
+                'date' => $workStatus->work_date?->toDateString(),
+                'status' => $workStatus->status,
+                'status_label' => $workStatus->statusLabel(),
+                'salary_count_value' => (float) $workStatus->salary_count_value,
+                'note' => $workStatus->note,
+            ])
+            ->values();
+        $workStatusPreviewRows = $this->workStatusPreviewRows($filters);
+        $workStatusFilters = $filters;
+
+        return view('admin.payroll.create', compact('employees', 'clients', 'clientBalances', 'workStatusRecords', 'workStatusPreviewRows', 'workStatusFilters'));
     }
 
     public function show($id)
@@ -425,6 +540,58 @@ class EmployeePayrollController extends Controller
                 ];
             }))
             ->values();
+    }
+
+    private function workStatusPreviewRows(array $filters): array
+    {
+        $salaryMonth = Carbon::createFromFormat('Y-m', $filters['salary_month'])->startOfMonth();
+        $monthEnd = $salaryMonth->copy()->endOfMonth();
+
+        return EmployeeWorkStatus::with(['employee', 'client'])
+            ->whereNotNull('client_id')
+            ->whereDate('work_date', '>=', $salaryMonth->toDateString())
+            ->whereDate('work_date', '<=', $monthEnd->toDateString())
+            ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
+            ->when($filters['client_id'] ?? null, fn ($query, $clientId) => $query->where('client_id', $clientId))
+            ->orderBy('work_date')
+            ->get()
+            ->groupBy(fn (EmployeeWorkStatus $workStatus) => $workStatus->employee_id . ':' . $workStatus->client_id)
+            ->map(function ($records) use ($salaryMonth) {
+                $employee = $records->first()->employee;
+                $client = $records->first()->client;
+                $workingCount = (float) $records->sum('salary_count_value');
+                $nonWorkingCount = $records->filter(fn (EmployeeWorkStatus $workStatus) => (float) $workStatus->salary_count_value <= 0)->count();
+                $monthlySalary = (float) ($employee?->monthly_salary ?? 0);
+                $dailySalary = round($monthlySalary / EmployeePayroll::FIXED_SALARY_MONTH_DAYS, 2);
+                $payableSalary = $workingCount >= EmployeePayroll::FIXED_SALARY_MONTH_DAYS
+                    ? round($monthlySalary, 2)
+                    : round($dailySalary * $workingCount, 2);
+                $existingPayroll = $employee && $client
+                    ? $this->existingPayrollForPeriod($employee->id, $client->id, $salaryMonth)
+                    : null;
+
+                return [
+                    'employee' => $employee,
+                    'client' => $client,
+                    'working_count' => $workingCount,
+                    'non_working_count' => $nonWorkingCount,
+                    'monthly_salary' => $monthlySalary,
+                    'daily_salary' => $dailySalary,
+                    'payable_salary' => $payableSalary,
+                    'existing_payroll' => $existingPayroll,
+                    'adjustments' => $records->map(fn (EmployeeWorkStatus $workStatus) => [
+                        'date' => $workStatus->work_date?->toDateString(),
+                        'day_type' => (float) $workStatus->salary_count_value > 0 ? 'working' : 'non_working',
+                        'salary_count_value' => (float) $workStatus->salary_count_value,
+                        'reason' => $this->workStatusReason($workStatus->status),
+                        'note' => $workStatus->note ?: 'From work status record',
+                    ])->values()->all(),
+                ];
+            })
+            ->filter(fn (array $row) => $row['employee'] && $row['client'])
+            ->sortBy(fn (array $row) => $row['employee']->name . ' ' . $row['client']->company_name)
+            ->values()
+            ->all();
     }
 
     private function calculatePayroll(Employee $employee, array $data): array

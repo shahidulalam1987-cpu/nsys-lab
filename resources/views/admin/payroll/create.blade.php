@@ -5,7 +5,7 @@
 
     <a class="btn" href="/admin/payroll">Back to Salary Generate</a>
 
-    <p>Generate salary by date range or monthly cycle from this page.</p>
+    <p>Generate salary directly from Work Status records, or use manual date-to-date entry for special cases.</p>
 
     @if ($errors->any())
         <div class="card" style="color:#ef4444; margin-top:20px;">
@@ -107,6 +107,28 @@
             margin-top: 18px;
         }
 
+        .mode-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .mode-tab {
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            color: var(--muted);
+            cursor: pointer;
+            font-weight: 700;
+            padding: 10px 14px;
+            background: rgba(255,255,255,.06);
+        }
+
+        .mode-tab.active-mode {
+            color: #fff;
+            background: linear-gradient(90deg, var(--blue), var(--cyan));
+        }
+
         .date-adjustment-header {
             display: flex;
             align-items: center;
@@ -182,11 +204,132 @@
         }
     </style>
 
-    <div class="card" style="margin-top:20px;">
-        <h2>Salary Information</h2>
+    @php($activeMode = old('generation_mode', ($workStatusPreviewRows !== null ? 'work_status' : 'work_status')))
+
+    <div class="mode-tabs">
+        <button class="mode-tab {{ $activeMode === 'work_status' ? 'active-mode' : '' }}" type="button" data-mode-target="work_status">Generate From Work Status</button>
+        <button class="mode-tab {{ $activeMode === 'manual' ? 'active-mode' : '' }}" type="button" data-mode-target="manual">Manual Date-to-Date</button>
+    </div>
+
+    <div class="card salary-mode-panel" id="work-status-mode-card" style="margin-top:20px;">
+        <h2>Generate From Work Status</h2>
+        <p>Use this mode when daily Work Status records are already added. Salary will be grouped by employee and client.</p>
+
+        <form method="POST" action="/admin/payroll">
+            @csrf
+            <input type="hidden" name="generation_mode" value="work_status">
+            <input type="hidden" name="work_status_action" value="preview">
+
+            <div class="salary-section">
+                <h2>Preview Setup</h2>
+                <div class="salary-form-grid salary-setup-grid">
+                    <p class="salary-field">Month<br>
+                        <input type="month" name="salary_month" value="{{ old('salary_month', $workStatusFilters['salary_month'] ?? now()->format('Y-m')) }}" required>
+                    </p>
+                    <p class="salary-field">Employee<br>
+                        <select name="employee_id">
+                            <option value="">All Employees</option>
+                            @foreach($employees as $employee)
+                                <option value="{{ $employee->id }}" {{ (string) old('employee_id', $workStatusFilters['employee_id'] ?? '') === (string) $employee->id ? 'selected' : '' }}>
+                                    {{ $employee->name }} ({{ $employee->employee_id }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </p>
+                    <p class="salary-field">Client<br>
+                        <select name="client_id">
+                            <option value="">All Clients</option>
+                            @foreach($clients as $client)
+                                <option value="{{ $client->id }}" {{ (string) old('client_id', $workStatusFilters['client_id'] ?? '') === (string) $client->id ? 'selected' : '' }}>
+                                    {{ $client->company_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </p>
+                </div>
+                <div class="salary-actions">
+                    <button class="btn" type="submit">Preview Salary</button>
+                </div>
+            </div>
+        </form>
+
+        @if($workStatusPreviewRows !== null)
+            <form method="POST" action="/admin/payroll">
+                @csrf
+                <input type="hidden" name="generation_mode" value="work_status">
+                <input type="hidden" name="work_status_action" value="generate">
+                <input type="hidden" name="salary_month" value="{{ $workStatusFilters['salary_month'] }}">
+
+                <div class="salary-section">
+                    <h2>Salary Preview</h2>
+                    <p>Review grouped Work Status totals before creating payroll records.</p>
+                    <div class="table-wrap">
+                        <table>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Client</th>
+                                <th>Working Count</th>
+                                <th>Non Working Count</th>
+                                <th>Monthly Salary</th>
+                                <th>Payable Salary</th>
+                                <th>Existing Payroll?</th>
+                                <th>Action</th>
+                            </tr>
+                            @forelse($workStatusPreviewRows as $index => $row)
+                                <tr>
+                                    <td>
+                                        {{ $row['employee']->name }}<br>
+                                        <span style="color:var(--muted);">{{ $row['employee']->employee_id }}</span>
+                                        <input type="hidden" name="rows[{{ $index }}][employee_id]" value="{{ $row['employee']->id }}">
+                                    </td>
+                                    <td>
+                                        {{ $row['client']->company_name }}
+                                        <input type="hidden" name="rows[{{ $index }}][client_id]" value="{{ $row['client']->id }}">
+                                    </td>
+                                    <td>{{ number_format($row['working_count'], 2) }}</td>
+                                    <td>{{ number_format($row['non_working_count']) }}</td>
+                                    <td>BDT {{ number_format($row['monthly_salary'], 2) }}</td>
+                                    <td>BDT {{ number_format($row['payable_salary'], 2) }}</td>
+                                    <td>
+                                        @if($row['existing_payroll'])
+                                            Yes - #{{ $row['existing_payroll']->id }}
+                                        @else
+                                            No
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <select name="rows[{{ $index }}][action]">
+                                            @if($row['existing_payroll'])
+                                                <option value="skip">Skip</option>
+                                                <option value="regenerate">Regenerate</option>
+                                            @else
+                                                <option value="generate">Generate</option>
+                                                <option value="skip">Skip</option>
+                                            @endif
+                                        </select>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="8">No Work Status records found for this filter.</td></tr>
+                            @endforelse
+                        </table>
+                    </div>
+                    @if(count($workStatusPreviewRows) > 0)
+                        <div class="salary-actions">
+                            <button class="btn" type="submit">Generate Salary</button>
+                        </div>
+                    @endif
+                </div>
+            </form>
+        @endif
+    </div>
+
+    <div class="card salary-mode-panel" id="manual-mode-card" style="margin-top:20px;">
+        <h2>Manual Salary Information</h2>
 
         <form method="POST" action="/admin/payroll" id="salary-generate-form" enctype="multipart/form-data">
             @csrf
+            <input type="hidden" name="generation_mode" value="manual">
 
             <div class="salary-section">
                 <h2>Salary Setup</h2>
@@ -324,6 +467,24 @@
             sick_leave: 'sick_leave',
             agency_closed: 'agency_closed',
         };
+
+        const modeTabs = document.querySelectorAll('.mode-tab');
+        const workStatusModeCard = document.getElementById('work-status-mode-card');
+        const manualModeCard = document.getElementById('manual-mode-card');
+
+        function setSalaryMode(mode) {
+            workStatusModeCard.style.display = mode === 'work_status' ? 'block' : 'none';
+            manualModeCard.style.display = mode === 'manual' ? 'block' : 'none';
+            modeTabs.forEach((tab) => {
+                tab.classList.toggle('active-mode', tab.dataset.modeTarget === mode);
+            });
+        }
+
+        modeTabs.forEach((tab) => {
+            tab.addEventListener('click', () => setSalaryMode(tab.dataset.modeTarget));
+        });
+
+        setSalaryMode(@json($activeMode));
 
         function money(amount) {
             return 'BDT ' + amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
