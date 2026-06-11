@@ -8,6 +8,7 @@ use App\Models\ClientPage;
 use App\Models\Employee;
 use App\Models\EmployeeWorkStatus;
 use App\Models\Shift;
+use App\Services\ActivityLogger;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -72,16 +73,18 @@ class EmployeeWorkStatusController extends Controller
         $data = $this->validatedData($request);
 
         if (($data['entry_mode'] ?? 'single') === 'range') {
-            return $this->storeDateRange($data);
+            return $this->storeDateRange($data, $request);
         }
 
         $workStatus = $this->saveWorkStatusForDate($data, $data['work_date']);
+
+        app(ActivityLogger::class)->log('Work Status', 'Work Status Created', 'Work status #' . $workStatus->id . ' saved for ' . $workStatus->work_date?->toDateString() . '.', $request);
 
         return redirect('/admin/work-status/' . $workStatus->id . '/edit')
             ->with('success', 'Work status saved successfully.');
     }
 
-    private function storeDateRange(array $data)
+    private function storeDateRange(array $data, Request $request)
     {
         $employee = Employee::findOrFail($data['employee_id']);
         $fromDate = Carbon::parse($data['from_date'])->startOfDay();
@@ -113,6 +116,13 @@ class EmployeeWorkStatusController extends Controller
 
             $workStatus->wasRecentlyCreated ? $created++ : $updated++;
         }
+
+        app(ActivityLogger::class)->log(
+            'Work Status',
+            'Bulk Work Status Created',
+            "Bulk work status saved. Created: {$created}, Updated: {$updated}, Skipped: {$skipped}.",
+            $request
+        );
 
         return redirect('/admin/work-status')->with(
             'success',
@@ -182,12 +192,17 @@ class EmployeeWorkStatusController extends Controller
             'updated_by' => auth()->id(),
         ])->save();
 
+        app(ActivityLogger::class)->log('Work Status', 'Work Status Updated', 'Work status #' . $workStatus->id . ' updated.', $request);
+
         return redirect('/admin/work-status')->with('success', 'Work status updated successfully.');
     }
 
     public function destroy(EmployeeWorkStatus $workStatus)
     {
+        $description = 'Work status #' . $workStatus->id . ' for ' . $workStatus->work_date?->toDateString() . ' deleted.';
         $workStatus->delete();
+
+        app(ActivityLogger::class)->log('Work Status', 'Work Status Deleted', $description, request());
 
         return redirect('/admin/work-status')->with('success', 'Work status deleted successfully.');
     }

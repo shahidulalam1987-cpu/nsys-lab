@@ -7,6 +7,7 @@ use App\Models\Client;
 use App\Models\Employee;
 use App\Models\EmployeePayroll;
 use App\Models\EmployeeWorkStatus;
+use App\Services\ActivityLogger;
 use App\Services\ClientFundDashboardService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -197,6 +198,13 @@ class EmployeePayrollController extends Controller
             $existingPayroll ? 'Regenerated from salary #' . $existingPayroll->id : null
         );
 
+        app(ActivityLogger::class)->log(
+            'Payroll',
+            $existingPayroll ? 'Salary Regenerated' : 'Salary Generated',
+            'Salary #' . $payroll->id . ' generated for ' . ($payroll->employee?->name ?? 'employee') . '.',
+            $request
+        );
+
         return redirect('/admin/payroll/' . $payroll->id)
             ->with('success', 'Employee payroll saved successfully.');
     }
@@ -268,6 +276,13 @@ class EmployeePayrollController extends Controller
                     $existingPayroll ? 'salary_regenerated' : 'salary_generated',
                     auth()->id(),
                     'Generated from Work Status records.'
+                );
+
+                app(ActivityLogger::class)->log(
+                    'Payroll',
+                    $existingPayroll ? 'Salary Regenerated' : 'Salary Generated',
+                    'Salary #' . $payroll->id . ' generated from Work Status records.',
+                    $request
                 );
 
                 $existingPayroll ? $regenerated++ : $created++;
@@ -381,6 +396,8 @@ class EmployeePayrollController extends Controller
 
         $payroll->markAudit('salary_approved', auth()->id());
 
+        app(ActivityLogger::class)->log('Payroll', 'Salary Approved', 'Salary #' . $payroll->id . ' approved.', request());
+
         return redirect('/admin/payroll/' . $payroll->id)
             ->with('success', 'Payroll approved successfully.');
     }
@@ -407,13 +424,18 @@ class EmployeePayrollController extends Controller
 
         $payroll->markAudit('salary_paid', auth()->id());
 
+        app(ActivityLogger::class)->log('Payroll', 'Salary Paid', 'Salary #' . $payroll->id . ' marked paid.', request());
+
         return redirect('/admin/payroll/' . $payroll->id)
             ->with('success', 'Payroll marked as paid successfully.');
     }
 
     public function destroy(EmployeePayroll $payroll)
     {
+        $description = 'Salary #' . $payroll->id . ' deleted.';
         $payroll->delete();
+
+        app(ActivityLogger::class)->log('Payroll', 'Salary Deleted', $description, request());
 
         return redirect('/admin/payroll')
             ->with('success', 'Salary record deleted successfully.');

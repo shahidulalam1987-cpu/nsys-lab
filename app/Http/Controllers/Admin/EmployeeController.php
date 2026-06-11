@@ -8,6 +8,7 @@ use App\Models\ClientPage;
 use App\Models\Employee;
 use App\Models\Shift;
 use App\Models\User;
+use App\Services\ActivityLogger;
 use App\Services\ClientFundDashboardService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -66,7 +67,9 @@ class EmployeeController extends Controller
         $data['salary_day'] = $data['salary_day'] ?? $this->salaryDayFromConfirmation($data['confirmation_date'] ?? null);
         $this->storeEmployeeFiles($request, $data, $employeeId);
 
-        Employee::create($data);
+        $employee = Employee::create($data);
+
+        app(ActivityLogger::class)->log('Employee', 'Employee Created', $employee->employee_id . ' - ' . $employee->name, $request);
 
         return redirect('/admin/employees')->with('success', 'Employee created successfully.');
     }
@@ -123,6 +126,8 @@ class EmployeeController extends Controller
         $this->storeEmployeeFiles($request, $data, $employee->employee_id, $employee);
         $employee->update($data);
 
+        app(ActivityLogger::class)->log('Employee', 'Employee Updated', $employee->employee_id . ' - ' . $employee->name, $request);
+
         return redirect('/admin/employees/' . $employee->id)->with('success', 'Employee updated successfully.');
     }
 
@@ -150,6 +155,8 @@ class EmployeeController extends Controller
             'last_working_date' => $employee->last_working_date ?: now()->toDateString(),
         ]);
 
+        app(ActivityLogger::class)->log('Employee', 'Employee Terminated', $employee->employee_id . ' - ' . $employee->name, request());
+
         return redirect('/admin/employees/' . $employee->id)
             ->with('success', 'Employee terminated successfully.');
     }
@@ -164,11 +171,14 @@ class EmployeeController extends Controller
         }
 
         $user = $employee->user;
+        $description = $employee->employee_id . ' - ' . $employee->name;
         $employee->delete();
 
         if ($user && $user->role === 'employee') {
             $user->delete();
         }
+
+        app(ActivityLogger::class)->log('Employee', 'Employee Deleted', $description, request());
 
         return redirect('/admin/employees')
             ->with('success', 'Employee deleted successfully.');
@@ -209,6 +219,8 @@ class EmployeeController extends Controller
             'user_id' => $user->id,
         ]);
 
+        app(ActivityLogger::class)->log('Employee', 'Employee Login Created', $employee->employee_id . ' login created for ' . $user->email, $request);
+
         return redirect('/admin/employees/' . $employee->id)
             ->with('success', 'Employee login created and linked successfully.');
     }
@@ -237,6 +249,8 @@ class EmployeeController extends Controller
         $employee->user->update([
             'password' => Hash::make($data['password']),
         ]);
+
+        app(ActivityLogger::class)->log('Employee', 'Password Reset', $employee->employee_id . ' login password reset.', $request);
 
         return redirect('/admin/employees/' . $employee->id)
             ->with('success', 'Employee login password reset successfully.');

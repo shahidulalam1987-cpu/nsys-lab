@@ -10,10 +10,27 @@
     </div>
 
     <div class="card">
-        <form method="GET" action="/admin/bug-tracker" style="display:grid;grid-template-columns:2fr 1fr 1fr auto auto;gap:10px;align-items:end;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+            @foreach($statuses as $value => $label)
+                <a class="badge {{ ($filters['status'] ?? '') === $value ? 'badge-info' : 'badge-neutral' }}" href="/admin/bug-tracker?status={{ $value }}">
+                    {{ $label }} {{ (int) ($statusCounts[$value] ?? 0) }}
+                </a>
+            @endforeach
+        </div>
+
+        <form method="GET" action="/admin/bug-tracker" style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto auto;gap:10px;align-items:end;">
             <label>
                 Search
                 <input type="text" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Bug ID, module, title">
+            </label>
+            <label>
+                Module
+                <select name="module">
+                    <option value="">All Modules</option>
+                    @foreach($modules as $module)
+                        <option value="{{ $module }}" @selected(($filters['module'] ?? '') === $module)>{{ $module }}</option>
+                    @endforeach
+                </select>
             </label>
             <label>
                 Priority
@@ -62,7 +79,17 @@
                                 <div style="color:var(--muted);font-size:13px;margin-top:4px;">{{ \Illuminate\Support\Str::limit($bug->description, 90) }}</div>
                             @endif
                         </td>
-                        <td>{{ $bug->priorityLabel() }}</td>
+                        <td>
+                            @php
+                                $priorityClass = [
+                                    'low' => 'badge-neutral',
+                                    'medium' => 'badge-info',
+                                    'high' => 'badge-warning',
+                                    'critical' => 'badge-danger',
+                                ][$bug->priority] ?? 'badge-neutral';
+                            @endphp
+                            <span class="badge {{ $priorityClass }}">{{ $bug->priorityLabel() }}</span>
+                        </td>
                         <td>
                             <form method="POST" action="/admin/bug-tracker/{{ $bug->id }}/status">
                                 @csrf

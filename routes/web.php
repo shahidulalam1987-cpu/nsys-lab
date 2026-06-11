@@ -33,6 +33,7 @@ use App\Http\Controllers\Admin\ClientFundController;
 use App\Http\Controllers\Admin\ClientPageController;
 use App\Http\Controllers\Admin\EmployeeNoticeController;
 use App\Http\Controllers\Admin\BugReportController;
+use App\Http\Controllers\Admin\SystemToolsController;
 
 Route::get('/', [DashboardController::class, 'index']);
 
@@ -74,6 +75,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/bug-tracker/{bug}/update', [BugReportController::class, 'update']);
     Route::post('/admin/bug-tracker/{bug}/status', [BugReportController::class, 'updateStatus']);
     Route::post('/admin/bug-tracker/{bug}/delete', [BugReportController::class, 'destroy']);
+    Route::get('/admin/activity-log', [SystemToolsController::class, 'activityLog']);
+    Route::get('/admin/security-audit', [SystemToolsController::class, 'securityAudit']);
+    Route::get('/admin/test-data-reset', [SystemToolsController::class, 'testDataReset']);
+    Route::post('/admin/test-data-reset', [SystemToolsController::class, 'resetTestData']);
     Route::get('/admin/export/profit-history', [ExportController::class, 'profitHistoryCsv']);
     Route::get('/admin/clients/{id}/export-statement', [ExportController::class, 'clientStatementCsv']);
     Route::get('/admin/clients/{id}/statement-pdf', [ExportController::class, 'clientStatementPdf']);

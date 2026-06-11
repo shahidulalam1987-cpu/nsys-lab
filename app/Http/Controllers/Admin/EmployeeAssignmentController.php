@@ -8,6 +8,7 @@ use App\Models\ClientPage;
 use App\Models\Employee;
 use App\Models\EmployeeAssignment;
 use App\Models\Shift;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -47,7 +48,9 @@ class EmployeeAssignmentController extends Controller
         $data = $this->validatedData($request, requirePage: true);
         $this->ensureNoDuplicateActivePageAssignment($data);
 
-        EmployeeAssignment::create($data);
+        $assignment = EmployeeAssignment::create($data);
+
+        app(ActivityLogger::class)->log('Assignment', 'Assignment Created', 'Assignment #' . $assignment->id . ' created from Assignment Management.', $request);
 
         return redirect('/admin/assignments')->with('success', 'Assignment saved successfully.');
     }
@@ -72,6 +75,8 @@ class EmployeeAssignmentController extends Controller
         $this->ensureNoDuplicateActivePageAssignment($data, $assignment);
 
         $assignment->update($data);
+
+        app(ActivityLogger::class)->log('Assignment', 'Assignment Updated', 'Assignment #' . $assignment->id . ' updated from Assignment Management.', $request);
 
         return redirect('/admin/assignments')->with('success', 'Assignment updated successfully.');
     }
@@ -100,7 +105,9 @@ class EmployeeAssignmentController extends Controller
             })
             ->exists();
 
-        $employee->assignments()->create(collect($data)->except('employee_id')->all());
+        $assignment = $employee->assignments()->create(collect($data)->except('employee_id')->all());
+
+        app(ActivityLogger::class)->log('Assignment', 'Assignment Created', 'Assignment #' . $assignment->id . ' created for ' . $employee->name . '.', $request);
 
         $message = $hasOverlap
             ? 'Assignment saved. Warning: this employee has overlapping assignment dates.'
@@ -125,14 +132,19 @@ class EmployeeAssignmentController extends Controller
 
         $assignment->update(collect($data)->except(['employee_id', 'client_id'])->all());
 
+        app(ActivityLogger::class)->log('Assignment', 'Assignment Updated', 'Assignment #' . $assignment->id . ' updated.', $request);
+
         return back()->with('success', 'Assignment updated successfully.');
     }
 
     public function destroy(EmployeeAssignment $assignment)
     {
         $employeeId = $assignment->employee_id;
+        $description = 'Assignment #' . $assignment->id . ' deleted from employee profile.';
 
         $assignment->delete();
+
+        app(ActivityLogger::class)->log('Assignment', 'Assignment Deleted', $description, request());
 
         return redirect('/admin/employees/' . $employeeId)
             ->with('success', 'Assignment deleted successfully.');
@@ -140,7 +152,10 @@ class EmployeeAssignmentController extends Controller
 
     public function remove(EmployeeAssignment $assignment)
     {
+        $description = 'Assignment #' . $assignment->id . ' removed from Assignment Management.';
         $assignment->delete();
+
+        app(ActivityLogger::class)->log('Assignment', 'Assignment Deleted', $description, request());
 
         return redirect('/admin/assignments')->with('success', 'Assignment removed successfully.');
     }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\BugReport;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -14,6 +15,7 @@ class BugReportController extends Controller
         $filters = $request->validate([
             'status' => ['nullable', Rule::in(array_keys(BugReport::STATUSES))],
             'priority' => ['nullable', Rule::in(array_keys(BugReport::PRIORITIES))],
+            'module' => ['nullable', 'string', 'max:100'],
             'search' => ['nullable', 'string', 'max:100'],
         ]);
 
@@ -25,6 +27,10 @@ class BugReportController extends Controller
 
         if (! empty($filters['priority'])) {
             $query->where('priority', $filters['priority']);
+        }
+
+        if (! empty($filters['module'])) {
+            $query->where('module', $filters['module']);
         }
 
         if (! empty($filters['search'])) {
@@ -40,6 +46,8 @@ class BugReportController extends Controller
             'priorities' => BugReport::PRIORITIES,
             'statuses' => BugReport::STATUSES,
             'filters' => $filters,
+            'modules' => BugReport::select('module')->distinct()->orderBy('module')->pluck('module'),
+            'statusCounts' => BugReport::selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status'),
         ]);
     }
 
@@ -56,11 +64,13 @@ class BugReportController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, ActivityLogger $logger)
     {
-        BugReport::create($this->validatedData($request) + [
+        $bug = BugReport::create($this->validatedData($request) + [
             'bug_id' => $this->nextBugId(),
         ]);
+
+        $logger->log('Bug Tracker', 'Bug Created', $bug->bug_id . ' - ' . $bug->title, $request);
 
         return redirect('/admin/bug-tracker')->with('success', 'Bug added successfully.');
     }
@@ -74,14 +84,16 @@ class BugReportController extends Controller
         ]);
     }
 
-    public function update(Request $request, BugReport $bug)
+    public function update(Request $request, BugReport $bug, ActivityLogger $logger)
     {
         $bug->update($this->validatedData($request));
+
+        $logger->log('Bug Tracker', 'Bug Updated', $bug->bug_id . ' - ' . $bug->title, $request);
 
         return redirect('/admin/bug-tracker')->with('success', 'Bug updated successfully.');
     }
 
-    public function updateStatus(Request $request, BugReport $bug)
+    public function updateStatus(Request $request, BugReport $bug, ActivityLogger $logger)
     {
         $data = $request->validate([
             'status' => ['required', Rule::in(array_keys(BugReport::STATUSES))],
@@ -89,12 +101,18 @@ class BugReportController extends Controller
 
         $bug->update($data);
 
+        $action = $data['status'] === 'closed' ? 'Bug Closed' : 'Bug Updated';
+        $logger->log('Bug Tracker', $action, $bug->bug_id . ' status changed to ' . $bug->statusLabel(), $request);
+
         return redirect('/admin/bug-tracker')->with('success', 'Bug status updated successfully.');
     }
 
-    public function destroy(BugReport $bug)
+    public function destroy(Request $request, BugReport $bug, ActivityLogger $logger)
     {
+        $description = $bug->bug_id . ' - ' . $bug->title;
         $bug->delete();
+
+        $logger->log('Bug Tracker', 'Bug Deleted', $description, $request);
 
         return redirect('/admin/bug-tracker')->with('success', 'Bug deleted successfully.');
     }

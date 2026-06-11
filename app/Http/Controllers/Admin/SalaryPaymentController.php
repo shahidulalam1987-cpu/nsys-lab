@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\SalaryPayment;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 
 class SalaryPaymentController extends Controller
@@ -58,7 +59,9 @@ class SalaryPaymentController extends Controller
             $data['approved_at'] = now();
         }
 
-        SalaryPayment::create($data);
+        $payment = SalaryPayment::create($data);
+
+        app(ActivityLogger::class)->log('Client Fund', 'Payment Received', 'Client payment #' . $payment->id . ' saved.', $request);
 
         return redirect('/admin/salary-payments')->with('success', 'Client fund payment saved successfully.');
     }
@@ -84,6 +87,8 @@ class SalaryPaymentController extends Controller
             'reject_reason' => null,
         ]);
 
+        app(ActivityLogger::class)->log('Client Fund', 'Payment Approved', 'Client payment #' . $payment->id . ' approved.', request());
+
         return back()->with('success', 'Client payment approved successfully.');
     }
 
@@ -101,12 +106,17 @@ class SalaryPaymentController extends Controller
             'reject_reason' => $request->reject_reason,
         ]);
 
+        app(ActivityLogger::class)->log('Client Fund', 'Payment Rejected', 'Client payment #' . $payment->id . ' rejected.', $request);
+
         return back()->with('success', 'Client payment rejected successfully.');
     }
 
     public function destroy(SalaryPayment $payment)
     {
+        $description = 'Client payment #' . $payment->id . ' deleted.';
         $payment->delete();
+
+        app(ActivityLogger::class)->log('Client Fund', 'Payment Deleted', $description, request());
 
         return redirect('/admin/salary-payments')->with('success', 'Client payment record deleted successfully.');
     }

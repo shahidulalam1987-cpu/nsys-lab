@@ -415,7 +415,10 @@
             || request()->is('admin/client-pages*')
             || request()->is('admin/employee-notices*')
             || request()->is('admin/payroll*');
-        $isBugTracker = request()->is('admin/bug-tracker*');
+        $isSystemTools = request()->is('admin/bug-tracker*')
+            || request()->is('admin/activity-log*')
+            || request()->is('admin/security-audit*')
+            || request()->is('admin/test-data-reset*');
         $openBugCount = \App\Models\BugReport::where('status', 'open')->count();
         $clientFundBadges = $isEmployeeDepartment
             ? app(\App\Services\ClientFundDashboardService::class)->sidebarBadges()
@@ -427,13 +430,13 @@
             <div class="brand">NSYS Agency Admin</div>
 
             <div class="department-tabs">
-                <a class="department-tab {{ $isBugTracker ? 'active-department' : '' }}" href="/admin/bug-tracker">
+                <a class="department-tab {{ $isSystemTools ? 'active-department' : '' }}" href="/admin/bug-tracker">
                     System Tools
                     @if($openBugCount > 0)
                         <span class="header-count-badge">{{ $openBugCount }}</span>
                     @endif
                 </a>
-                <a class="department-tab {{ ! $isEmployeeDepartment && ! $isBugTracker ? 'active-department' : '' }}" href="/admin/dashboard">Boosting Department</a>
+                <a class="department-tab {{ ! $isEmployeeDepartment && ! $isSystemTools ? 'active-department' : '' }}" href="/admin/dashboard">Boosting Department</a>
                 <a class="department-tab {{ $isEmployeeDepartment ? 'active-department' : '' }}" href="/admin/employees">Employee Department</a>
             </div>
         </div>
@@ -446,9 +449,12 @@
 
     <div class="layout">
         <div class="sidebar">
-            @if($isBugTracker)
+            @if($isSystemTools)
                 <div class="sidebar-section-title">System Tools</div>
                 <a class="{{ request()->is('admin/bug-tracker*') ? 'active-menu' : '' }}" href="/admin/bug-tracker">Bug Tracker</a>
+                <a class="{{ request()->is('admin/activity-log*') ? 'active-menu' : '' }}" href="/admin/activity-log">Activity Log</a>
+                <a class="{{ request()->is('admin/security-audit*') ? 'active-menu' : '' }}" href="/admin/security-audit">Security Audit</a>
+                <a class="{{ request()->is('admin/test-data-reset*') ? 'active-menu' : '' }}" href="/admin/test-data-reset">Test Data Reset</a>
             @elseif($isEmployeeDepartment)
                 <div class="sidebar-section-title">Employee</div>
                 <a class="{{ request()->is('admin/employees*') ? 'active-menu' : '' }}" href="/admin/employees">Employee List</a>
