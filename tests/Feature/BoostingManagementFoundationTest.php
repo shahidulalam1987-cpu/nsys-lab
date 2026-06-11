@@ -52,7 +52,6 @@ class BoostingManagementFoundationTest extends TestCase
                 'ad_account_id' => 'act_1001',
                 'business_manager_id' => $bm->id,
                 'client_id' => $client->id,
-                'currency' => 'BDT',
                 'timezone' => 'Asia/Dhaka',
                 'threshold_amount' => 10000,
                 'current_threshold_usage' => 3500,
@@ -69,6 +68,7 @@ class BoostingManagementFoundationTest extends TestCase
         $account = AdAccount::firstOrFail();
 
         $this->assertSame(6500.0, $account->remaining_threshold);
+        $this->assertSame('USD', $account->currency);
 
         ClientPage::create([
             'client_id' => $client->id,

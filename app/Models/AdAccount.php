@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class AdAccount extends Model
 {
+    public const CURRENCY = 'USD';
+
     public const STATUSES = [
         'active' => 'Active',
         'payment_issue' => 'Payment Issue',
@@ -64,6 +66,11 @@ class AdAccount extends Model
     public function getRemainingThresholdAttribute(): float
     {
         return max((float) $this->threshold_amount - (float) $this->current_threshold_usage, 0);
+    }
+
+    public function getCurrencyAttribute($value): string
+    {
+        return $value ?: self::CURRENCY;
     }
 
     public function statusLabel(): string

@@ -28,7 +28,7 @@
                     @endforeach
                 </select>
             </label>
-            <label>Currency<br><input type="text" name="currency" value="{{ old('currency', $adAccount?->currency ?? 'BDT') }}" required></label>
+            <label>Currency<br><input type="text" value="USD" readonly></label>
             <label>Timezone<br><input type="text" name="timezone" value="{{ old('timezone', $adAccount?->timezone ?? 'Asia/Dhaka') }}" required></label>
             <label>Threshold Amount<br><input type="number" step="0.01" min="0" name="threshold_amount" value="{{ old('threshold_amount', $adAccount?->threshold_amount ?? 0) }}" required></label>
             <label>Current Threshold Usage<br><input type="number" step="0.01" min="0" name="current_threshold_usage" value="{{ old('current_threshold_usage', $adAccount?->current_threshold_usage ?? 0) }}" required></label>

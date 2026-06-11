@@ -45,7 +45,7 @@ class AdAccountController extends Controller
     public function create()
     {
         return view('admin.ad-accounts.create', $this->formData(new AdAccount([
-            'currency' => 'BDT',
+            'currency' => AdAccount::CURRENCY,
             'timezone' => 'Asia/Dhaka',
             'status' => 'active',
         ])));
@@ -53,7 +53,9 @@ class AdAccountController extends Controller
 
     public function store(Request $request)
     {
-        $adAccount = AdAccount::create($this->validatedData($request));
+        $adAccount = AdAccount::create($this->validatedData($request) + [
+            'currency' => AdAccount::CURRENCY,
+        ]);
 
         return redirect('/admin/ad-accounts/' . $adAccount->id)->with('success', 'Ad account saved successfully.');
     }
@@ -72,7 +74,9 @@ class AdAccountController extends Controller
 
     public function update(Request $request, AdAccount $adAccount)
     {
-        $adAccount->update($this->validatedData($request, $adAccount));
+        $adAccount->update($this->validatedData($request, $adAccount) + [
+            'currency' => AdAccount::CURRENCY,
+        ]);
 
         return redirect('/admin/ad-accounts/' . $adAccount->id)->with('success', 'Ad account updated successfully.');
     }
@@ -105,7 +109,6 @@ class AdAccountController extends Controller
             'ad_account_id' => ['required', 'string', 'max:255', Rule::unique('ad_accounts', 'ad_account_id')->ignore($adAccount)],
             'business_manager_id' => ['required', 'exists:business_managers,id'],
             'client_id' => ['nullable', 'exists:clients,id'],
-            'currency' => ['required', 'string', 'max:10'],
             'timezone' => ['required', 'string', 'max:100'],
             'threshold_amount' => ['required', 'numeric', 'min:0'],
             'current_threshold_usage' => ['required', 'numeric', 'min:0'],

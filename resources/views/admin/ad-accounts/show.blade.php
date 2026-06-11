@@ -15,6 +15,7 @@
     <div class="card">
         <h2>{{ $adAccount->ad_account_name }}</h2>
         <p><strong>Ad Account ID:</strong> {{ $adAccount->ad_account_id }}</p>
+        <p><strong>Currency:</strong> USD</p>
         <p><strong>BM:</strong> {{ $adAccount->businessManager?->bm_name ?: '-' }}</p>
         <p><strong>Client:</strong> {{ $adAccount->client?->company_name ?: '-' }}</p>
         <p><strong>Billing Date:</strong> {{ $adAccount->monthly_billing_date ?: '-' }}</p>
