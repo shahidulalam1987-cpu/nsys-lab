@@ -205,6 +205,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/ad-accounts', [AdAccountController::class, 'index']);
     Route::get('/admin/ad-accounts/create', [AdAccountController::class, 'create']);
     Route::post('/admin/ad-accounts', [AdAccountController::class, 'store']);
+    Route::get('/admin/ad-account-ledger', [AdAccountController::class, 'ledger']);
+    Route::get('/admin/ad-account-ledger/{ledger}', [AdAccountController::class, 'ledgerShow']);
     Route::get('/admin/ad-accounts/{adAccount}', [AdAccountController::class, 'show']);
     Route::get('/admin/ad-accounts/{adAccount}/edit', [AdAccountController::class, 'edit']);
     Route::post('/admin/ad-accounts/{adAccount}/update', [AdAccountController::class, 'update']);

@@ -38,6 +38,12 @@ class DashboardController extends Controller
         $totalThreshold = (float) $adAccounts->sum('threshold_amount');
         $remainingThreshold = (float) $adAccounts->sum(fn (AdAccount $account) => $account->remaining_threshold);
         $adAccountCurrentBalance = (float) $adAccounts->sum('current_balance');
+        $upcomingBillingAccounts = $adAccounts->filter(fn (AdAccount $account) => $account->billingStatus() === 'upcoming')->count();
+        $criticalAdAccounts = $adAccounts->filter(fn (AdAccount $account) => in_array($account->thresholdStatus(), ['critical', 'limit_reached'], true)
+            || in_array($account->balanceStatus(), ['low', 'negative'], true)
+            || $account->billingStatus() === 'overdue'
+            || $account->status === 'payment_issue'
+        )->count();
 
         $reports = DailyReport::with('client')->get();
 
@@ -87,6 +93,8 @@ class DashboardController extends Controller
             'totalThreshold',
             'remainingThreshold',
             'adAccountCurrentBalance',
+            'upcomingBillingAccounts',
+            'criticalAdAccounts',
             'totalRevenue',
             'totalCost',
             'totalProfit',

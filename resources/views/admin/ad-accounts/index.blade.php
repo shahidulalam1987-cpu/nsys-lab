@@ -7,14 +7,23 @@
             <p>Manage ad accounts, thresholds, billing dates, and account health.</p>
         </div>
         <a class="btn" href="/admin/ad-accounts/create">Create Ad Account</a>
+        <a class="btn" href="/admin/ad-account-ledger">Financial Ledger</a>
     </div>
 
     <div class="stats-grid">
         <div class="stat-card"><p>Total Ad Accounts</p><h2>{{ number_format($summary['total']) }}</h2></div>
         <div class="stat-card"><p>Active Accounts</p><h2>{{ number_format($summary['active']) }}</h2></div>
         <div class="stat-card"><p>Payment Issue</p><h2>{{ number_format($summary['payment_issue']) }}</h2></div>
-        <div class="stat-card"><p>Total Threshold</p><h2>BDT {{ number_format($summary['total_threshold'], 2) }}</h2></div>
-        <div class="stat-card"><p>Total Balance</p><h2>BDT {{ number_format($summary['total_balance'], 2) }}</h2></div>
+        <div class="stat-card"><p>Total Threshold</p><h2>USD {{ number_format($summary['total_threshold'], 2) }}</h2></div>
+        <div class="stat-card"><p>Remaining Threshold</p><h2>USD {{ number_format($summary['remaining_threshold'], 2) }}</h2></div>
+        <div class="stat-card"><p>Total Balance</p><h2>USD {{ number_format($summary['total_balance'], 2) }}</h2></div>
+        <div class="stat-card"><p>Near Threshold</p><h2>{{ number_format($summary['near_threshold']) }}</h2></div>
+        <div class="stat-card"><p>At Risk</p><h2>{{ number_format($summary['at_risk']) }}</h2></div>
+        <div class="stat-card"><p>Reached Limit</p><h2>{{ number_format($summary['limit_reached']) }}</h2></div>
+        <div class="stat-card"><p>Upcoming Billing</p><h2>{{ number_format($summary['upcoming_billing']) }}</h2></div>
+        <div class="stat-card"><p>Overdue Billing</p><h2>{{ number_format($summary['overdue_billing']) }}</h2></div>
+        <div class="stat-card"><p>Low Balance</p><h2>{{ number_format($summary['low_balance']) }}</h2></div>
+        <div class="stat-card"><p>Negative Balance</p><h2>{{ number_format($summary['negative_balance']) }}</h2></div>
     </div>
 
     <div class="card">
@@ -43,6 +52,30 @@
                     @endforeach
                 </select>
             </label>
+            <label>Billing Status<br>
+                <select name="billing_status">
+                    <option value="">All Billing</option>
+                    @foreach(['normal' => 'Normal', 'upcoming' => 'Upcoming', 'overdue' => 'Overdue', 'not_set' => 'Not Set'] as $value => $label)
+                        <option value="{{ $value }}" @selected(($filters['billing_status'] ?? '') === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <label>Threshold Status<br>
+                <select name="threshold_status">
+                    <option value="">All Threshold</option>
+                    @foreach(['normal' => 'Normal', 'warning' => 'Warning', 'critical' => 'Critical', 'limit_reached' => 'Limit Reached'] as $value => $label)
+                        <option value="{{ $value }}" @selected(($filters['threshold_status'] ?? '') === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <label>Balance Status<br>
+                <select name="balance_status">
+                    <option value="">All Balance</option>
+                    @foreach(['normal' => 'Normal', 'low' => 'Low Balance', 'negative' => 'Negative Balance'] as $value => $label)
+                        <option value="{{ $value }}" @selected(($filters['balance_status'] ?? '') === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </label>
             <button class="btn" type="submit">Filter</button>
             <a href="/admin/ad-accounts">Reset</a>
         </form>
@@ -62,6 +95,7 @@
                     <th>Current Balance</th>
                     <th>Billing Date</th>
                     <th>Status</th>
+                    <th>Alerts</th>
                     <th>Actions</th>
                 </tr>
                 @forelse($adAccounts as $account)
@@ -75,7 +109,29 @@
                         <td>{{ $account->currency }} {{ number_format($account->remaining_threshold, 2) }}</td>
                         <td>{{ $account->currency }} {{ number_format((float) $account->current_balance, 2) }}</td>
                         <td>{{ $account->monthly_billing_date ?: '-' }}</td>
-                        <td>{{ $account->statusLabel() }}</td>
+                        <td>
+                            @php
+                                $statusClass = [
+                                    'active' => 'badge-success',
+                                    'payment_issue' => 'badge-warning',
+                                    'review' => 'badge-info',
+                                    'disabled' => 'badge-danger',
+                                    'limit_reached' => 'badge-danger',
+                                ][$account->status] ?? 'badge-neutral';
+                            @endphp
+                            <span class="badge {{ $statusClass }}">{{ $account->statusLabel() }}</span>
+                        </td>
+                        <td>
+                            @if($account->thresholdStatus() !== 'normal')
+                                <span class="badge {{ in_array($account->thresholdStatus(), ['critical', 'limit_reached'], true) ? 'badge-danger' : 'badge-warning' }}">{{ $account->thresholdStatusLabel() }}</span>
+                            @endif
+                            @if(in_array($account->billingStatus(), ['upcoming', 'overdue'], true))
+                                <span class="badge {{ $account->billingStatus() === 'overdue' ? 'badge-danger' : 'badge-warning' }}">{{ $account->billingStatusLabel() }}</span>
+                            @endif
+                            @if($account->balanceStatus() !== 'normal')
+                                <span class="badge {{ $account->balanceStatus() === 'negative' ? 'badge-danger' : 'badge-warning' }}">{{ $account->balanceStatusLabel() }}</span>
+                            @endif
+                        </td>
                         <td style="white-space:nowrap;">
                             <a href="/admin/ad-accounts/{{ $account->id }}">View</a> |
                             <a href="/admin/ad-accounts/{{ $account->id }}/edit">Edit</a> |
@@ -86,7 +142,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="11">No ad accounts found.</td></tr>
+                    <tr><td colspan="12">No ad accounts found.</td></tr>
                 @endforelse
             </table>
         </div>

@@ -30,17 +30,27 @@
     <div class="stats-grid">
         <div class="stat-card">
             <p>Total Threshold</p>
-            <h2>BDT {{ number_format($totalThreshold, 2) }}</h2>
+            <h2>USD {{ number_format($totalThreshold, 2) }}</h2>
         </div>
 
         <div class="stat-card">
             <p>Remaining Threshold</p>
-            <h2>BDT {{ number_format($remainingThreshold, 2) }}</h2>
+            <h2>USD {{ number_format($remainingThreshold, 2) }}</h2>
         </div>
 
         <div class="stat-card">
             <p>Current Balance</p>
-            <h2>BDT {{ number_format($adAccountCurrentBalance, 2) }}</h2>
+            <h2>USD {{ number_format($adAccountCurrentBalance, 2) }}</h2>
+        </div>
+
+        <div class="stat-card">
+            <p>Upcoming Billing</p>
+            <h2>{{ number_format($upcomingBillingAccounts) }}</h2>
+        </div>
+
+        <div class="stat-card">
+            <p>Critical Accounts</p>
+            <h2>{{ number_format($criticalAdAccounts) }}</h2>
         </div>
     </div>
 

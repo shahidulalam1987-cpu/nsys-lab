@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AdAccount;
+use App\Models\AdAccountLedger;
 use App\Models\BusinessManager;
 use App\Models\Client;
 use App\Models\ClientPage;
@@ -69,6 +70,10 @@ class BoostingManagementFoundationTest extends TestCase
 
         $this->assertSame(6500.0, $account->remaining_threshold);
         $this->assertSame('USD', $account->currency);
+        $this->assertDatabaseHas('ad_account_ledgers', [
+            'ad_account_id' => $account->id,
+            'transaction_type' => 'threshold_update',
+        ]);
 
         ClientPage::create([
             'client_id' => $client->id,
@@ -102,8 +107,89 @@ class BoostingManagementFoundationTest extends TestCase
             ->assertSee('Total BM')
             ->assertSee('Total Ad Accounts')
             ->assertSee('Remaining Threshold')
+            ->assertSee('Critical Accounts')
             ->assertSee('Add BM')
             ->assertSee('Add Ad Account');
+    }
+
+    public function test_ad_account_alert_filters_and_ledger_updates_work(): void
+    {
+        $admin = $this->user('admin');
+        $bm = BusinessManager::create([
+            'bm_name' => 'Alert BM',
+            'bm_id' => 'BM-ALERT',
+            'owner_name' => 'Alert Owner',
+            'owner_email' => 'alert@example.com',
+            'verification_status' => 'verified',
+            'status' => 'active',
+        ]);
+
+        $account = AdAccount::create([
+            'ad_account_name' => 'Risky Account',
+            'ad_account_id' => 'act_risky',
+            'business_manager_id' => $bm->id,
+            'currency' => 'USD',
+            'timezone' => 'Asia/Dhaka',
+            'threshold_amount' => 1000,
+            'current_threshold_usage' => 960,
+            'current_balance' => 50,
+            'monthly_billing_date' => now()->copy()->addDays(3)->day,
+            'status' => 'payment_issue',
+        ]);
+
+        $this->assertSame('critical', $account->thresholdStatus());
+        $this->assertSame('upcoming', $account->billingStatus());
+        $this->assertSame('low', $account->balanceStatus());
+
+        $this->actingAs($admin)
+            ->get('/admin/ad-accounts?threshold_status=critical&billing_status=upcoming&balance_status=low')
+            ->assertOk()
+            ->assertSee('Risky Account')
+            ->assertSee('Critical')
+            ->assertSee('Upcoming Billing')
+            ->assertSee('Low Balance');
+
+        $this->actingAs($admin)
+            ->post('/admin/ad-accounts/' . $account->id . '/update', [
+                'ad_account_name' => 'Risky Account',
+                'ad_account_id' => 'act_risky',
+                'business_manager_id' => $bm->id,
+                'client_id' => null,
+                'timezone' => 'Asia/Dhaka',
+                'threshold_amount' => 1000,
+                'current_threshold_usage' => 1000,
+                'current_balance' => 0,
+                'monthly_billing_date' => now()->copy()->subDay()->day,
+                'last_payment_date' => now()->toDateString(),
+                'payment_method' => 'Card',
+                'card_last_four' => '5555',
+                'status' => 'limit_reached',
+                'notes' => 'Limit reached during testing.',
+            ])
+            ->assertRedirect('/admin/ad-accounts/' . $account->id);
+
+        $account->refresh();
+
+        $this->assertSame('limit_reached', $account->thresholdStatus());
+        $this->assertSame('negative', $account->balanceStatus());
+        $this->assertDatabaseHas('ad_account_ledgers', [
+            'ad_account_id' => $account->id,
+            'transaction_type' => 'status_change',
+        ]);
+
+        $ledger = AdAccountLedger::where('ad_account_id', $account->id)->latest()->firstOrFail();
+
+        $this->actingAs($admin)
+            ->get('/admin/ad-account-ledger')
+            ->assertOk()
+            ->assertSee('Ad Account Financial Ledger')
+            ->assertSee('Risky Account');
+
+        $this->actingAs($admin)
+            ->get('/admin/ad-account-ledger/' . $ledger->id)
+            ->assertOk()
+            ->assertSee('Ledger Details')
+            ->assertSee($ledger->typeLabel());
     }
 
     public function test_non_admin_cannot_access_boosting_management_foundation(): void

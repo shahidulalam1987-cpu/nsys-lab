@@ -4,12 +4,23 @@
     <h1>Ad Account Details</h1>
     <a class="btn" href="/admin/ad-accounts">Back to Ad Account Management</a>
     <a class="btn" href="/admin/ad-accounts/{{ $adAccount->id }}/edit">Edit Ad Account</a>
+    <a class="btn" href="/admin/ad-account-ledger?ad_account_id={{ $adAccount->id }}">Financial Ledger</a>
 
     <div class="stats-grid" style="margin-top:20px;">
         <div class="stat-card"><p>Threshold Amount</p><h2>{{ $adAccount->currency }} {{ number_format((float) $adAccount->threshold_amount, 2) }}</h2></div>
         <div class="stat-card"><p>Current Usage</p><h2>{{ $adAccount->currency }} {{ number_format((float) $adAccount->current_threshold_usage, 2) }}</h2></div>
         <div class="stat-card"><p>Remaining Threshold</p><h2>{{ $adAccount->currency }} {{ number_format($adAccount->remaining_threshold, 2) }}</h2></div>
         <div class="stat-card"><p>Current Balance</p><h2>{{ $adAccount->currency }} {{ number_format((float) $adAccount->current_balance, 2) }}</h2></div>
+        <div class="stat-card"><p>Monthly Billing Date</p><h2>{{ $adAccount->monthly_billing_date ?: '-' }}</h2></div>
+        <div class="stat-card"><p>Last Payment Date</p><h2>{{ $adAccount->last_payment_date?->toDateString() ?: '-' }}</h2></div>
+        <div class="stat-card"><p>Days Until Billing</p><h2>{{ $adAccount->daysUntilBilling() ?? '-' }}</h2></div>
+    </div>
+
+    <div class="card">
+        <h2>Financial Alerts</h2>
+        <p><strong>Threshold:</strong> {{ $adAccount->thresholdStatusLabel() }} ({{ number_format($adAccount->thresholdUsagePercent(), 2) }}%)</p>
+        <p><strong>Billing:</strong> {{ $adAccount->billingStatusLabel() }}</p>
+        <p><strong>Balance:</strong> {{ $adAccount->balanceStatusLabel() }}</p>
     </div>
 
     <div class="card">
@@ -24,5 +35,35 @@
         <p><strong>Card Last 4:</strong> {{ $adAccount->card_last_four ?: '-' }}</p>
         <p><strong>Status:</strong> {{ $adAccount->statusLabel() }}</p>
         <p><strong>Notes:</strong> {{ $adAccount->notes ?: '-' }}</p>
+    </div>
+
+    <div class="card">
+        <h2>Recent Financial Ledger</h2>
+        <div class="table-wrap">
+            <table>
+                <tr>
+                    <th>Date</th>
+                    <th>Transaction Type</th>
+                    <th>Amount</th>
+                    <th>Previous Value</th>
+                    <th>New Value</th>
+                    <th>Created By</th>
+                    <th>Action</th>
+                </tr>
+                @forelse($adAccount->ledgers->sortByDesc('transaction_date')->take(10) as $ledger)
+                    <tr>
+                        <td>{{ $ledger->transaction_date?->toDateString() }}</td>
+                        <td>{{ $ledger->typeLabel() }}</td>
+                        <td>USD {{ number_format((float) $ledger->amount, 2) }}</td>
+                        <td>{{ $ledger->previous_value !== null ? 'USD ' . number_format((float) $ledger->previous_value, 2) : '-' }}</td>
+                        <td>{{ $ledger->new_value !== null ? 'USD ' . number_format((float) $ledger->new_value, 2) : '-' }}</td>
+                        <td>{{ $ledger->creator?->name ?: '-' }}</td>
+                        <td><a href="/admin/ad-account-ledger/{{ $ledger->id }}">View</a></td>
+                    </tr>
+                @empty
+                    <tr><td colspan="7">No ledger records found.</td></tr>
+                @endforelse
+            </table>
+        </div>
     </div>
 @endsection

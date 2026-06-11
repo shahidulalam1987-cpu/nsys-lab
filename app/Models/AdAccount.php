@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 class AdAccount extends Model
 {
@@ -13,6 +14,7 @@ class AdAccount extends Model
         'payment_issue' => 'Payment Issue',
         'disabled' => 'Disabled',
         'review' => 'Review',
+        'limit_reached' => 'Limit Reached',
     ];
 
     protected $fillable = [
@@ -63,6 +65,11 @@ class AdAccount extends Model
         return $this->hasMany(ClientPage::class);
     }
 
+    public function ledgers()
+    {
+        return $this->hasMany(AdAccountLedger::class);
+    }
+
     public function getRemainingThresholdAttribute(): float
     {
         return max((float) $this->threshold_amount - (float) $this->current_threshold_usage, 0);
@@ -76,5 +83,114 @@ class AdAccount extends Model
     public function statusLabel(): string
     {
         return self::STATUSES[$this->status] ?? ucwords(str_replace('_', ' ', $this->status));
+    }
+
+    public function thresholdUsagePercent(): float
+    {
+        $threshold = (float) $this->threshold_amount;
+
+        if ($threshold <= 0) {
+            return 0.0;
+        }
+
+        return min(((float) $this->current_threshold_usage / $threshold) * 100, 100);
+    }
+
+    public function thresholdStatus(): string
+    {
+        $threshold = (float) $this->threshold_amount;
+        $usage = (float) $this->current_threshold_usage;
+
+        if ($threshold > 0 && $usage >= $threshold) {
+            return 'limit_reached';
+        }
+
+        $percent = $this->thresholdUsagePercent();
+
+        if ($percent >= 95) {
+            return 'critical';
+        }
+
+        if ($percent >= 80) {
+            return 'warning';
+        }
+
+        return 'normal';
+    }
+
+    public function thresholdStatusLabel(): string
+    {
+        return [
+            'normal' => 'Normal',
+            'warning' => 'Warning',
+            'critical' => 'Critical',
+            'limit_reached' => 'Limit Reached',
+        ][$this->thresholdStatus()];
+    }
+
+    public function daysUntilBilling(?Carbon $today = null): ?int
+    {
+        if (! $this->monthly_billing_date) {
+            return null;
+        }
+
+        $today = ($today ?: now())->copy()->startOfDay();
+        $billingDay = min((int) $this->monthly_billing_date, $today->copy()->daysInMonth);
+        $billingDate = $today->copy()->day($billingDay);
+
+        return (int) $today->diffInDays($billingDate, false);
+    }
+
+    public function billingStatus(?Carbon $today = null): string
+    {
+        $days = $this->daysUntilBilling($today);
+
+        if ($days === null) {
+            return 'not_set';
+        }
+
+        if ($days < 0) {
+            return 'overdue';
+        }
+
+        if ($days <= 5) {
+            return 'upcoming';
+        }
+
+        return 'normal';
+    }
+
+    public function billingStatusLabel(): string
+    {
+        return [
+            'not_set' => 'Not Set',
+            'normal' => 'Normal',
+            'upcoming' => 'Upcoming Billing',
+            'overdue' => 'Overdue Billing',
+        ][$this->billingStatus()];
+    }
+
+    public function balanceStatus(): string
+    {
+        $balance = (float) $this->current_balance;
+
+        if ($balance <= 0) {
+            return 'negative';
+        }
+
+        if ($balance < 100) {
+            return 'low';
+        }
+
+        return 'normal';
+    }
+
+    public function balanceStatusLabel(): string
+    {
+        return [
+            'normal' => 'Normal',
+            'low' => 'Low Balance',
+            'negative' => 'Negative Balance',
+        ][$this->balanceStatus()];
     }
 }
