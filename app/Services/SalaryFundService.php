@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Client;
+use App\Models\EmployeePayroll;
 use App\Models\SalaryDay;
 use App\Models\SalaryPayment;
 use Carbon\Carbon;
@@ -13,7 +14,7 @@ class SalaryFundService
     {
         $monthStart = Carbon::parse($month ?: now()->format('Y-m-01'))->startOfMonth();
         $monthEnd = $monthStart->copy()->endOfMonth();
-        $daysInMonth = $monthStart->daysInMonth;
+        $salaryMonthDays = EmployeePayroll::FIXED_SALARY_MONTH_DAYS;
 
         $salaryDays = SalaryDay::with('employee')
             ->where('client_id', $client->id)
@@ -23,13 +24,16 @@ class SalaryFundService
 
         $employeeRows = $salaryDays
             ->groupBy('employee_id')
-            ->map(function ($days) use ($daysInMonth) {
+            ->map(function ($days) use ($salaryMonthDays) {
                 $employee = $days->first()->employee;
                 $countedDays = $days->where('is_counted', true)->count();
                 $nonCountedDays = $days->where('is_counted', false)->count();
-                $salary = $employee
-                    ? ((float) $employee->monthly_salary / $daysInMonth) * $countedDays
+                $dailySalary = $employee
+                    ? round((float) $employee->monthly_salary / $salaryMonthDays, 2)
                     : 0;
+                $salary = $employee && $countedDays >= $salaryMonthDays
+                    ? round((float) $employee->monthly_salary, 2)
+                    : round($dailySalary * $countedDays, 2);
 
                 return [
                     'employee' => $employee,

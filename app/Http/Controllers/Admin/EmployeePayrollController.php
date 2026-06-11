@@ -414,7 +414,7 @@ class EmployeePayrollController extends Controller
                     'client' => $employee->activeAssignments->first()?->client?->company_name ?: '-',
                     'salary_period' => $salaryDate?->format('Y-m') ?: '-',
                     'salary_date' => $salaryDate?->toDateString() ?: '-',
-                    'working_days' => $salaryDate?->daysInMonth ?: 0,
+                    'working_days' => EmployeePayroll::FIXED_SALARY_MONTH_DAYS,
                     'payable_salary' => (float) $employee->monthly_salary,
                     'paid_salary' => 0,
                     'remaining_due' => (float) $employee->monthly_salary,
@@ -442,7 +442,7 @@ class EmployeePayrollController extends Controller
             $toDate = $salaryMonth->copy()->endOfMonth();
             $workingDays = $submittedWorkingDays !== null
                 ? (float) $submittedWorkingDays
-                : $fromDate->daysInMonth;
+                : EmployeePayroll::FIXED_SALARY_MONTH_DAYS;
             $nonWorkingDays = $submittedNonWorkingDays !== null
                 ? (float) $submittedNonWorkingDays
                 : 0;
@@ -473,10 +473,12 @@ class EmployeePayrollController extends Controller
             }
         }
 
-        $monthDays = $fromDate->daysInMonth;
+        $monthDays = EmployeePayroll::FIXED_SALARY_MONTH_DAYS;
         $monthlySalary = (float) $employee->monthly_salary;
         $dailySalary = round($monthlySalary / $monthDays, 2);
-        $payableSalary = round(($monthlySalary * $workingDays) / $monthDays, 2);
+        $payableSalary = (float) $workingDays >= $monthDays
+            ? round($monthlySalary, 2)
+            : round($dailySalary * $workingDays, 2);
 
         return [
             'from_date' => $fromDate,

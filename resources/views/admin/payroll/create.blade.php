@@ -239,7 +239,7 @@
                     <p class="salary-field">Working Days<br><input type="number" step="0.5" min="0" max="31" name="working_days" id="working_days" value="{{ old('working_days') }}"></p>
                     <p class="salary-field">Non Working Days<br><input type="number" step="0.5" min="0" max="31" name="non_working_days" id="non_working_days" value="{{ old('non_working_days', 0) }}"></p>
                     <p class="salary-field">Monthly Salary<br><input type="text" id="monthly_salary_display" value="BDT 0.00" readonly></p>
-                    <p class="salary-field">Month Days<br><input type="text" id="month_days_display" value="0" readonly></p>
+                    <p class="salary-field">Month Days<br><input type="text" id="month_days_display" value="30" readonly></p>
                     <p class="salary-field">Daily Salary<br><input type="text" id="daily_salary_display" value="BDT 0.00" readonly></p>
                     <p class="salary-field">Payable Salary (BDT)<br><input type="text" id="payable_salary_display" value="BDT 0.00" readonly></p>
                     <p class="salary-field">Due<br><input type="text" id="due_display" value="BDT 0.00" readonly></p>
@@ -311,6 +311,7 @@
         const payableSalaryDisplay = document.getElementById('payable_salary_display');
         const dueDisplay = document.getElementById('due_display');
         const fundWarning = document.getElementById('fund_warning');
+        const fixedSalaryMonthDays = 30;
         let dateAdjustmentsExpanded = true;
         const workStatusRecords = @json($workStatusRecords ?? []);
         const workStatusReasonMap = {
@@ -328,9 +329,8 @@
             return 'BDT ' + amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
-        function daysInMonth(dateValue) {
-            const date = dateValue ? new Date(dateValue + 'T00:00:00') : new Date();
-            return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+        function fixedMonthDays() {
+            return fixedSalaryMonthDays;
         }
 
         function formatDate(date) {
@@ -426,7 +426,7 @@
 
         function syncWorkingDays() {
             if (calculationType.value === 'monthly_cycle') {
-                workingDays.value = daysInMonth(fromDate.value);
+                workingDays.value = fixedMonthDays();
                 nonWorkingDays.value = Number(nonWorkingDays.value || 0);
                 return;
             }
@@ -523,9 +523,11 @@
             const selectedClient = clientSelect.options[clientSelect.selectedIndex];
             const monthlySalary = Number(selected?.dataset.salary || 0);
             const clientBalance = Number(selectedClient?.dataset.balance || 0);
-            const monthDays = daysInMonth(fromDate.value);
-            const dailySalary = monthDays > 0 ? monthlySalary / monthDays : 0;
-            const payableSalary = monthDays > 0 ? (monthlySalary * Number(workingDays.value || 0)) / monthDays : 0;
+            const monthDays = fixedMonthDays();
+            const dailySalary = monthDays > 0 ? Math.round((monthlySalary / monthDays) * 100) / 100 : 0;
+            const payableSalary = Number(workingDays.value || 0) >= fixedSalaryMonthDays
+                ? monthlySalary
+                : (monthDays > 0 ? dailySalary * Number(workingDays.value || 0) : 0);
             const due = Math.max(payableSalary - Number(paidAmount.value || 0), 0);
             const needsPaymentDetails = Number(paidAmount.value || 0) > 0;
 

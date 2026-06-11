@@ -21,6 +21,7 @@
         <tr><th>Client</th><td>{{ $payroll->client?->company_name ?: '-' }}</td></tr>
         <tr><th>Page</th><td>{{ $assignment?->page?->page_name ?: '-' }}</td></tr>
         <tr><th>Month</th><td>{{ $payroll->salary_month?->format('Y-m') ?: '-' }}</td></tr>
+        <tr><th>Salary Policy</th><td>Fixed 30 Days</td></tr>
         <tr><th>Working Days</th><td>{{ $payroll->working_days ?? '-' }}</td></tr>
         <tr><th>Half Days</th><td>{{ $halfDays }}</td></tr>
         <tr><th>Generated Salary</th><td>BDT {{ number_format($payroll->payable_salary, 2) }}</td></tr>

@@ -231,7 +231,7 @@ class Employee extends Model
             return null;
         }
 
-        $day = min($this->salaryCycleDay(), $month->daysInMonth);
+        $day = min($this->salaryCycleDay(), $month->copy()->endOfMonth()->day);
 
         return $month->startOfMonth()->addDays($day - 1);
     }

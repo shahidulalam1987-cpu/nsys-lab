@@ -63,7 +63,7 @@ class EmployeePayrollDateRangeTest extends TestCase
         ]);
     }
 
-    public function test_payable_salary_rounds_only_after_final_date_range_calculation(): void
+    public function test_payable_salary_uses_fixed_thirty_day_daily_rate(): void
     {
         $admin = $this->user('admin');
         $client = $this->client();
@@ -103,7 +103,65 @@ class EmployeePayrollDateRangeTest extends TestCase
 
         $payroll = $employee->payrolls()->orderByDesc('id')->first();
 
-        $this->assertSame(1333.33, (float) $payroll->payable_salary);
+        $this->assertSame(1333.32, (float) $payroll->payable_salary);
+    }
+
+    public function test_salary_uses_fixed_thirty_day_policy_examples(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $employee = $this->employee([
+            'monthly_salary' => 5000,
+        ]);
+
+        $this->actingAs($admin)->post('/admin/payroll', [
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'calculation_type' => 'date_to_date',
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-14',
+            'working_days' => 14,
+            'non_working_days' => 0,
+            'paid_amount' => 0,
+        ]);
+
+        $fourteenDays = $employee->payrolls()->first();
+
+        $this->assertSame(30, $fourteenDays->month_days);
+        $this->assertSame(166.67, (float) $fourteenDays->daily_salary);
+        $this->assertSame(2333.38, (float) $fourteenDays->payable_salary);
+
+        $this->actingAs($admin)->post('/admin/payroll', [
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'calculation_type' => 'date_to_date',
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-15',
+            'working_days' => 15,
+            'non_working_days' => 0,
+            'paid_amount' => 0,
+            'confirm_regenerate' => 1,
+        ]);
+
+        $fifteenDays = $employee->payrolls()->orderByDesc('id')->first();
+
+        $this->assertSame(2500.05, (float) $fifteenDays->payable_salary);
+
+        $this->actingAs($admin)->post('/admin/payroll', [
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'calculation_type' => 'date_to_date',
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-30',
+            'working_days' => 30,
+            'non_working_days' => 0,
+            'paid_amount' => 0,
+            'confirm_regenerate' => 1,
+        ]);
+
+        $thirtyDays = $employee->payrolls()->orderByDesc('id')->first();
+
+        $this->assertSame(5000.0, (float) $thirtyDays->payable_salary);
     }
 
     public function test_date_range_salary_defaults_working_days_inclusively_when_not_sent(): void
@@ -192,7 +250,7 @@ class EmployeePayrollDateRangeTest extends TestCase
         $showResponse->assertSee('Boosting Off');
     }
 
-    public function test_monthly_cycle_salary_defaults_working_days_to_actual_month_days_without_salary_days(): void
+    public function test_monthly_cycle_salary_defaults_working_days_to_fixed_thirty_days_without_salary_days(): void
     {
         $admin = $this->user('admin');
         $client = $this->client();
@@ -214,12 +272,12 @@ class EmployeePayrollDateRangeTest extends TestCase
         $payroll = $employee->payrolls()->first();
 
         $response->assertRedirect('/admin/payroll/' . $payroll->id);
-        $this->assertSame(28.0, (float) $payroll->working_days);
-        $this->assertSame(28, $payroll->month_days);
+        $this->assertSame(30.0, (float) $payroll->working_days);
+        $this->assertSame(30, $payroll->month_days);
         $this->assertSame(28000.0, (float) $payroll->payable_salary);
     }
 
-    public function test_monthly_cycle_salary_uses_leap_year_february_days(): void
+    public function test_monthly_cycle_salary_uses_fixed_thirty_days_for_leap_year_february(): void
     {
         $admin = $this->user('admin');
         $client = $this->client();
@@ -241,8 +299,8 @@ class EmployeePayrollDateRangeTest extends TestCase
         $payroll = $employee->payrolls()->first();
 
         $response->assertRedirect('/admin/payroll/' . $payroll->id);
-        $this->assertSame(29.0, (float) $payroll->working_days);
-        $this->assertSame(29, $payroll->month_days);
+        $this->assertSame(30.0, (float) $payroll->working_days);
+        $this->assertSame(30, $payroll->month_days);
         $this->assertSame(29000.0, (float) $payroll->payable_salary);
     }
 

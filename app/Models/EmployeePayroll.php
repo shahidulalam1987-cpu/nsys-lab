@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class EmployeePayroll extends Model
 {
+    public const FIXED_SALARY_MONTH_DAYS = 30;
+
     protected $appends = [
         'calculated_status',
         'salary_period',
