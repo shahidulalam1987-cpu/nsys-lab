@@ -86,6 +86,7 @@ class EmployeeAssignmentController extends Controller
         $data = $request->validate([
             'client_id' => ['required', 'exists:clients,id'],
             'client_page_id' => ['nullable', 'exists:client_pages,id'],
+            'campaign' => ['nullable', 'string', 'max:255'],
             'shift_id' => ['nullable', 'exists:shifts,id'],
             'assigned_from' => ['required', 'date'],
             'assigned_to' => ['nullable', 'date', 'after_or_equal:assigned_from'],
@@ -120,6 +121,7 @@ class EmployeeAssignmentController extends Controller
     {
         $data = $request->validate([
             'client_page_id' => ['nullable', 'exists:client_pages,id'],
+            'campaign' => ['nullable', 'string', 'max:255'],
             'shift_id' => ['nullable', 'exists:shifts,id'],
             'assigned_to' => ['nullable', 'date', 'after_or_equal:' . $assignment->assigned_from->toDateString()],
             'status' => ['required', 'in:active,ended'],
@@ -176,6 +178,7 @@ class EmployeeAssignmentController extends Controller
             'employee_id' => ['required', 'exists:employees,id'],
             'client_id' => ['required', 'exists:clients,id'],
             'client_page_id' => [$requirePage ? 'required' : 'nullable', 'exists:client_pages,id'],
+            'campaign' => ['nullable', 'string', 'max:255'],
             'shift_id' => ['required', 'exists:shifts,id'],
             'assigned_from' => ['required', 'date'],
             'assigned_to' => ['nullable', 'date', 'after_or_equal:assigned_from'],

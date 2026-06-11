@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdAccount;
+use App\Models\BusinessManager;
 use App\Models\Client;
 use App\Models\Payment;
 use App\Models\DailyReport;
 use App\Models\Employee;
+use App\Models\EmployeeAttendance;
 use App\Models\SalaryPayment;
 use App\Services\ClientFundDashboardService;
 
@@ -27,6 +30,14 @@ class DashboardController extends Controller
 
         $totalApprovedPayments = Payment::where('status', 'approved')->sum('amount');
         $totalPendingPayments = Payment::where('status', 'pending')->sum('amount');
+        $adAccounts = AdAccount::all();
+        $totalBusinessManagers = BusinessManager::count();
+        $totalAdAccounts = $adAccounts->count();
+        $activeAdAccounts = $adAccounts->where('status', 'active')->count();
+        $paymentIssueAdAccounts = $adAccounts->where('status', 'payment_issue')->count();
+        $totalThreshold = (float) $adAccounts->sum('threshold_amount');
+        $remainingThreshold = (float) $adAccounts->sum(fn (AdAccount $account) => $account->remaining_threshold);
+        $adAccountCurrentBalance = (float) $adAccounts->sum('current_balance');
 
         $reports = DailyReport::with('client')->get();
 
@@ -69,6 +80,13 @@ class DashboardController extends Controller
             'todayOrders',
             'totalApprovedPayments',
             'totalPendingPayments',
+            'totalBusinessManagers',
+            'totalAdAccounts',
+            'activeAdAccounts',
+            'paymentIssueAdAccounts',
+            'totalThreshold',
+            'remainingThreshold',
+            'adAccountCurrentBalance',
             'totalRevenue',
             'totalCost',
             'totalProfit',
@@ -85,6 +103,9 @@ class DashboardController extends Controller
         $totalEmployees = Employee::count();
         $activeEmployees = Employee::where('status', 'active')->count();
         $probationEmployees = Employee::where('status', 'probation')->count();
+        $attendanceRecords = EmployeeAttendance::whereMonth('attendance_date', now()->month)
+            ->whereYear('attendance_date', now()->year)
+            ->count();
         $pendingSalaryPayments = SalaryPayment::where('status', 'pending')->sum('amount');
         $recentEmployees = Employee::latest()->take(5)->get();
         $recentSalaryPayments = SalaryPayment::with('client')->latest()->take(5)->get();
@@ -93,6 +114,7 @@ class DashboardController extends Controller
             'totalEmployees',
             'activeEmployees',
             'probationEmployees',
+            'attendanceRecords',
             'pendingSalaryPayments',
             'clientFundSummary',
             'recentEmployees',

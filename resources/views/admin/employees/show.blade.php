@@ -318,6 +318,7 @@
                             <option value="{{ $shift->id }}">{{ $shift->name }}: {{ $shift->timeRange() }}</option>
                         @endforeach
                     </select>
+                    <input type="text" name="campaign" placeholder="Campaign">
                     <input type="date" name="assigned_from" required>
                     <input type="date" name="assigned_to">
                     <select name="status" required>
@@ -337,6 +338,7 @@
                     <tr>
                         <th>Client</th>
                         <th>Page</th>
+                        <th>Campaign</th>
                         <th>Shift</th>
                         <th>Assigned Date</th>
                         <th>To</th>
@@ -348,6 +350,7 @@
                         <tr>
                             <td>{{ $assignment->client?->company_name }}</td>
                             <td>{{ $assignment->page?->page_name ?: '-' }}</td>
+                            <td>{{ $assignment->campaign ?: '-' }}</td>
                             <td>{{ $assignment->shift?->name ?: '-' }}</td>
                             <td>{{ $assignment->assigned_from?->toDateString() }}</td>
                             <td>{{ $assignment->assigned_to?->toDateString() ?: '-' }}</td>
@@ -372,6 +375,7 @@
                                             </option>
                                         @endforeach
                                     </select>
+                                    <input type="text" name="campaign" value="{{ $assignment->campaign }}" placeholder="Campaign">
                                     <input type="date" name="assigned_to" value="{{ $assignment->assigned_to?->toDateString() }}">
                                     <select name="status">
                                         <option value="active" {{ $assignment->status == 'active' ? 'selected' : '' }}>Active</option>
@@ -388,7 +392,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="8">No assignment history found.</td></tr>
+                        <tr><td colspan="9">No assignment history found.</td></tr>
                     @endforelse
                 </table>
             </div>

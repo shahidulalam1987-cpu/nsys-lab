@@ -48,6 +48,7 @@
                     <th>Employee</th>
                     <th>Client</th>
                     <th>Page Name</th>
+                    <th>Campaign</th>
                     <th>Shift</th>
                     <th>Assigned Date</th>
                     <th>Status</th>
@@ -61,6 +62,7 @@
                         </td>
                         <td>{{ $assignment->client?->company_name ?: '-' }}</td>
                         <td>{{ $assignment->page?->page_name ?: '-' }}</td>
+                        <td>{{ $assignment->campaign ?: '-' }}</td>
                         <td>{{ $assignment->shift?->name ?: '-' }}</td>
                         <td>{{ $assignment->assigned_from?->toDateString() ?: '-' }}</td>
                         <td>{{ $assignment->statusLabel() }}</td>
@@ -76,7 +78,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7">No assignments found.</td></tr>
+                    <tr><td colspan="8">No assignments found.</td></tr>
                 @endforelse
             </table>
         </div>

@@ -7,49 +7,68 @@
 
     <div class="stats-grid">
         <div class="stat-card">
-            <p>Total Clients</p>
-            <h2>{{ $totalClients }}</h2>
+            <p>Total BM</p>
+            <h2>{{ number_format($totalBusinessManagers) }}</h2>
         </div>
 
         <div class="stat-card">
-            <p>Active Clients</p>
-            <h2 style="color:#22c55e;">{{ $activeClients }}</h2>
+            <p>Total Ad Accounts</p>
+            <h2>{{ number_format($totalAdAccounts) }}</h2>
         </div>
 
         <div class="stat-card">
-            <p>Today Spend</p>
-            <h2>${{ number_format($todayDollarSpend, 2) }}</h2>
+            <p>Active Ad Accounts</p>
+            <h2>{{ number_format($activeAdAccounts) }}</h2>
         </div>
 
         <div class="stat-card">
-            <p>Today Orders</p>
-            <h2>{{ $todayOrders }}</h2>
+            <p>Payment Issue</p>
+            <h2>{{ number_format($paymentIssueAdAccounts) }}</h2>
         </div>
     </div>
 
     <div class="stats-grid">
         <div class="stat-card">
-            <p>Approved Payments</p>
-            <h2 style="color:#22c55e;">৳{{ number_format($totalApprovedPayments, 2) }}</h2>
+            <p>Total Threshold</p>
+            <h2>BDT {{ number_format($totalThreshold, 2) }}</h2>
         </div>
 
         <div class="stat-card">
-            <p>Pending Payments</p>
-            <h2 style="color:#f59e0b;">৳{{ number_format($totalPendingPayments, 2) }}</h2>
+            <p>Remaining Threshold</p>
+            <h2>BDT {{ number_format($remainingThreshold, 2) }}</h2>
         </div>
 
         <div class="stat-card">
-            <p>Total Profit</p>
-            <h2 style="color:#22c55e;">৳{{ number_format($totalProfit, 2) }}</h2>
+            <p>Current Balance</p>
+            <h2>BDT {{ number_format($adAccountCurrentBalance, 2) }}</h2>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <p>Spend</p>
+            <h2>${{ number_format($todayDollarSpend, 2) }}</h2>
+            <p>Today</p>
         </div>
 
         <div class="stat-card">
-            <p>Total Balance</p>
+            <p>Orders</p>
+            <h2>{{ $todayOrders }}</h2>
+            <p>Today</p>
+        </div>
+
+        <div class="stat-card">
+            <p>Profit</p>
+            <h2 style="color:#22c55e;">BDT {{ number_format($totalProfit, 2) }}</h2>
+        </div>
+
+        <div class="stat-card">
+            <p>Balance</p>
             <h2 style="color:{{ $totalBalance >= 0 ? '#22c55e' : '#ef4444' }};">
                 @if($totalBalance >= 0)
-                    +৳{{ number_format($totalBalance, 2) }}
+                    +BDT {{ number_format($totalBalance, 2) }}
                 @else
-                    -৳{{ number_format(abs($totalBalance), 2) }}
+                    -BDT {{ number_format(abs($totalBalance), 2) }}
                 @endif
             </h2>
         </div>
@@ -68,8 +87,8 @@
             <tr>
                 <td>${{ number_format($totalDollarSpend, 2) }}</td>
                 <td>{{ $totalOrders }}</td>
-                <td>৳{{ number_format($totalRevenue, 2) }}</td>
-                <td>৳{{ number_format($totalCost, 2) }}</td>
+                <td>BDT {{ number_format($totalRevenue, 2) }}</td>
+                <td>BDT {{ number_format($totalCost, 2) }}</td>
             </tr>
         </table>
     </div>
@@ -77,9 +96,12 @@
     <div class="card">
         <h2>Quick Actions</h2>
 
+        <a class="btn" href="/admin/business-managers/create">Add BM</a>
+        <a class="btn" href="/admin/ad-accounts/create">Add Ad Account</a>
+        <a class="btn sidebar-muted" href="#" onclick="return false;">Add Campaign</a>
         <a class="btn" href="/admin/daily-reports/create">Add Daily Report</a>
-        <a class="btn" href="/admin/payments/pending">Pending Payments</a>
         <a class="btn" href="/admin/clients/create">Add Client</a>
+        <a class="btn" href="/admin/payments/pending">Pending Payments</a>
         <a class="btn" href="/admin/profit-history">Profit History</a>
         <a class="btn" href="/admin/export/payments">Export Payments CSV</a>
         <a class="btn" href="/admin/export/daily-reports">Export Reports CSV</a>
@@ -87,66 +109,66 @@
     </div>
 
     <div class="card">
-    <h2>Recent Payments</h2>
+        <h2>Recent Payments</h2>
 
-    <table>
-        <tr>
-            <th>Client</th>
-            <th>Amount</th>
-            <th>Method</th>
-            <th>Status</th>
-            <th>Date</th>
-        </tr>
-
-        @forelse($recentPayments as $payment)
+        <table>
             <tr>
-                <td>{{ $payment->client->company_name ?? 'N/A' }}</td>
-                <td>৳{{ number_format($payment->amount, 2) }}</td>
-                <td>{{ $payment->payment_method }}</td>
-                <td>
-                    @if($payment->status == 'approved')
-                        <span class="badge badge-success">Approved</span>
-                    @elseif($payment->status == 'pending')
-                        <span class="badge badge-warning">Pending</span>
-                    @else
-                        <span class="badge badge-danger">Rejected</span>
-                    @endif
-                </td>
-                <td>{{ $payment->created_at }}</td>
+                <th>Client</th>
+                <th>Amount</th>
+                <th>Method</th>
+                <th>Status</th>
+                <th>Date</th>
             </tr>
-        @empty
-            <tr>
-                <td colspan="5">No recent payments found.</td>
-            </tr>
-        @endforelse
-    </table>
-</div>
 
-<div class="card">
-    <h2>Recent Daily Reports</h2>
+            @forelse($recentPayments as $payment)
+                <tr>
+                    <td>{{ $payment->client->company_name ?? 'N/A' }}</td>
+                    <td>BDT {{ number_format($payment->amount, 2) }}</td>
+                    <td>{{ $payment->payment_method }}</td>
+                    <td>
+                        @if($payment->status == 'approved')
+                            <span class="badge badge-success">Approved</span>
+                        @elseif($payment->status == 'pending')
+                            <span class="badge badge-warning">Pending</span>
+                        @else
+                            <span class="badge badge-danger">Rejected</span>
+                        @endif
+                    </td>
+                    <td>{{ $payment->created_at }}</td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="5">No recent payments found.</td>
+                </tr>
+            @endforelse
+        </table>
+    </div>
 
-    <table>
-        <tr>
-            <th>Client</th>
-            <th>Date</th>
-            <th>Page</th>
-            <th>Spend</th>
-            <th>Orders</th>
-        </tr>
+    <div class="card">
+        <h2>Recent Daily Reports</h2>
 
-        @forelse($recentReports as $report)
+        <table>
             <tr>
-                <td>{{ $report->client->company_name ?? 'N/A' }}</td>
-                <td>{{ $report->report_date }}</td>
-                <td>{{ $report->page_name }}</td>
-                <td>${{ number_format($report->dollar_spend, 2) }}</td>
-                <td>{{ $report->orders }}</td>
+                <th>Client</th>
+                <th>Date</th>
+                <th>Page</th>
+                <th>Spend</th>
+                <th>Orders</th>
             </tr>
-        @empty
-            <tr>
-                <td colspan="5">No recent reports found.</td>
-            </tr>
-        @endforelse
-    </table>
-</div>
+
+            @forelse($recentReports as $report)
+                <tr>
+                    <td>{{ $report->client->company_name ?? 'N/A' }}</td>
+                    <td>{{ $report->report_date }}</td>
+                    <td>{{ $report->page_name }}</td>
+                    <td>${{ number_format($report->dollar_spend, 2) }}</td>
+                    <td>{{ $report->orders }}</td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="5">No recent reports found.</td>
+                </tr>
+            @endforelse
+        </table>
+    </div>
 @endsection

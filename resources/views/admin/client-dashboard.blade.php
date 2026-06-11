@@ -6,24 +6,21 @@
 
     <div class="stats-grid">
         <div class="stat-card">
-            <p>Total Clients</p>
+            <p>Clients</p>
             <h2>{{ number_format($totalClients) }}</h2>
         </div>
         <div class="stat-card">
-            <p>Active Clients</p>
-            <h2>{{ number_format($activeClients) }}</h2>
-        </div>
-        <div class="stat-card">
-            <p>Total Fund Received</p>
+            <p>Funds</p>
             <h2>BDT {{ number_format($clientFundSummary['total_fund_received'], 2) }}</h2>
         </div>
         <div class="stat-card">
-            <p>Available Balance</p>
-            <h2>BDT {{ number_format($clientFundSummary['available_balance'], 2) }}</h2>
+            <p>Payments</p>
+            <h2>BDT {{ number_format($pendingClientPayments, 2) }}</h2>
+            <p>Pending</p>
         </div>
         <div class="stat-card">
-            <p>Pending Client Payments</p>
-            <h2>BDT {{ number_format($pendingClientPayments, 2) }}</h2>
+            <p>Balance</p>
+            <h2>BDT {{ number_format($clientFundSummary['available_balance'], 2) }}</h2>
         </div>
     </div>
 

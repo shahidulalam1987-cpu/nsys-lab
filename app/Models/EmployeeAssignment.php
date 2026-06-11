@@ -10,6 +10,7 @@ class EmployeeAssignment extends Model
         'employee_id',
         'client_id',
         'client_page_id',
+        'campaign',
         'shift_id',
         'assigned_from',
         'assigned_to',

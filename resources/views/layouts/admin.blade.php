@@ -210,6 +210,14 @@
             font-weight: 700;
         }
 
+        .btn.sidebar-muted {
+            background: rgba(255,255,255,.08);
+            border: 1px solid var(--line);
+            box-shadow: none;
+            color: var(--muted);
+            cursor: default;
+        }
+
         .btn-success {
             background: #22c55e !important;
             color: #fff !important;
@@ -430,7 +438,6 @@
             || request()->is('admin/attendance*')
             || request()->is('admin/assignments*')
             || request()->is('admin/work-status*')
-            || request()->is('admin/client-pages*')
             || request()->is('admin/employee-notices*')
             || request()->is('admin/payroll*');
         $isAdminDashboard = ! $isSystemTools && ! $isClientDepartment && ! $isEmployeeDepartment;
@@ -482,6 +489,7 @@
                 <a class="{{ request()->is('admin/client-dashboard') ? 'active-menu' : '' }}" href="/admin/client-dashboard">Client Dashboard</a>
                 <a class="{{ request()->is('admin/clients') || request()->is('admin/clients/create') ? 'active-menu' : '' }}" href="/admin/clients">Client List</a>
                 <a class="{{ request()->is('admin/clients/*') ? 'active-menu' : '' }}" href="/admin/clients">Client Details</a>
+                <a class="{{ request()->is('admin/client-users*') ? 'active-menu' : '' }}" href="/admin/client-users">Client Users</a>
 
                 <div class="sidebar-section-title">Client Fund</div>
                 <a class="{{ request()->is('admin/client-fund*') ? 'active-menu' : '' }}" href="/admin/client-fund">Dashboard</a>
@@ -495,7 +503,7 @@
                 <a class="{{ request()->is('admin/salary-payments') && ! request()->filled('status') ? 'active-menu' : '' }}" href="/admin/salary-payments">Payment History</a>
 
                 <div class="sidebar-section-title">Client Portal</div>
-                <a class="{{ request()->is('admin/client-users*') ? 'active-menu' : '' }}" href="/admin/client-users">Client Portal Users</a>
+                <a class="sidebar-muted" href="#" onclick="return false;">Client Portal</a>
             @elseif($isEmployeeDepartment)
                 <div class="sidebar-section-title">Employee Department</div>
 
@@ -539,9 +547,9 @@
                 <a class="{{ request()->is('admin/dashboard') ? 'active-menu' : '' }}" href="/admin/dashboard">Overview</a>
 
                 <div class="sidebar-section-title">Boosting Management</div>
-                <a class="sidebar-muted" href="#" onclick="return false;">BM Management</a>
-                <a class="{{ request()->is('admin/payments*') ? 'active-menu' : '' }}" href="/admin/payments">Ad Account Management</a>
-                <a class="sidebar-muted" href="#" onclick="return false;">Page Management</a>
+                <a class="{{ request()->is('admin/business-managers*') ? 'active-menu' : '' }}" href="/admin/business-managers">BM Management</a>
+                <a class="{{ request()->is('admin/ad-accounts*') ? 'active-menu' : '' }}" href="/admin/ad-accounts">Ad Account Management</a>
+                <a class="{{ request()->is('admin/client-pages*') ? 'active-menu' : '' }}" href="/admin/client-pages">Page Management</a>
                 <a class="{{ request()->is('admin/invoices*') ? 'active-menu' : '' }}" href="/admin/invoices">Campaign Management</a>
                 <a class="{{ request()->is('admin/daily-reports*') ? 'active-menu' : '' }}" href="/admin/daily-reports">Daily Performance Entry</a>
                 <a class="{{ request()->is('admin/profit-history') ? 'active-menu' : '' }}" href="/admin/profit-history">Analytics Dashboard</a>

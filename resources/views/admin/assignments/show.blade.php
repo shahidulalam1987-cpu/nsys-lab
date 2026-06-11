@@ -10,6 +10,7 @@
         <p><strong>Employee:</strong> {{ $assignment->employee?->employee_id }} - {{ $assignment->employee?->name }}</p>
         <p><strong>Client:</strong> {{ $assignment->client?->company_name ?: '-' }}</p>
         <p><strong>Page Name:</strong> {{ $assignment->page?->page_name ?: '-' }}</p>
+        <p><strong>Campaign:</strong> {{ $assignment->campaign ?: '-' }}</p>
         <p><strong>Page URL:</strong>
             @if($assignment->page?->page_url)
                 <a href="{{ $assignment->page->page_url }}" target="_blank">{{ $assignment->page->page_url }}</a>

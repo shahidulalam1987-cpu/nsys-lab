@@ -48,6 +48,10 @@
                 </select>
             </p>
 
+            <p>Campaign<br>
+                <input type="text" name="campaign" value="{{ old('campaign', $assignment?->campaign) }}" placeholder="Campaign name">
+            </p>
+
             <p>Shift<br>
                 <select name="shift_id" required>
                     <option value="">Select Shift</option>

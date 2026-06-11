@@ -14,6 +14,18 @@
                     <option value="{{ $client->id }}" {{ request('client_id') == $client->id ? 'selected' : '' }}>{{ $client->company_name }}</option>
                 @endforeach
             </select>
+            <select name="business_manager_id">
+                <option value="">All BM</option>
+                @foreach($businessManagers as $bm)
+                    <option value="{{ $bm->id }}" {{ request('business_manager_id') == $bm->id ? 'selected' : '' }}>{{ $bm->bm_name }}</option>
+                @endforeach
+            </select>
+            <select name="ad_account_id">
+                <option value="">All Ad Accounts</option>
+                @foreach($adAccounts as $account)
+                    <option value="{{ $account->id }}" {{ request('ad_account_id') == $account->id ? 'selected' : '' }}>{{ $account->ad_account_name }}</option>
+                @endforeach
+            </select>
             <select name="status">
                 <option value="">All Status</option>
                 <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Active</option>
@@ -30,6 +42,9 @@
                 <tr>
                     <th>Client</th>
                     <th>Page Name</th>
+                    <th>Page ID</th>
+                    <th>BM</th>
+                    <th>Ad Account</th>
                     <th>Platform</th>
                     <th>Status</th>
                     <th>Action</th>
@@ -43,6 +58,9 @@
                                 <br><a href="{{ $page->page_url }}" target="_blank">Open Page</a>
                             @endif
                         </td>
+                        <td>{{ $page->page_id ?: '-' }}</td>
+                        <td>{{ $page->businessManager?->bm_name ?: '-' }}</td>
+                        <td>{{ $page->adAccount?->ad_account_name ?: '-' }}</td>
                         <td>{{ $page->platform }}</td>
                         <td>{{ ucfirst($page->status) }}</td>
                         <td>
@@ -55,7 +73,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="5">No client pages found.</td></tr>
+                    <tr><td colspan="8">No client pages found.</td></tr>
                 @endforelse
             </table>
         </div>

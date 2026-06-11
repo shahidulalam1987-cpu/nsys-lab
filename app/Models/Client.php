@@ -45,6 +45,11 @@ class Client extends Model
         return $this->hasMany(ClientPage::class);
     }
 
+    public function adAccounts()
+    {
+        return $this->hasMany(AdAccount::class);
+    }
+
     public function salaryDays()
     {
         return $this->hasMany(SalaryDay::class);

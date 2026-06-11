@@ -138,7 +138,7 @@ class EmployeePhase2AAdminTest extends TestCase
         $response->assertSee('Total Assigned');
         $response->assertSee('NSYS-EM-222');
         $response->assertSee('Client Assigned Employee');
-        $response->assertSee('Active-Working');
+        $response->assertSee('Active');
         $response->assertSee('BDT 25,000.00');
     }
 

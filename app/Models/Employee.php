@@ -8,11 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 class Employee extends Model
 {
     public const STATUSES = [
-        'active' => 'Active-Working',
-        'probation' => 'Probation-Trial Period',
-        'on_leave' => 'On Leave-Temporary Leave',
-        'inactive' => 'Inactive-Not Working',
-        'terminated' => 'Terminated-Employment Ended',
+        'active' => 'Active',
+        'probation' => 'Probation',
+        'on_leave' => 'On Leave',
+        'inactive' => 'Inactive',
+        'terminated' => 'Terminated',
     ];
 
     public const STATUS_FILTERS = [

@@ -34,6 +34,8 @@ use App\Http\Controllers\Admin\ClientPageController;
 use App\Http\Controllers\Admin\EmployeeNoticeController;
 use App\Http\Controllers\Admin\BugReportController;
 use App\Http\Controllers\Admin\SystemToolsController;
+use App\Http\Controllers\Admin\BusinessManagerController;
+use App\Http\Controllers\Admin\AdAccountController;
 
 Route::get('/', [DashboardController::class, 'index']);
 
@@ -191,6 +193,22 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/client-users/{user}/reset-password', [ClientUserController::class, 'editPassword']);
     Route::post('/admin/client-users/{user}/reset-password', [ClientUserController::class, 'updatePassword']);
     Route::post('/admin/client-users/{user}/toggle-status', [ClientUserController::class, 'toggleStatus']);
+
+    Route::get('/admin/business-managers', [BusinessManagerController::class, 'index']);
+    Route::get('/admin/business-managers/create', [BusinessManagerController::class, 'create']);
+    Route::post('/admin/business-managers', [BusinessManagerController::class, 'store']);
+    Route::get('/admin/business-managers/{businessManager}', [BusinessManagerController::class, 'show']);
+    Route::get('/admin/business-managers/{businessManager}/edit', [BusinessManagerController::class, 'edit']);
+    Route::post('/admin/business-managers/{businessManager}/update', [BusinessManagerController::class, 'update']);
+    Route::post('/admin/business-managers/{businessManager}/delete', [BusinessManagerController::class, 'destroy']);
+
+    Route::get('/admin/ad-accounts', [AdAccountController::class, 'index']);
+    Route::get('/admin/ad-accounts/create', [AdAccountController::class, 'create']);
+    Route::post('/admin/ad-accounts', [AdAccountController::class, 'store']);
+    Route::get('/admin/ad-accounts/{adAccount}', [AdAccountController::class, 'show']);
+    Route::get('/admin/ad-accounts/{adAccount}/edit', [AdAccountController::class, 'edit']);
+    Route::post('/admin/ad-accounts/{adAccount}/update', [AdAccountController::class, 'update']);
+    Route::post('/admin/ad-accounts/{adAccount}/delete', [AdAccountController::class, 'destroy']);
 
     Route::get('/admin/payments', [AdminPaymentController::class, 'index']);
     Route::get('/admin/payments/pending', [AdminPaymentController::class, 'pending']);
