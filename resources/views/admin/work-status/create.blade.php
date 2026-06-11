@@ -7,6 +7,19 @@
     <div class="card" style="margin-top:20px;">
         <form method="POST" action="/admin/work-status">
             @csrf
+            @php($entryMode = old('entry_mode', 'single'))
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:end;">
+                <p>Entry Mode<br>
+                    <select name="entry_mode" id="work-status-entry-mode" required>
+                        <option value="single" {{ $entryMode === 'single' ? 'selected' : '' }}>Single Date</option>
+                        <option value="range" {{ $entryMode === 'range' ? 'selected' : '' }}>Date Range</option>
+                    </select>
+                </p>
+                <p style="grid-column:span 2;color:var(--muted);margin:0 0 16px;">
+                    Use Date Range when adding multiple work status records at once.
+                </p>
+            </div>
+
             <p>Employee<br>
                 <select name="employee_id" id="work-status-employee" required>
                     <option value="">Select Employee</option>
@@ -43,7 +56,19 @@
                     @endforeach
                 </select>
             </p>
-            <p>Date<br><input type="date" name="work_date" value="{{ old('work_date', now()->toDateString()) }}" required></p>
+            <div id="single-date-fields">
+                <p>Date<br><input type="date" name="work_date" value="{{ old('work_date', now()->toDateString()) }}"></p>
+            </div>
+            <div id="date-range-fields" style="display:none;">
+                <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;">
+                    <p>From Date<br><input type="date" name="from_date" value="{{ old('from_date') }}"></p>
+                    <p>To Date<br><input type="date" name="to_date" value="{{ old('to_date') }}"></p>
+                </div>
+                <label style="display:flex;align-items:center;gap:8px;color:var(--muted);margin:4px 0 16px;">
+                    <input type="checkbox" name="confirm_after_last_working_date" value="1" {{ old('confirm_after_last_working_date') ? 'checked' : '' }}>
+                    Confirm override if this range includes dates after employee last working date.
+                </label>
+            </div>
             <p>Status<br>
                 <select name="status" required>
                     @foreach($statuses as $value => $label)
@@ -57,6 +82,24 @@
     </div>
     <script>
         const assignmentDefaults = @json($assignmentDefaults);
+        const entryModeSelect = document.getElementById('work-status-entry-mode');
+        const singleDateFields = document.getElementById('single-date-fields');
+        const dateRangeFields = document.getElementById('date-range-fields');
+        const workDateInput = document.querySelector('input[name="work_date"]');
+        const fromDateInput = document.querySelector('input[name="from_date"]');
+        const toDateInput = document.querySelector('input[name="to_date"]');
+
+        const syncEntryMode = () => {
+            const isRange = entryModeSelect.value === 'range';
+            singleDateFields.style.display = isRange ? 'none' : '';
+            dateRangeFields.style.display = isRange ? '' : 'none';
+            workDateInput.required = ! isRange;
+            fromDateInput.required = isRange;
+            toDateInput.required = isRange;
+        };
+
+        entryModeSelect.addEventListener('change', syncEntryMode);
+        syncEntryMode();
 
         document.querySelectorAll('.js-client-select').forEach((clientSelect) => {
             const pageSelect = document.getElementById(clientSelect.dataset.pageTarget);

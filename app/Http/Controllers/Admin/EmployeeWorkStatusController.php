@@ -8,7 +8,9 @@ use App\Models\ClientPage;
 use App\Models\Employee;
 use App\Models\EmployeeWorkStatus;
 use App\Models\Shift;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
 
 class EmployeeWorkStatusController extends Controller
@@ -68,22 +70,81 @@ class EmployeeWorkStatusController extends Controller
     public function store(Request $request)
     {
         $data = $this->validatedData($request);
-        $workStatus = EmployeeWorkStatus::updateOrCreate([
-            'employee_id' => $data['employee_id'],
-            'work_date' => $data['work_date'],
-        ], [
+
+        if (($data['entry_mode'] ?? 'single') === 'range') {
+            return $this->storeDateRange($data);
+        }
+
+        $workStatus = $this->saveWorkStatusForDate($data, $data['work_date']);
+
+        return redirect('/admin/work-status/' . $workStatus->id . '/edit')
+            ->with('success', 'Work status saved successfully.');
+    }
+
+    private function storeDateRange(array $data)
+    {
+        $employee = Employee::findOrFail($data['employee_id']);
+        $fromDate = Carbon::parse($data['from_date'])->startOfDay();
+        $toDate = Carbon::parse($data['to_date'])->startOfDay();
+
+        if ($employee->last_working_date && ! ($data['confirm_after_last_working_date'] ?? false)) {
+            $lastWorkingDate = $employee->last_working_date->copy()->startOfDay();
+
+            if ($toDate->gt($lastWorkingDate)) {
+                throw ValidationException::withMessages([
+                    'to_date' => 'This range includes dates after the employee last working date. Confirm override to continue.',
+                ]);
+            }
+        }
+
+        $created = 0;
+        $updated = 0;
+        $skipped = 0;
+
+        for ($date = $fromDate->copy(); $date->lte($toDate); $date->addDay()) {
+            if ($employee->last_working_date
+                && $date->gt($employee->last_working_date->copy()->startOfDay())
+                && ! ($data['confirm_after_last_working_date'] ?? false)) {
+                $skipped++;
+                continue;
+            }
+
+            $workStatus = $this->saveWorkStatusForDate($data, $date->toDateString());
+
+            $workStatus->wasRecentlyCreated ? $created++ : $updated++;
+        }
+
+        return redirect('/admin/work-status')->with(
+            'success',
+            "Bulk work status saved. Created: {$created}, Updated: {$updated}, Skipped: {$skipped}."
+        );
+    }
+
+    private function saveWorkStatusForDate(array $data, string $date): EmployeeWorkStatus
+    {
+        $workStatus = EmployeeWorkStatus::where('employee_id', $data['employee_id'])
+            ->whereDate('work_date', $date)
+            ->first();
+
+        if (! $workStatus) {
+            $workStatus = new EmployeeWorkStatus([
+                'employee_id' => $data['employee_id'],
+                'work_date' => $date,
+                'created_by' => auth()->id(),
+            ]);
+        }
+
+        $workStatus->fill([
             'client_id' => $data['client_id'] ?? null,
             'client_page_id' => $data['client_page_id'] ?? null,
             'shift_id' => $data['shift_id'] ?? null,
             'status' => $data['status'],
             'salary_count_value' => EmployeeWorkStatus::salaryCountFor($data['status']),
             'note' => $data['note'] ?? null,
-            'created_by' => auth()->id(),
             'updated_by' => auth()->id(),
-        ]);
+        ])->save();
 
-        return redirect('/admin/work-status/' . $workStatus->id . '/edit')
-            ->with('success', 'Work status saved successfully.');
+        return $workStatus;
     }
 
     public function edit(EmployeeWorkStatus $workStatus)
@@ -181,14 +242,32 @@ class EmployeeWorkStatusController extends Controller
 
     private function validatedData(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
+            'entry_mode' => ['nullable', Rule::in(['single', 'range'])],
             'employee_id' => ['required', 'exists:employees,id'],
             'client_id' => ['nullable', 'exists:clients,id'],
             'client_page_id' => ['nullable', 'exists:client_pages,id'],
             'shift_id' => ['nullable', 'exists:shifts,id'],
-            'work_date' => ['required', 'date'],
+            'work_date' => ['required_if:entry_mode,single', 'nullable', 'date'],
+            'from_date' => ['required_if:entry_mode,range', 'nullable', 'date'],
+            'to_date' => ['required_if:entry_mode,range', 'nullable', 'date', 'after_or_equal:from_date'],
             'status' => ['required', Rule::in(array_keys(EmployeeWorkStatus::STATUSES))],
             'note' => ['nullable', 'string', 'max:500'],
+            'confirm_after_last_working_date' => ['nullable', 'boolean'],
         ]);
+
+        $data['entry_mode'] = $data['entry_mode'] ?? 'single';
+
+        if ($data['entry_mode'] === 'range' && ! empty($data['from_date']) && ! empty($data['to_date'])) {
+            $days = Carbon::parse($data['from_date'])->diffInDays(Carbon::parse($data['to_date'])) + 1;
+
+            if ($days > 60) {
+                throw ValidationException::withMessages([
+                    'to_date' => 'Date range should not exceed 60 days at once.',
+                ]);
+            }
+        }
+
+        return $data;
     }
 }

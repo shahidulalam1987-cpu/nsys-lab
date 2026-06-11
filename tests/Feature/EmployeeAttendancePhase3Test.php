@@ -135,6 +135,101 @@ class EmployeeAttendancePhase3Test extends TestCase
         $this->assertStringContainsString('Half Day', $csv->streamedContent());
     }
 
+    public function test_admin_can_create_bulk_date_range_work_status_and_update_duplicates(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client(['company_name' => 'Bulk Work Client']);
+        $employee = $this->employee(['name' => 'Bulk Work Employee']);
+
+        $employee->workStatuses()->create([
+            'client_id' => $client->id,
+            'work_date' => '2026-06-10',
+            'status' => 'half_day',
+            'salary_count_value' => 0.5,
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/admin/work-status/create')
+            ->assertOk()
+            ->assertSee('Single Date')
+            ->assertSee('Date Range')
+            ->assertSee('Use Date Range when adding multiple work status records at once.');
+
+        $response = $this->actingAs($admin)->post('/admin/work-status', [
+            'entry_mode' => 'range',
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'from_date' => '2026-06-09',
+            'to_date' => '2026-06-11',
+            'status' => 'working',
+            'note' => 'Bulk entry',
+        ]);
+
+        $response->assertRedirect('/admin/work-status');
+        $response->assertSessionHas('success', 'Bulk work status saved. Created: 2, Updated: 1, Skipped: 0.');
+
+        $this->assertSame(3, $employee->workStatuses()->count());
+        $this->assertDatabaseHas('employee_work_statuses', [
+            'employee_id' => $employee->id,
+            'work_date' => '2026-06-09 00:00:00',
+            'status' => 'working',
+            'salary_count_value' => 1,
+        ]);
+        $this->assertDatabaseHas('employee_work_statuses', [
+            'employee_id' => $employee->id,
+            'work_date' => '2026-06-10 00:00:00',
+            'status' => 'working',
+            'salary_count_value' => 1,
+            'note' => 'Bulk entry',
+        ]);
+        $this->assertDatabaseHas('employee_work_statuses', [
+            'employee_id' => $employee->id,
+            'work_date' => '2026-06-11 00:00:00',
+            'status' => 'working',
+            'salary_count_value' => 1,
+        ]);
+    }
+
+    public function test_bulk_work_status_validates_range_limit_and_last_working_date_override(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $employee = $this->employee([
+            'status' => 'terminated',
+            'last_working_date' => '2026-06-10',
+        ]);
+
+        $this->actingAs($admin)->post('/admin/work-status', [
+            'entry_mode' => 'range',
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-08-01',
+            'status' => 'working',
+        ])->assertSessionHasErrors('to_date');
+
+        $this->actingAs($admin)->post('/admin/work-status', [
+            'entry_mode' => 'range',
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'from_date' => '2026-06-09',
+            'to_date' => '2026-06-11',
+            'status' => 'working',
+        ])->assertSessionHasErrors('to_date');
+
+        $this->actingAs($admin)->post('/admin/work-status', [
+            'entry_mode' => 'range',
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'from_date' => '2026-06-09',
+            'to_date' => '2026-06-11',
+            'status' => 'working',
+            'confirm_after_last_working_date' => 1,
+        ])->assertSessionHas('success', 'Bulk work status saved. Created: 3, Updated: 0, Skipped: 0.');
+
+        $this->assertSame(3, $employee->workStatuses()->count());
+    }
+
     public function test_salary_generate_can_use_work_status_records_for_working_days(): void
     {
         $admin = $this->user('admin');
