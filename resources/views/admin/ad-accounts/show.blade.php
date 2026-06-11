@@ -14,6 +14,9 @@
         <div class="stat-card"><p>Monthly Billing Date</p><h2>{{ $adAccount->monthly_billing_date ?: '-' }}</h2></div>
         <div class="stat-card"><p>Last Payment Date</p><h2>{{ $adAccount->last_payment_date?->toDateString() ?: '-' }}</h2></div>
         <div class="stat-card"><p>Days Until Billing</p><h2>{{ $adAccount->daysUntilBilling() ?? '-' }}</h2></div>
+        <div class="stat-card"><p>Today Spend</p><h2>USD {{ number_format($performanceSummary['today_spend'], 2) }}</h2></div>
+        <div class="stat-card"><p>Month Spend</p><h2>USD {{ number_format($performanceSummary['month_spend'], 2) }}</h2></div>
+        <div class="stat-card"><p>Campaign Count</p><h2>{{ number_format($performanceSummary['campaign_count']) }}</h2></div>
     </div>
 
     <div class="card">

@@ -60,7 +60,7 @@ class CampaignManagementPhase3Test extends TestCase
             ->assertSee('Campaign Information')
             ->assertSee('BM Information')
             ->assertSee('Ad Account Information')
-            ->assertSee('Future Performance Section');
+            ->assertSee('Performance Summary');
 
         $this->actingAs($admin)->post('/admin/campaigns/' . $campaign->id . '/update', [
             'campaign_name' => 'NSYS Lead Campaign Updated',

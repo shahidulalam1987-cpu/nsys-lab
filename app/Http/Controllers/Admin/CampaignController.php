@@ -79,8 +79,21 @@ class CampaignController extends Controller
 
     public function show(Campaign $campaign)
     {
+        $campaign->load(['businessManager', 'adAccount', 'client', 'page', 'dailyPerformanceReports']);
+        $reports = $campaign->dailyPerformanceReports->sortByDesc('report_date');
+        $totalSpend = (float) $reports->sum('spend');
+
         return view('admin.campaigns.show', [
-            'campaign' => $campaign->load(['businessManager', 'adAccount', 'client', 'page']),
+            'campaign' => $campaign,
+            'performanceReports' => $reports,
+            'performanceSummary' => [
+                'spend' => $totalSpend,
+                'messages' => (int) $reports->sum('messages'),
+                'results' => (int) $reports->sum('results'),
+                'leads' => (int) $reports->sum('leads'),
+                'orders' => (int) $reports->sum('orders'),
+                'clicks' => (int) $reports->sum('clicks'),
+            ],
         ]);
     }
 

@@ -56,31 +56,41 @@
 
     <div class="stats-grid">
         <div class="stat-card">
-            <p>Spend</p>
-            <h2>${{ number_format($todayDollarSpend, 2) }}</h2>
+            <p>Today's Spend</p>
+            <h2>USD {{ number_format($todayPerformanceSpend, 2) }}</h2>
             <p>Today</p>
         </div>
 
         <div class="stat-card">
-            <p>Orders</p>
-            <h2>{{ $todayOrders }}</h2>
+            <p>Today's Messages</p>
+            <h2>{{ number_format($todayPerformanceMessages) }}</h2>
             <p>Today</p>
         </div>
 
         <div class="stat-card">
-            <p>Profit</p>
-            <h2 style="color:#22c55e;">BDT {{ number_format($totalProfit, 2) }}</h2>
+            <p>Today's Leads</p>
+            <h2>{{ number_format($todayPerformanceLeads) }}</h2>
         </div>
 
         <div class="stat-card">
-            <p>Balance</p>
-            <h2 style="color:{{ $totalBalance >= 0 ? '#22c55e' : '#ef4444' }};">
-                @if($totalBalance >= 0)
-                    +BDT {{ number_format($totalBalance, 2) }}
-                @else
-                    -BDT {{ number_format(abs($totalBalance), 2) }}
-                @endif
-            </h2>
+            <p>Today's Orders</p>
+            <h2>{{ number_format($todayPerformanceOrders) }}</h2>
+        </div>
+        <div class="stat-card">
+            <p>Today's Results</p>
+            <h2>{{ number_format($todayPerformanceResults) }}</h2>
+        </div>
+        <div class="stat-card">
+            <p>Today's CPM</p>
+            <h2>USD {{ number_format($todayPerformanceCpm, 2) }}</h2>
+        </div>
+        <div class="stat-card">
+            <p>Today's CPL</p>
+            <h2>USD {{ number_format($todayPerformanceCpl, 2) }}</h2>
+        </div>
+        <div class="stat-card">
+            <p>Today's CPP</p>
+            <h2>USD {{ number_format($todayPerformanceCpp, 2) }}</h2>
         </div>
     </div>
 
@@ -108,8 +118,8 @@
 
         <a class="btn" href="/admin/business-managers/create">Add BM</a>
         <a class="btn" href="/admin/ad-accounts/create">Add Ad Account</a>
-        <a class="btn sidebar-muted" href="#" onclick="return false;">Add Campaign</a>
-        <a class="btn" href="/admin/daily-reports/create">Add Daily Report</a>
+        <a class="btn" href="/admin/campaigns/create">Add Campaign</a>
+        <a class="btn" href="/admin/daily-reports/create">Add Daily Performance</a>
         <a class="btn" href="/admin/clients/create">Add Client</a>
         <a class="btn" href="/admin/payments/pending">Pending Payments</a>
         <a class="btn" href="/admin/profit-history">Profit History</a>
@@ -155,28 +165,34 @@
     </div>
 
     <div class="card">
-        <h2>Recent Daily Reports</h2>
+        <h2>Recent Daily Performance</h2>
 
         <table>
             <tr>
-                <th>Client</th>
+                <th>Campaign</th>
                 <th>Date</th>
+                <th>Client</th>
                 <th>Page</th>
                 <th>Spend</th>
+                <th>Messages</th>
+                <th>Leads</th>
                 <th>Orders</th>
             </tr>
 
-            @forelse($recentReports as $report)
+            @forelse($recentPerformanceReports as $report)
                 <tr>
-                    <td>{{ $report->client->company_name ?? 'N/A' }}</td>
-                    <td>{{ $report->report_date }}</td>
-                    <td>{{ $report->page_name }}</td>
-                    <td>${{ number_format($report->dollar_spend, 2) }}</td>
-                    <td>{{ $report->orders }}</td>
+                    <td>{{ $report->campaign?->campaign_name ?: '-' }}</td>
+                    <td>{{ $report->report_date?->toDateString() }}</td>
+                    <td>{{ $report->campaign?->client?->company_name ?: '-' }}</td>
+                    <td>{{ $report->campaign?->page?->page_name ?: '-' }}</td>
+                    <td>USD {{ number_format((float) $report->spend, 2) }}</td>
+                    <td>{{ number_format($report->messages) }}</td>
+                    <td>{{ number_format($report->leads) }}</td>
+                    <td>{{ number_format($report->orders) }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="5">No recent reports found.</td>
+                    <td colspan="8">No recent performance found.</td>
                 </tr>
             @endforelse
         </table>

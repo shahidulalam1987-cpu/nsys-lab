@@ -83,6 +83,25 @@ class Campaign extends Model
         return $this->hasMany(EmployeeWorkStatus::class);
     }
 
+    public function dailyPerformanceReports()
+    {
+        return $this->hasMany(DailyPerformanceReport::class);
+    }
+
+    public function performanceSummary()
+    {
+        $reports = $this->dailyPerformanceReports;
+
+        return [
+            'spend' => (float) $reports->sum('spend'),
+            'messages' => (int) $reports->sum('messages'),
+            'results' => (int) $reports->sum('results'),
+            'leads' => (int) $reports->sum('leads'),
+            'orders' => (int) $reports->sum('orders'),
+            'clicks' => (int) $reports->sum('clicks'),
+        ];
+    }
+
     public function objectiveLabel(): string
     {
         return self::OBJECTIVES[$this->objective] ?? ucwords(str_replace('_', ' ', $this->objective));

@@ -8,6 +8,7 @@ use App\Models\BusinessManager;
 use App\Models\Client;
 use App\Models\Payment;
 use App\Models\DailyReport;
+use App\Models\DailyPerformanceReport;
 use App\Models\Employee;
 use App\Models\EmployeeAttendance;
 use App\Models\SalaryPayment;
@@ -27,6 +28,15 @@ class DashboardController extends Controller
 
         $todayDollarSpend = DailyReport::whereDate('report_date', $today)->sum('dollar_spend');
         $todayOrders = DailyReport::whereDate('report_date', $today)->sum('orders');
+        $todayPerformanceReports = DailyPerformanceReport::whereDate('report_date', $today)->get();
+        $todayPerformanceSpend = (float) $todayPerformanceReports->sum('spend');
+        $todayPerformanceMessages = (int) $todayPerformanceReports->sum('messages');
+        $todayPerformanceLeads = (int) $todayPerformanceReports->sum('leads');
+        $todayPerformanceOrders = (int) $todayPerformanceReports->sum('orders');
+        $todayPerformanceResults = (int) $todayPerformanceReports->sum('results');
+        $todayPerformanceCpm = DailyPerformanceReport::costPer($todayPerformanceSpend, $todayPerformanceMessages);
+        $todayPerformanceCpl = DailyPerformanceReport::costPer($todayPerformanceSpend, $todayPerformanceLeads);
+        $todayPerformanceCpp = DailyPerformanceReport::costPer($todayPerformanceSpend, $todayPerformanceOrders);
 
         $totalApprovedPayments = Payment::where('status', 'approved')->sum('amount');
         $totalPendingPayments = Payment::where('status', 'pending')->sum('amount');
@@ -75,6 +85,10 @@ class DashboardController extends Controller
             ->latest()
             ->take(5)
             ->get();
+        $recentPerformanceReports = DailyPerformanceReport::with(['campaign.client', 'campaign.page'])
+            ->latest('report_date')
+            ->take(5)
+            ->get();
 
         return view('admin.dashboard', compact(
             'today',
@@ -84,6 +98,14 @@ class DashboardController extends Controller
             'totalOrders',
             'todayDollarSpend',
             'todayOrders',
+            'todayPerformanceSpend',
+            'todayPerformanceMessages',
+            'todayPerformanceLeads',
+            'todayPerformanceOrders',
+            'todayPerformanceResults',
+            'todayPerformanceCpm',
+            'todayPerformanceCpl',
+            'todayPerformanceCpp',
             'totalApprovedPayments',
             'totalPendingPayments',
             'totalBusinessManagers',
@@ -100,7 +122,8 @@ class DashboardController extends Controller
             'totalProfit',
             'totalBalance',
             'recentPayments',
-            'recentReports'
+            'recentReports',
+            'recentPerformanceReports'
         ));
     }
 

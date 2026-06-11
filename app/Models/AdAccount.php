@@ -70,6 +70,11 @@ class AdAccount extends Model
         return $this->hasMany(Campaign::class);
     }
 
+    public function dailyPerformanceReports()
+    {
+        return $this->hasManyThrough(DailyPerformanceReport::class, Campaign::class);
+    }
+
     public function ledgers()
     {
         return $this->hasMany(AdAccountLedger::class);

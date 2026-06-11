@@ -55,6 +55,11 @@ class Client extends Model
         return $this->hasMany(Campaign::class);
     }
 
+    public function dailyPerformanceReports()
+    {
+        return $this->hasManyThrough(DailyPerformanceReport::class, Campaign::class);
+    }
+
     public function salaryDays()
     {
         return $this->hasMany(SalaryDay::class);

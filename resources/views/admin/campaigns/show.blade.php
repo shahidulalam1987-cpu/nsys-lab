@@ -72,7 +72,55 @@
     </div>
 
     <div class="card">
-        <h2>Future Performance Section</h2>
-        <p>Daily performance, analytics, Meta API data, pixel tracking, and conversion tracking will connect here in future phases.</p>
+        <h2>Performance Summary</h2>
+        <div class="stats-grid" style="margin-bottom:0;">
+            <div class="stat-card"><p>Total Spend</p><h2>USD {{ number_format($performanceSummary['spend'], 2) }}</h2></div>
+            <div class="stat-card"><p>Messages</p><h2>{{ number_format($performanceSummary['messages']) }}</h2></div>
+            <div class="stat-card"><p>Results</p><h2>{{ number_format($performanceSummary['results']) }}</h2></div>
+            <div class="stat-card"><p>Leads</p><h2>{{ number_format($performanceSummary['leads']) }}</h2></div>
+            <div class="stat-card"><p>Orders</p><h2>{{ number_format($performanceSummary['orders']) }}</h2></div>
+            <div class="stat-card"><p>Clicks</p><h2>{{ number_format($performanceSummary['clicks']) }}</h2></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Performance History</h2>
+        <div class="table-wrap">
+            <table>
+                <tr>
+                    <th>Date</th>
+                    <th>Spend</th>
+                    <th>Messages</th>
+                    <th>Results</th>
+                    <th>Leads</th>
+                    <th>Orders</th>
+                    <th>CPM</th>
+                    <th>CPL</th>
+                    <th>CPP</th>
+                    <th>Action</th>
+                </tr>
+                @forelse($performanceReports as $report)
+                    <tr>
+                        <td>{{ $report->report_date?->toDateString() }}</td>
+                        <td>USD {{ number_format((float) $report->spend, 2) }}</td>
+                        <td>{{ number_format($report->messages) }}</td>
+                        <td>{{ number_format($report->results) }}</td>
+                        <td>{{ number_format($report->leads) }}</td>
+                        <td>{{ number_format($report->orders) }}</td>
+                        <td>USD {{ number_format((float) $report->cpm, 2) }}</td>
+                        <td>USD {{ number_format((float) $report->cpl, 2) }}</td>
+                        <td>USD {{ number_format((float) $report->cpp, 2) }}</td>
+                        <td><a href="/admin/daily-reports/{{ $report->id }}">View</a></td>
+                    </tr>
+                @empty
+                    <tr><td colspan="10">No performance history found.</td></tr>
+                @endforelse
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Spend History</h2>
+        <p>Spend trends, Meta API data, pixel tracking, and conversion tracking will connect here in future phases.</p>
     </div>
 @endsection

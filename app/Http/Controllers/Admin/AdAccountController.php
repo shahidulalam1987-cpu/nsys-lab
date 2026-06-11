@@ -82,8 +82,21 @@ class AdAccountController extends Controller
 
     public function show(AdAccount $adAccount)
     {
+        $adAccount->load(['businessManager', 'client', 'pages.client', 'ledgers.creator', 'campaigns.dailyPerformanceReports']);
+        $today = now()->toDateString();
+        $performanceReports = $adAccount->campaigns->flatMap->dailyPerformanceReports;
+
         return view('admin.ad-accounts.show', [
-            'adAccount' => $adAccount->load(['businessManager', 'client', 'pages.client', 'ledgers.creator']),
+            'adAccount' => $adAccount,
+            'performanceSummary' => [
+                'today_spend' => (float) $performanceReports
+                    ->filter(fn ($report) => $report->report_date?->toDateString() === $today)
+                    ->sum('spend'),
+                'month_spend' => (float) $performanceReports
+                    ->filter(fn ($report) => $report->report_date?->isSameMonth(now()))
+                    ->sum('spend'),
+                'campaign_count' => $adAccount->campaigns->count(),
+            ],
         ]);
     }
 

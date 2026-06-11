@@ -39,4 +39,9 @@ class ClientPage extends Model
     {
         return $this->hasMany(Campaign::class);
     }
+
+    public function dailyPerformanceReports()
+    {
+        return $this->hasManyThrough(DailyPerformanceReport::class, Campaign::class);
+    }
 }

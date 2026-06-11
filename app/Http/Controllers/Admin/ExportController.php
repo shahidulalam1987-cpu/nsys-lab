@@ -59,8 +59,8 @@ class ExportController extends Controller
 {
     $fileName = 'daily-reports-export-' . date('Y-m-d') . '.csv';
 
-    $reports = \App\Models\DailyReport::with('client')
-        ->latest()
+    $reports = \App\Models\DailyPerformanceReport::with(['campaign.client', 'campaign.page'])
+        ->latest('report_date')
         ->get();
 
     $headers = [
@@ -73,22 +73,48 @@ class ExportController extends Controller
 
         fputcsv($file, [
             'ID',
+            'Date',
+            'Campaign Name',
+            'Campaign ID',
             'Client',
-            'Report Date',
-            'Page Name',
-            'Dollar Spend',
+            'Page',
+            'Spend USD',
+            'Messages',
+            'Results',
+            'Leads',
             'Orders',
+            'Reach',
+            'Impressions',
+            'Clicks',
+            'CPM',
+            'CPR',
+            'CPL',
+            'CPP',
+            'CPC',
             'Created At',
         ]);
 
         foreach ($reports as $report) {
             fputcsv($file, [
                 $report->id,
-                $report->client->company_name ?? 'N/A',
-                $report->report_date,
-                $report->page_name,
-                $report->dollar_spend,
+                $report->report_date?->toDateString(),
+                $report->campaign?->campaign_name,
+                $report->campaign?->campaign_id,
+                $report->campaign?->client?->company_name,
+                $report->campaign?->page?->page_name,
+                $report->spend,
+                $report->messages,
+                $report->results,
+                $report->leads,
                 $report->orders,
+                $report->reach,
+                $report->impressions,
+                $report->clicks,
+                $report->cpm,
+                $report->cpr,
+                $report->cpl,
+                $report->cpp,
+                $report->cpc,
                 $report->created_at,
             ]);
         }

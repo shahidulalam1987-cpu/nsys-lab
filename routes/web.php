@@ -232,6 +232,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/daily-reports/{dailyReport}/edit', [DailyReportController::class, 'edit']);
     Route::post('/admin/daily-reports/{dailyReport}/update', [DailyReportController::class, 'update']);
     Route::post('/admin/daily-reports/{dailyReport}/delete', [DailyReportController::class, 'destroy']);
+    Route::get('/admin/daily-reports/{dailyReport}', [DailyReportController::class, 'show']);
 
     Route::get('/admin/profit-history', [ProfitController::class, 'index']);
 });

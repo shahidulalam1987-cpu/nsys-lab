@@ -3,98 +3,231 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdAccount;
+use App\Models\BusinessManager;
+use App\Models\Campaign;
 use App\Models\Client;
-use App\Models\DailyReport;
+use App\Models\ClientPage;
+use App\Models\DailyPerformanceReport;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class DailyReportController extends Controller
 {
     public function index(Request $request)
     {
-        $query = DailyReport::with('client');
+        $filters = $this->filters($request);
+        $query = $this->filteredQuery($filters)->latest('report_date')->latest();
+        $reports = $query->get();
 
-        if ($request->client_id) {
-            $query->where('client_id', $request->client_id);
-        }
-
-        if ($request->from_date) {
-            $query->whereDate('report_date', '>=', $request->from_date);
-        }
-
-        if ($request->to_date) {
-            $query->whereDate('report_date', '<=', $request->to_date);
-        }
-
-        if ($request->page_name) {
-            $query->where('page_name', 'like', '%' . $request->page_name . '%');
-        }
-
-        $reports = $query->latest()->get();
-        $clients = Client::where('status', 'active')->get();
-
-        return view('admin.daily-reports.index', compact('reports', 'clients'));
+        return view('admin.daily-reports.index', array_merge($this->sharedData(), [
+            'reports' => $reports,
+            'filters' => $filters,
+            'summary' => [
+                'spend' => (float) $reports->sum('spend'),
+                'messages' => (int) $reports->sum('messages'),
+                'results' => (int) $reports->sum('results'),
+                'leads' => (int) $reports->sum('leads'),
+                'orders' => (int) $reports->sum('orders'),
+                'cpm' => DailyPerformanceReport::costPer((float) $reports->sum('spend'), (int) $reports->sum('messages')),
+                'cpl' => DailyPerformanceReport::costPer((float) $reports->sum('spend'), (int) $reports->sum('leads')),
+                'cpp' => DailyPerformanceReport::costPer((float) $reports->sum('spend'), (int) $reports->sum('orders')),
+            ],
+        ]));
     }
 
     public function create()
     {
-        $clients = Client::where('status', 'active')->get();
-
-        return view('admin.daily-reports.create', compact('clients'));
+        return view('admin.daily-reports.create', array_merge($this->sharedData(), [
+            'dailyReport' => new DailyPerformanceReport([
+                'report_date' => now()->toDateString(),
+            ]),
+        ]));
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'client_id' => 'required|exists:clients,id',
-            'report_date' => 'required|date',
-            'page_name' => 'required|string|max:255',
-            'dollar_spend' => 'required|numeric|min:0',
-            'orders' => 'required|integer|min:0',
-        ]);
+        if ($request->input('entry_mode') === 'bulk') {
+            return $this->storeBulk($request);
+        }
 
-        DailyReport::create($request->only([
-            'client_id',
-            'report_date',
-            'page_name',
-            'dollar_spend',
-            'orders',
-        ]));
+        $data = $this->validatedData($request);
+        $existing = DailyPerformanceReport::where('campaign_id', $data['campaign_id'])
+            ->whereDate('report_date', $data['report_date'])
+            ->first();
 
-        return redirect('/admin/daily-reports');
+        if ($existing && ! $request->boolean('update_existing')) {
+            throw ValidationException::withMessages([
+                'campaign_id' => 'Performance already exists for this campaign and date. Tick Update Existing to replace it.',
+            ]);
+        }
+
+        $report = $existing ?: new DailyPerformanceReport();
+        $report->fill($data)->save();
+
+        return redirect('/admin/daily-reports/' . $report->id)
+            ->with('success', $existing ? 'Existing performance report updated successfully.' : 'Daily performance saved successfully.');
     }
 
-    public function edit(DailyReport $dailyReport)
+    public function show(DailyPerformanceReport $dailyReport)
     {
-        $clients = Client::where('status', 'active')->get();
-
-        return view('admin.daily-reports.edit', compact('dailyReport', 'clients'));
-    }
-
-    public function update(Request $request, DailyReport $dailyReport)
-    {
-        $request->validate([
-            'client_id' => 'required|exists:clients,id',
-            'report_date' => 'required|date',
-            'page_name' => 'required|string|max:255',
-            'dollar_spend' => 'required|numeric|min:0',
-            'orders' => 'required|integer|min:0',
+        return view('admin.daily-reports.show', [
+            'dailyReport' => $dailyReport->load(['campaign.businessManager', 'campaign.adAccount', 'campaign.client', 'campaign.page']),
         ]);
-
-        $dailyReport->update($request->only([
-            'client_id',
-            'report_date',
-            'page_name',
-            'dollar_spend',
-            'orders',
-        ]));
-
-        return redirect('/admin/daily-reports');
     }
 
-    public function destroy(DailyReport $dailyReport)
+    public function edit(DailyPerformanceReport $dailyReport)
+    {
+        return view('admin.daily-reports.edit', array_merge($this->sharedData(), [
+            'dailyReport' => $dailyReport->load('campaign'),
+        ]));
+    }
+
+    public function update(Request $request, DailyPerformanceReport $dailyReport)
+    {
+        $data = $this->validatedData($request, $dailyReport);
+        $duplicate = DailyPerformanceReport::where('campaign_id', $data['campaign_id'])
+            ->whereDate('report_date', $data['report_date'])
+            ->whereKeyNot($dailyReport->id)
+            ->exists();
+
+        if ($duplicate) {
+            throw ValidationException::withMessages([
+                'campaign_id' => 'Another performance report already exists for this campaign and date.',
+            ]);
+        }
+
+        $dailyReport->update($data);
+
+        return redirect('/admin/daily-reports/' . $dailyReport->id)->with('success', 'Daily performance updated successfully.');
+    }
+
+    public function destroy(DailyPerformanceReport $dailyReport)
     {
         $dailyReport->delete();
 
-        return redirect('/admin/daily-reports');
+        return redirect('/admin/daily-reports')->with('success', 'Daily performance deleted successfully.');
+    }
+
+    private function storeBulk(Request $request)
+    {
+        $request->validate([
+            'bulk_report_date' => ['required', 'date'],
+            'bulk_rows' => ['required', 'array'],
+            'update_existing' => ['nullable', 'boolean'],
+        ]);
+
+        $created = 0;
+        $updated = 0;
+        $skipped = 0;
+        $date = $request->input('bulk_report_date');
+
+        foreach ($request->input('bulk_rows', []) as $row) {
+            if (empty($row['enabled'])) {
+                continue;
+            }
+
+            $data = validator($row + ['report_date' => $date], [
+                'campaign_id' => ['required', 'exists:campaigns,id'],
+                'report_date' => ['required', 'date'],
+                'spend' => ['required', 'numeric', 'min:0'],
+                'messages' => ['required', 'integer', 'min:0'],
+                'results' => ['required', 'integer', 'min:0'],
+                'leads' => ['required', 'integer', 'min:0'],
+                'orders' => ['required', 'integer', 'min:0'],
+                'reach' => ['nullable', 'integer', 'min:0'],
+                'impressions' => ['nullable', 'integer', 'min:0'],
+                'clicks' => ['nullable', 'integer', 'min:0'],
+                'notes' => ['nullable', 'string'],
+            ])->validate();
+
+            $existing = DailyPerformanceReport::where('campaign_id', $data['campaign_id'])
+                ->whereDate('report_date', $date)
+                ->first();
+
+            if ($existing && ! $request->boolean('update_existing')) {
+                $skipped++;
+                continue;
+            }
+
+            $report = $existing ?: new DailyPerformanceReport();
+            $report->fill([
+                'campaign_id' => $data['campaign_id'],
+                'report_date' => $date,
+                'spend' => $data['spend'],
+                'messages' => $data['messages'],
+                'results' => $data['results'],
+                'leads' => $data['leads'],
+                'orders' => $data['orders'],
+                'reach' => $data['reach'] ?? 0,
+                'impressions' => $data['impressions'] ?? 0,
+                'clicks' => $data['clicks'] ?? 0,
+                'notes' => $data['notes'] ?? null,
+            ])->save();
+
+            $existing ? $updated++ : $created++;
+        }
+
+        return redirect('/admin/daily-reports')
+            ->with('success', "Bulk performance saved. Created: {$created}, Updated: {$updated}, Skipped: {$skipped}.");
+    }
+
+    private function sharedData(): array
+    {
+        return [
+            'businessManagers' => BusinessManager::orderBy('bm_name')->get(),
+            'adAccounts' => AdAccount::orderBy('ad_account_name')->get(),
+            'clients' => Client::orderBy('company_name')->get(),
+            'clientPages' => ClientPage::orderBy('page_name')->get(),
+            'campaigns' => Campaign::with(['businessManager', 'adAccount', 'client', 'page'])->orderBy('campaign_name')->get(),
+            'campaignStatuses' => Campaign::STATUSES,
+        ];
+    }
+
+    private function filters(Request $request): array
+    {
+        return $request->validate([
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+            'business_manager_id' => ['nullable', 'exists:business_managers,id'],
+            'ad_account_id' => ['nullable', 'exists:ad_accounts,id'],
+            'client_id' => ['nullable', 'exists:clients,id'],
+            'client_page_id' => ['nullable', 'exists:client_pages,id'],
+            'campaign_id' => ['nullable', 'exists:campaigns,id'],
+            'campaign_status' => ['nullable', Rule::in(array_keys(Campaign::STATUSES))],
+        ]);
+    }
+
+    private function filteredQuery(array $filters)
+    {
+        return DailyPerformanceReport::with(['campaign.businessManager', 'campaign.adAccount', 'campaign.client', 'campaign.page'])
+            ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->whereDate('report_date', '>=', $date))
+            ->when($filters['date_to'] ?? null, fn ($query, $date) => $query->whereDate('report_date', '<=', $date))
+            ->when($filters['campaign_id'] ?? null, fn ($query, $id) => $query->where('campaign_id', $id))
+            ->whereHas('campaign', function ($query) use ($filters) {
+                $query->when($filters['business_manager_id'] ?? null, fn ($inner, $id) => $inner->where('business_manager_id', $id))
+                    ->when($filters['ad_account_id'] ?? null, fn ($inner, $id) => $inner->where('ad_account_id', $id))
+                    ->when($filters['client_id'] ?? null, fn ($inner, $id) => $inner->where('client_id', $id))
+                    ->when($filters['client_page_id'] ?? null, fn ($inner, $id) => $inner->where('client_page_id', $id))
+                    ->when($filters['campaign_status'] ?? null, fn ($inner, $status) => $inner->where('status', $status));
+            });
+    }
+
+    private function validatedData(Request $request, ?DailyPerformanceReport $dailyReport = null): array
+    {
+        return $request->validate([
+            'campaign_id' => ['required', 'exists:campaigns,id'],
+            'report_date' => ['required', 'date'],
+            'spend' => ['required', 'numeric', 'min:0'],
+            'messages' => ['required', 'integer', 'min:0'],
+            'results' => ['required', 'integer', 'min:0'],
+            'leads' => ['required', 'integer', 'min:0'],
+            'orders' => ['required', 'integer', 'min:0'],
+            'reach' => ['nullable', 'integer', 'min:0'],
+            'impressions' => ['nullable', 'integer', 'min:0'],
+            'clicks' => ['required', 'integer', 'min:0'],
+            'notes' => ['nullable', 'string'],
+        ]);
     }
 }
