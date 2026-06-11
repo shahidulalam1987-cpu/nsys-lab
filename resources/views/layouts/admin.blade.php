@@ -129,6 +129,17 @@
             box-shadow: 0 10px 30px rgba(47, 140, 255, 0.25);
         }
 
+        .sidebar a.sidebar-muted {
+            cursor: default;
+            opacity: .55;
+        }
+
+        .sidebar a.sidebar-muted:hover {
+            background: rgba(255,255,255,.06);
+            box-shadow: none;
+            color: var(--muted);
+        }
+
         .sidebar-section-title {
             color: var(--cyan);
             font-size: 11px;
@@ -404,10 +415,17 @@
 
 <body>
     @php
+        $isSystemTools = request()->is('admin/bug-tracker*')
+            || request()->is('admin/activity-log*')
+            || request()->is('admin/security-audit*')
+            || request()->is('admin/test-data-reset*');
+        $isClientDepartment = request()->is('admin/client-dashboard')
+            || request()->is('admin/clients*')
+            || request()->is('admin/client-users*')
+            || request()->is('admin/client-fund*')
+            || request()->is('admin/salary-payments*');
         $isEmployeeDepartment = request()->is('admin/employee-dashboard')
             || request()->is('admin/employees*')
-            || request()->is('admin/client-fund*')
-            || request()->is('admin/salary-payments*')
             || request()->is('admin/salary-month-sheet*')
             || request()->is('admin/attendance*')
             || request()->is('admin/assignments*')
@@ -415,12 +433,9 @@
             || request()->is('admin/client-pages*')
             || request()->is('admin/employee-notices*')
             || request()->is('admin/payroll*');
-        $isSystemTools = request()->is('admin/bug-tracker*')
-            || request()->is('admin/activity-log*')
-            || request()->is('admin/security-audit*')
-            || request()->is('admin/test-data-reset*');
+        $isAdminDashboard = ! $isSystemTools && ! $isClientDepartment && ! $isEmployeeDepartment;
         $openBugCount = \App\Models\BugReport::where('status', 'open')->count();
-        $clientFundBadges = $isEmployeeDepartment
+        $clientFundBadges = ($isEmployeeDepartment || $isClientDepartment)
             ? app(\App\Services\ClientFundDashboardService::class)->sidebarBadges()
             : ['upcoming_salary_count' => 0, 'unpaid_salary_count' => 0, 'pending_payment_count' => 0];
     @endphp
@@ -436,8 +451,9 @@
                         <span class="header-count-badge">{{ $openBugCount }}</span>
                     @endif
                 </a>
-                <a class="department-tab {{ ! $isEmployeeDepartment && ! $isSystemTools ? 'active-department' : '' }}" href="/admin/dashboard">Boosting Department</a>
-                <a class="department-tab {{ $isEmployeeDepartment ? 'active-department' : '' }}" href="/admin/employees">Employee Department</a>
+                <a class="department-tab {{ $isAdminDashboard ? 'active-department' : '' }}" href="/admin/dashboard">Admin Dashboard</a>
+                <a class="department-tab {{ $isClientDepartment ? 'active-department' : '' }}" href="/admin/client-dashboard">Client Department</a>
+                <a class="department-tab {{ $isEmployeeDepartment ? 'active-department' : '' }}" href="/admin/employee-dashboard">Employee Department</a>
             </div>
         </div>
 
@@ -455,14 +471,54 @@
                 <a class="{{ request()->is('admin/activity-log*') ? 'active-menu' : '' }}" href="/admin/activity-log">Activity Log</a>
                 <a class="{{ request()->is('admin/security-audit*') ? 'active-menu' : '' }}" href="/admin/security-audit">Security Audit</a>
                 <a class="{{ request()->is('admin/test-data-reset*') ? 'active-menu' : '' }}" href="/admin/test-data-reset">Test Data Reset</a>
+                <div class="sidebar-section-title">Future Ready</div>
+                <a class="sidebar-muted" href="#" onclick="return false;">Backup</a>
+                <a class="sidebar-muted" href="#" onclick="return false;">System Health</a>
+                <a class="sidebar-muted" href="#" onclick="return false;">Error Logs</a>
+            @elseif($isClientDepartment)
+                <div class="sidebar-section-title">Client Department</div>
+
+                <div class="sidebar-section-title">Client Management</div>
+                <a class="{{ request()->is('admin/client-dashboard') ? 'active-menu' : '' }}" href="/admin/client-dashboard">Client Dashboard</a>
+                <a class="{{ request()->is('admin/clients') || request()->is('admin/clients/create') ? 'active-menu' : '' }}" href="/admin/clients">Client List</a>
+                <a class="{{ request()->is('admin/clients/*') ? 'active-menu' : '' }}" href="/admin/clients">Client Details</a>
+
+                <div class="sidebar-section-title">Client Fund</div>
+                <a class="{{ request()->is('admin/client-fund*') ? 'active-menu' : '' }}" href="/admin/client-fund">Dashboard</a>
+                <a class="{{ request()->is('admin/salary-payments/create') ? 'active-menu' : '' }}" href="/admin/salary-payments/create">Receive Payment</a>
+                <a class="sidebar-link-with-badge {{ request()->is('admin/salary-payments/pending') ? 'active-menu' : '' }}" href="/admin/salary-payments/pending">
+                    <span>Pending Payments</span>
+                    @if($clientFundBadges['pending_payment_count'] > 0)
+                        <span class="sidebar-count-badge danger">{{ $clientFundBadges['pending_payment_count'] }}</span>
+                    @endif
+                </a>
+                <a class="{{ request()->is('admin/salary-payments') && ! request()->filled('status') ? 'active-menu' : '' }}" href="/admin/salary-payments">Payment History</a>
+
+                <div class="sidebar-section-title">Client Portal</div>
+                <a class="{{ request()->is('admin/client-users*') ? 'active-menu' : '' }}" href="/admin/client-users">Client Portal Users</a>
             @elseif($isEmployeeDepartment)
-                <div class="sidebar-section-title">Employee</div>
+                <div class="sidebar-section-title">Employee Department</div>
+
+                <div class="sidebar-section-title">Employee Management</div>
+                <a class="{{ request()->is('admin/employee-dashboard') ? 'active-menu' : '' }}" href="/admin/employee-dashboard">Employee Dashboard</a>
                 <a class="{{ request()->is('admin/employees*') ? 'active-menu' : '' }}" href="/admin/employees">Employee List</a>
+
+                <div class="sidebar-section-title">Assignment Management</div>
                 <a class="{{ request()->is('admin/assignments*') ? 'active-menu' : '' }}" href="/admin/assignments">Assignment Management</a>
-                <a class="{{ request()->is('admin/work-status*') ? 'active-menu' : '' }}" href="/admin/work-status">Work Status</a>
-                <a class="{{ request()->is('admin/attendance*') ? 'active-menu' : '' }}" href="/admin/attendance">Attendance</a>
+
+                <div class="sidebar-section-title">Page Management</div>
                 <a class="{{ request()->is('admin/client-pages*') ? 'active-menu' : '' }}" href="/admin/client-pages">Page Management</a>
+
+                <div class="sidebar-section-title">Work Status</div>
+                <a class="{{ request()->is('admin/work-status*') ? 'active-menu' : '' }}" href="/admin/work-status">Work Status</a>
+
+                <div class="sidebar-section-title">Attendance</div>
+                <a class="{{ request()->is('admin/attendance*') ? 'active-menu' : '' }}" href="/admin/attendance">Attendance</a>
+
+                <div class="sidebar-section-title">Employee Portal</div>
                 <a class="{{ request()->is('admin/employee-notices*') ? 'active-menu' : '' }}" href="/admin/employee-notices">Notice Board</a>
+
+                <div class="sidebar-section-title">Payroll</div>
                 <a class="{{ request()->is('admin/payroll*') && ! request()->filled('status') ? 'active-menu' : '' }}" href="/admin/payroll">Salary Generate</a>
                 <a class="{{ request()->is('admin/salary-month-sheet*') ? 'active-menu' : '' }}" href="/admin/salary-month-sheet">Salary Report</a>
                 <a class="sidebar-link-with-badge {{ request()->is('admin/payroll') && request('status') === 'upcoming' ? 'active-menu' : '' }}" href="/admin/payroll?status=upcoming">
@@ -478,26 +534,24 @@
                         <span class="sidebar-count-badge danger">{{ $clientFundBadges['unpaid_salary_count'] }}</span>
                     @endif
                 </a>
-
-                <div class="sidebar-section-title">Client Fund</div>
-                <a class="{{ request()->is('admin/client-fund*') ? 'active-menu' : '' }}" href="/admin/client-fund">Dashboard</a>
-                <a class="{{ request()->is('admin/salary-payments/create') ? 'active-menu' : '' }}" href="/admin/salary-payments/create">Receive Payment</a>
-                <a class="sidebar-link-with-badge {{ request()->is('admin/salary-payments/pending') ? 'active-menu' : '' }}" href="/admin/salary-payments/pending">
-                    <span>Pending Payments</span>
-                    @if($clientFundBadges['pending_payment_count'] > 0)
-                        <span class="sidebar-count-badge danger">{{ $clientFundBadges['pending_payment_count'] }}</span>
-                    @endif
-                </a>
-                <a class="{{ request()->is('admin/salary-payments') && ! request()->filled('status') ? 'active-menu' : '' }}" href="/admin/salary-payments">Payment History</a>
             @else
-                <a class="{{ request()->is('admin/dashboard') ? 'active-menu' : '' }}" href="/admin/dashboard">Dashboard</a>
-                <a class="{{ request()->is('admin/clients*') ? 'active-menu' : '' }}" href="/admin/clients">Clients</a>
-                <a class="{{ request()->is('admin/client-users*') ? 'active-menu' : '' }}" href="/admin/client-users">Client Users</a>
-                <a class="{{ request()->is('admin/payments') ? 'active-menu' : '' }}" href="/admin/payments">All Payments</a>
-                <a class="{{ request()->is('admin/payments/pending') ? 'active-menu' : '' }}" href="/admin/payments/pending">Pending Payments</a>
-                <a class="{{ request()->is('admin/invoices*') ? 'active-menu' : '' }}" href="/admin/invoices">Invoices</a>
-                <a class="{{ request()->is('admin/daily-reports*') ? 'active-menu' : '' }}" href="/admin/daily-reports">Daily Reports</a>
-                <a class="{{ request()->is('admin/profit-history') ? 'active-menu' : '' }}" href="/admin/profit-history">Profit History</a>
+                <div class="sidebar-section-title">Admin Dashboard</div>
+                <a class="{{ request()->is('admin/dashboard') ? 'active-menu' : '' }}" href="/admin/dashboard">Overview</a>
+
+                <div class="sidebar-section-title">Boosting Management</div>
+                <a class="sidebar-muted" href="#" onclick="return false;">BM Management</a>
+                <a class="{{ request()->is('admin/payments*') ? 'active-menu' : '' }}" href="/admin/payments">Ad Account Management</a>
+                <a class="sidebar-muted" href="#" onclick="return false;">Page Management</a>
+                <a class="{{ request()->is('admin/invoices*') ? 'active-menu' : '' }}" href="/admin/invoices">Campaign Management</a>
+                <a class="{{ request()->is('admin/daily-reports*') ? 'active-menu' : '' }}" href="/admin/daily-reports">Daily Performance Entry</a>
+                <a class="{{ request()->is('admin/profit-history') ? 'active-menu' : '' }}" href="/admin/profit-history">Analytics Dashboard</a>
+                <a class="sidebar-muted" href="#" onclick="return false;">Orders & Leads</a>
+                <a class="sidebar-muted" href="#" onclick="return false;">Client Reports</a>
+
+                <div class="sidebar-section-title">Future Ready</div>
+                <a class="sidebar-muted" href="#" onclick="return false;">Meta API Integration</a>
+                <a class="sidebar-muted" href="#" onclick="return false;">Pixel Tracking</a>
+                <a class="sidebar-muted" href="#" onclick="return false;">Conversion Tracking</a>
             @endif
         </div>
 

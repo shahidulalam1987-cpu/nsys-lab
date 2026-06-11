@@ -67,6 +67,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/export/payments', [ExportController::class, 'paymentsCsv']);
     Route::get('/admin/export/daily-reports', [ExportController::class, 'dailyReportsCsv']);
     Route::get('/admin/dashboard', [AdminDashboardController::class, 'index']);
+    Route::get('/admin/client-dashboard', [AdminDashboardController::class, 'clientDepartment']);
     Route::get('/admin/employee-dashboard', [AdminDashboardController::class, 'employeeDepartment']);
     Route::get('/admin/bug-tracker', [BugReportController::class, 'index']);
     Route::get('/admin/bug-tracker/create', [BugReportController::class, 'create']);

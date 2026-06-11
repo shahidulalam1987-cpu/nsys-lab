@@ -99,4 +99,24 @@ class DashboardController extends Controller
             'recentSalaryPayments'
         ));
     }
+
+    public function clientDepartment(ClientFundDashboardService $clientFundDashboardService)
+    {
+        $clientFundDashboard = $clientFundDashboardService->dashboard();
+        $clientFundSummary = $clientFundDashboard['summary'];
+        $totalClients = Client::count();
+        $activeClients = Client::where('status', 'active')->count();
+        $pendingClientPayments = SalaryPayment::where('status', 'pending')->sum('amount');
+        $recentClients = Client::latest()->take(5)->get();
+        $recentClientPayments = SalaryPayment::with('client')->latest()->take(5)->get();
+
+        return view('admin.client-dashboard', compact(
+            'clientFundSummary',
+            'totalClients',
+            'activeClients',
+            'pendingClientPayments',
+            'recentClients',
+            'recentClientPayments'
+        ));
+    }
 }
