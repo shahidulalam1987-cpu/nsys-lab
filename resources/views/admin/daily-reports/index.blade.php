@@ -13,6 +13,8 @@
         <div class="stat-card"><p>Spend</p><h2>USD {{ number_format($summary['spend'], 2) }}</h2></div>
         <div class="stat-card"><p>Orders</p><h2>{{ number_format($summary['orders']) }}</h2></div>
         <div class="stat-card"><p>Cost Per Order</p><h2>USD {{ number_format($summary['cost_per_order'], 2) }}</h2></div>
+        <div class="stat-card"><p>Revenue</p><h2>BDT {{ number_format($summary['revenue'], 2) }}</h2></div>
+        <div class="stat-card"><p>Profit</p><h2>BDT {{ number_format($summary['profit'], 2) }}</h2></div>
     </div>
 
     <div class="card">
@@ -77,25 +79,27 @@
             <table>
                 <tr>
                     <th>Date</th>
-                    <th>Campaign Name</th>
-                    <th>Campaign ID</th>
                     <th>Client</th>
                     <th>Page</th>
+                    <th>Campaign</th>
                     <th>Spend</th>
                     <th>Orders</th>
                     <th>Cost Per Order</th>
+                    <th>Revenue</th>
+                    <th>Profit</th>
                     <th>Actions</th>
                 </tr>
                 @forelse($reports as $report)
                     <tr>
                         <td>{{ $report->report_date?->toDateString() }}</td>
-                        <td><a href="/admin/campaigns/{{ $report->campaign?->id }}">{{ $report->campaign?->campaign_name ?: '-' }}</a></td>
-                        <td>{{ $report->campaign?->campaign_id ?: '-' }}</td>
                         <td>{{ $report->campaign?->client?->company_name ?: '-' }}</td>
                         <td>{{ $report->campaign?->page?->page_name ?: '-' }}</td>
+                        <td><a href="/admin/campaigns/{{ $report->campaign?->id }}">{{ $report->campaign?->campaign_name ?: '-' }}</a></td>
                         <td>USD {{ number_format((float) $report->spend, 2) }}</td>
                         <td>{{ number_format($report->orders) }}</td>
                         <td>USD {{ number_format((float) $report->cpp, 2) }}</td>
+                        <td>BDT {{ number_format($report->clientRevenue(), 2) }}</td>
+                        <td>BDT {{ number_format($report->profit(), 2) }}</td>
                         <td style="white-space:nowrap;">
                             <a href="/admin/daily-reports/{{ $report->id }}">View</a> |
                             <a href="/admin/daily-reports/{{ $report->id }}/edit">Edit</a> |
@@ -106,7 +110,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="9">No daily performance reports found.</td></tr>
+                    <tr><td colspan="10">No daily performance reports found.</td></tr>
                 @endforelse
             </table>
         </div>

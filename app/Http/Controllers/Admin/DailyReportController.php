@@ -26,11 +26,13 @@ class DailyReportController extends Controller
             'filters' => $filters,
             'summary' => [
                 'spend' => (float) $reports->sum('spend'),
-            'messages' => (int) $reports->sum('messages'),
-            'results' => (int) $reports->sum('results'),
-            'leads' => (int) $reports->sum('leads'),
-            'orders' => (int) $reports->sum('orders'),
-            'cost_per_order' => DailyPerformanceReport::costPer((float) $reports->sum('spend'), (int) $reports->sum('orders')),
+                'messages' => (int) $reports->sum('messages'),
+                'results' => (int) $reports->sum('results'),
+                'leads' => (int) $reports->sum('leads'),
+                'orders' => (int) $reports->sum('orders'),
+                'cost_per_order' => DailyPerformanceReport::costPer((float) $reports->sum('spend'), (int) $reports->sum('orders')),
+                'revenue' => (float) $reports->sum(fn (DailyPerformanceReport $report) => $report->clientRevenue()),
+                'profit' => (float) $reports->sum(fn (DailyPerformanceReport $report) => $report->profit()),
             ],
         ]));
     }
@@ -130,6 +132,9 @@ class DailyReportController extends Controller
                 'campaign_id' => ['required', 'exists:campaigns,id'],
                 'report_date' => ['required', 'date'],
                 'spend' => ['required', 'numeric', 'min:0'],
+                'card_provider' => ['nullable', 'string', 'max:255'],
+                'fee_usd' => ['nullable', 'numeric', 'min:0'],
+                'extra_charge_usd' => ['nullable', 'numeric', 'min:0'],
                 'messages' => ['nullable', 'integer', 'min:0'],
                 'results' => ['nullable', 'integer', 'min:0'],
                 'leads' => ['nullable', 'integer', 'min:0'],
@@ -154,6 +159,9 @@ class DailyReportController extends Controller
                 'campaign_id' => $data['campaign_id'],
                 'report_date' => $date,
                 'spend' => $data['spend'],
+                'card_provider' => $data['card_provider'] ?? null,
+                'fee_usd' => $data['fee_usd'] ?? 0,
+                'extra_charge_usd' => $data['extra_charge_usd'] ?? 0,
                 'messages' => $data['messages'] ?? 0,
                 'results' => $data['results'] ?? 0,
                 'leads' => $data['leads'] ?? 0,
@@ -214,10 +222,13 @@ class DailyReportController extends Controller
 
     private function validatedData(Request $request, ?DailyPerformanceReport $dailyReport = null): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'campaign_id' => ['required', 'exists:campaigns,id'],
             'report_date' => ['required', 'date'],
             'spend' => ['required', 'numeric', 'min:0'],
+            'card_provider' => ['nullable', 'string', 'max:255'],
+            'fee_usd' => ['nullable', 'numeric', 'min:0'],
+            'extra_charge_usd' => ['nullable', 'numeric', 'min:0'],
             'messages' => ['nullable', 'integer', 'min:0'],
             'results' => ['nullable', 'integer', 'min:0'],
             'leads' => ['nullable', 'integer', 'min:0'],
@@ -229,6 +240,9 @@ class DailyReportController extends Controller
         ]);
 
         return array_merge([
+            'card_provider' => null,
+            'fee_usd' => 0,
+            'extra_charge_usd' => 0,
             'messages' => 0,
             'results' => 0,
             'leads' => 0,

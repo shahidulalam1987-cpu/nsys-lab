@@ -9,6 +9,8 @@
         <div class="stat-card"><p>Spend</p><h2>USD {{ number_format((float) $dailyReport->spend, 2) }}</h2></div>
         <div class="stat-card"><p>Orders</p><h2>{{ number_format($dailyReport->orders) }}</h2></div>
         <div class="stat-card"><p>Cost Per Order</p><h2>USD {{ number_format((float) $dailyReport->cpp, 2) }}</h2></div>
+        <div class="stat-card"><p>Revenue</p><h2>BDT {{ number_format($dailyReport->clientRevenue(), 2) }}</h2></div>
+        <div class="stat-card"><p>Profit</p><h2>BDT {{ number_format($dailyReport->profit(), 2) }}</h2></div>
     </div>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;">
@@ -31,11 +33,17 @@
             <p><strong>Date:</strong> {{ $dailyReport->report_date?->toDateString() }}</p>
             <p><strong>Spend:</strong> USD {{ number_format((float) $dailyReport->spend, 2) }}</p>
             <p><strong>Orders:</strong> {{ number_format($dailyReport->orders) }}</p>
+            <p><strong>Card Provider:</strong> {{ $dailyReport->card_provider ?: '-' }}</p>
+            <p><strong>Fee USD:</strong> USD {{ number_format((float) $dailyReport->fee_usd, 2) }}</p>
+            <p><strong>Extra Charge USD:</strong> USD {{ number_format((float) $dailyReport->extra_charge_usd, 2) }}</p>
             <p><strong>Notes:</strong> {{ $dailyReport->notes ?: '-' }}</p>
         </div>
         <div class="card">
             <h2>Cost Metric</h2>
             <p><strong>Cost Per Order:</strong> USD {{ number_format((float) $dailyReport->cpp, 2) }}</p>
+            <p><strong>Revenue:</strong> BDT {{ number_format($dailyReport->clientRevenue(), 2) }}</p>
+            <p><strong>Actual Cost:</strong> BDT {{ number_format($dailyReport->actualCost(), 2) }}</p>
+            <p><strong>Profit:</strong> BDT {{ number_format($dailyReport->profit(), 2) }}</p>
             <details style="margin-top:12px;">
                 <summary style="cursor:pointer;color:var(--cyan);font-weight:700;">Advanced Metrics</summary>
                 <p><strong>Messages:</strong> {{ number_format($dailyReport->messages) }}</p>

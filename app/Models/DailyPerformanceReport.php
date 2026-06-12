@@ -14,6 +14,9 @@ class DailyPerformanceReport extends Model
         'results',
         'leads',
         'orders',
+        'card_provider',
+        'fee_usd',
+        'extra_charge_usd',
         'reach',
         'impressions',
         'clicks',
@@ -30,6 +33,8 @@ class DailyPerformanceReport extends Model
         return [
             'report_date' => 'date',
             'spend' => 'decimal:2',
+            'fee_usd' => 'decimal:2',
+            'extra_charge_usd' => 'decimal:2',
             'cpm' => 'decimal:2',
             'cpr' => 'decimal:2',
             'cpl' => 'decimal:2',
@@ -62,5 +67,23 @@ class DailyPerformanceReport extends Model
     public function campaign()
     {
         return $this->belongsTo(Campaign::class);
+    }
+
+    public function clientRevenue(): float
+    {
+        return round((float) $this->spend * (float) ($this->campaign?->client?->client_rate ?? 0), 2);
+    }
+
+    public function actualCost(): float
+    {
+        $buyRate = (float) ($this->campaign?->client?->buy_rate ?? 0);
+        $totalUsd = (float) $this->spend + (float) $this->fee_usd + (float) $this->extra_charge_usd;
+
+        return round($totalUsd * $buyRate, 2);
+    }
+
+    public function profit(): float
+    {
+        return round($this->clientRevenue() - $this->actualCost(), 2);
     }
 }
