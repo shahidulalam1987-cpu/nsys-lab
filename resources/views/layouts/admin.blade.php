@@ -445,6 +445,7 @@
             || request()->is('admin/business-managers*')
             || request()->is('admin/ad-accounts*')
             || request()->is('admin/ad-account-ledger*')
+            || request()->is('admin/facebook-cards*')
             || request()->is('admin/client-pages*')
             || request()->is('admin/campaigns*')
             || request()->is('admin/daily-reports*')
@@ -454,6 +455,12 @@
         $clientFundBadges = ($isEmployeeDepartment || $isClientDepartment)
             ? app(\App\Services\ClientFundDashboardService::class)->sidebarBadges()
             : ['upcoming_salary_count' => 0, 'unpaid_salary_count' => 0, 'pending_payment_count' => 0];
+        $facebookBadges = ($isFacebook || $isAdminDashboard)
+            ? [
+                'billing_alert_count' => \App\Models\AdAccount::all()->filter(fn ($account) => in_array($account->billingStatus(), ['upcoming', 'overdue'], true))->count(),
+                'low_card_count' => \App\Models\FacebookCard::all()->filter(fn ($card) => $card->effectiveStatus() === 'low_balance')->count(),
+            ]
+            : ['billing_alert_count' => 0, 'low_card_count' => 0];
     @endphp
 
     <div class="topbar">
@@ -468,7 +475,12 @@
                     @endif
                 </a>
                 <a class="department-tab {{ $isAdminDashboard ? 'active-department' : '' }}" href="/admin/dashboard">Admin Dashboard</a>
-                <a class="department-tab {{ $isFacebook ? 'active-department' : '' }}" href="/admin/facebook-dashboard">Facebook</a>
+                <a class="department-tab {{ $isFacebook ? 'active-department' : '' }}" href="/admin/facebook-dashboard">
+                    Facebook
+                    @if(($facebookBadges['billing_alert_count'] + $facebookBadges['low_card_count']) > 0)
+                        <span class="header-count-badge">{{ $facebookBadges['billing_alert_count'] + $facebookBadges['low_card_count'] }}</span>
+                    @endif
+                </a>
                 <a class="department-tab {{ $isTikTok ? 'active-department' : '' }}" href="/admin/tiktok">TikTok</a>
                 <a class="department-tab {{ $isClientDepartment ? 'active-department' : '' }}" href="/admin/client-dashboard">Client Department</a>
                 <a class="department-tab {{ $isEmployeeDepartment ? 'active-department' : '' }}" href="/admin/employee-dashboard">Employee Department</a>
@@ -565,8 +577,19 @@
                 <div class="sidebar-section-title">Facebook</div>
                 <a class="{{ request()->is('admin/facebook-dashboard') ? 'active-menu' : '' }}" href="/admin/facebook-dashboard">Dashboard</a>
                 <a class="{{ request()->is('admin/business-managers*') ? 'active-menu' : '' }}" href="/admin/business-managers">BM Management</a>
-                <a class="{{ request()->is('admin/ad-accounts*') ? 'active-menu' : '' }}" href="/admin/ad-accounts">Ad Account Management</a>
+                <a class="sidebar-link-with-badge {{ request()->is('admin/ad-accounts*') ? 'active-menu' : '' }}" href="/admin/ad-accounts">
+                    <span>Ad Account Management</span>
+                    @if($facebookBadges['billing_alert_count'] > 0)
+                        <span class="sidebar-count-badge danger">{{ $facebookBadges['billing_alert_count'] }}</span>
+                    @endif
+                </a>
                 <a class="{{ request()->is('admin/ad-account-ledger*') ? 'active-menu' : '' }}" href="/admin/ad-account-ledger">Ad Account Ledger</a>
+                <a class="sidebar-link-with-badge {{ request()->is('admin/facebook-cards*') ? 'active-menu' : '' }}" href="/admin/facebook-cards">
+                    <span>Card Balance</span>
+                    @if($facebookBadges['low_card_count'] > 0)
+                        <span class="sidebar-count-badge danger">{{ $facebookBadges['low_card_count'] }}</span>
+                    @endif
+                </a>
                 <a class="{{ request()->is('admin/client-pages*') ? 'active-menu' : '' }}" href="/admin/client-pages">Page Management</a>
                 <a class="{{ request()->is('admin/campaigns*') ? 'active-menu' : '' }}" href="/admin/campaigns">Campaign Management</a>
                 <a class="{{ request()->is('admin/daily-reports*') ? 'active-menu' : '' }}" href="/admin/daily-reports">Daily Performance Entry</a>

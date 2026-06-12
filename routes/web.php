@@ -36,6 +36,7 @@ use App\Http\Controllers\Admin\BugReportController;
 use App\Http\Controllers\Admin\SystemToolsController;
 use App\Http\Controllers\Admin\BusinessManagerController;
 use App\Http\Controllers\Admin\AdAccountController;
+use App\Http\Controllers\Admin\FacebookCardController;
 use App\Http\Controllers\Admin\CampaignController;
 
 Route::get('/', [DashboardController::class, 'index']);
@@ -179,6 +180,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/payroll/export/excel', [EmployeePayrollController::class, 'exportExcel']);
     Route::get('/admin/payroll/create', [EmployeePayrollController::class, 'create']);
     Route::post('/admin/payroll', [EmployeePayrollController::class, 'store']);
+    Route::redirect('/admin/payroll/upcoming', '/admin/payroll?status=upcoming');
+    Route::redirect('/admin/payroll/unpaid', '/admin/payroll?status=due');
     Route::get('/admin/payroll/{id}', [EmployeePayrollController::class, 'show']);
     Route::get('/admin/payroll/{id}/edit', [EmployeePayrollController::class, 'edit']);
     Route::post('/admin/payroll/{id}/update', [EmployeePayrollController::class, 'update']);
@@ -219,6 +222,14 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/ad-accounts/{adAccount}/edit', [AdAccountController::class, 'edit']);
     Route::post('/admin/ad-accounts/{adAccount}/update', [AdAccountController::class, 'update']);
     Route::post('/admin/ad-accounts/{adAccount}/delete', [AdAccountController::class, 'destroy']);
+
+    Route::get('/admin/facebook-cards', [FacebookCardController::class, 'index']);
+    Route::get('/admin/facebook-cards/create', [FacebookCardController::class, 'create']);
+    Route::post('/admin/facebook-cards', [FacebookCardController::class, 'store']);
+    Route::get('/admin/facebook-cards/{card}', [FacebookCardController::class, 'show']);
+    Route::get('/admin/facebook-cards/{card}/edit', [FacebookCardController::class, 'edit']);
+    Route::post('/admin/facebook-cards/{card}/update', [FacebookCardController::class, 'update']);
+    Route::post('/admin/facebook-cards/{card}/balance', [FacebookCardController::class, 'updateBalance']);
 
     Route::get('/admin/campaigns', [CampaignController::class, 'index']);
     Route::get('/admin/campaigns/create', [CampaignController::class, 'create']);
