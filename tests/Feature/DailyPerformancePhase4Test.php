@@ -148,7 +148,7 @@ class DailyPerformancePhase4Test extends TestCase
             ->assertOk()
             ->assertSee('Performance History')
             ->assertSee('Cost Per Order')
-            ->assertSee('Spend History');
+            ->assertSee('Future Reports');
 
         $this->actingAs($admin)->get('/admin/clients/' . $client->id)
             ->assertOk()

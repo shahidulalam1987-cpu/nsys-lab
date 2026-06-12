@@ -40,7 +40,8 @@ class CampaignController extends Controller
             ->when($filters['search'] ?? null, function ($query, $search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->where('campaign_name', 'like', '%' . $search . '%')
-                        ->orWhere('campaign_id', 'like', '%' . $search . '%');
+                        ->orWhere('campaign_id', 'like', '%' . $search . '%')
+                        ->orWhereHas('page', fn ($pageQuery) => $pageQuery->where('page_name', 'like', '%' . $search . '%'));
                 });
             });
 
