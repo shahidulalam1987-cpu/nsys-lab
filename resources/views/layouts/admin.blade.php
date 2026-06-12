@@ -442,6 +442,7 @@
             || request()->is('admin/payroll*');
         $isTikTok = request()->is('admin/tiktok*');
         $isFinancialManagement = request()->is('admin/financial-management*')
+            || request()->is('admin/finance*')
             || request()->is('admin/facebook-cards*')
             || request()->is('admin/facebook-financial*');
         $isFacebook = request()->is('admin/facebook-dashboard')
@@ -547,11 +548,16 @@
                 <a class="{{ request()->is('admin/facebook-financial/card-transactions*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/card-transactions">Card Transactions</a>
 
                 <div class="sidebar-section-title">Finance</div>
+                <a class="{{ request()->is('admin/financial-management') ? 'active-menu' : '' }}" href="/admin/financial-management">Finance Dashboard</a>
+                <a class="{{ request()->is('admin/finance/accounts*') ? 'active-menu' : '' }}" href="/admin/finance/accounts">Finance Accounts</a>
+                <a class="{{ request()->is('admin/finance/loans*') ? 'active-menu' : '' }}" href="/admin/finance/loans">Loan Management</a>
                 <a class="{{ request()->is('admin/facebook-financial/profit-dashboard*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/profit-dashboard">Profit Dashboard</a>
                 <a class="sidebar-muted" href="#" onclick="return false;">Revenue Dashboard</a>
                 <a class="sidebar-muted" href="#" onclick="return false;">Expense Dashboard</a>
 
                 <div class="sidebar-section-title">Reports</div>
+                <a class="{{ request()->is('admin/finance/reports/balance-sheet') ? 'active-menu' : '' }}" href="/admin/finance/reports/balance-sheet">Balance Sheet</a>
+                <a class="{{ request()->is('admin/finance/reports/loan-report') ? 'active-menu' : '' }}" href="/admin/finance/reports/loan-report">Loan Report</a>
                 <a class="sidebar-muted" href="#" onclick="return false;">Monthly Profit Report</a>
                 <a class="sidebar-muted" href="#" onclick="return false;">Funding Report</a>
                 <a class="sidebar-muted" href="#" onclick="return false;">Card Fee Report</a>
