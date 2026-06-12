@@ -110,6 +110,8 @@
                     <th>Client</th>
                     <th>Amount</th>
                     <th>Paid Date</th>
+                    <th>Bank Name</th>
+                    <th>Account Number</th>
                     <th>Method</th>
                     <th>Reference</th>
                     <th>Proof</th>
@@ -161,6 +163,8 @@
                         <td>{{ $payroll->client?->company_name ?: '-' }}</td>
                         <td>BDT {{ number_format($payroll->paid_amount, 2) }}</td>
                         <td>{{ $payroll->payment_date?->toDateString() ?: '-' }}</td>
+                        <td>{{ $payroll->snapshotBankName() }}</td>
+                        <td>{{ $payroll->snapshotAccountNumber() }}</td>
                         <td>{{ $payroll->payment_method ?: '-' }}</td>
                         <td>{{ $payroll->transaction_id ?: '-' }}</td>
                         <td>

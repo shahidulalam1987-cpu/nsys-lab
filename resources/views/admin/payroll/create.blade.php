@@ -101,6 +101,86 @@
             background: rgba(245, 158, 11, .12);
         }
 
+        .employee-payment-card {
+            display: none;
+            border: 1px solid rgba(66, 232, 255, .26);
+            border-radius: 10px;
+            padding: 14px;
+            margin-top: 14px;
+            background: rgba(47, 140, 255, .08);
+        }
+
+        .employee-payment-card.is-visible {
+            display: block;
+        }
+
+        .employee-payment-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .employee-payment-header h3 {
+            margin: 0;
+        }
+
+        .payment-warning-badge {
+            display: none;
+            border-radius: 999px;
+            color: #fcd34d;
+            background: rgba(245, 158, 11, .16);
+            border: 1px solid rgba(245, 158, 11, .35);
+            font-size: 12px;
+            font-weight: 800;
+            padding: 7px 10px;
+        }
+
+        .payment-warning-badge.is-visible {
+            display: inline-block;
+        }
+
+        .employee-payment-grid {
+            display: grid;
+            gap: 10px;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        }
+
+        .employee-payment-item {
+            border: 1px solid rgba(255,255,255,.12);
+            border-radius: 9px;
+            padding: 10px;
+            background: rgba(255,255,255,.05);
+        }
+
+        .employee-payment-item span {
+            display: block;
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: .04em;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .employee-payment-item strong {
+            overflow-wrap: anywhere;
+        }
+
+        .employee-payment-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .employee-payment-actions button:disabled {
+            cursor: not-allowed;
+            opacity: .48;
+        }
+
         .salary-actions {
             display: flex;
             justify-content: flex-end;
@@ -227,7 +307,7 @@
                         <input type="month" name="salary_month" value="{{ old('salary_month', $workStatusFilters['salary_month'] ?? now()->format('Y-m')) }}" required>
                     </p>
                     <p class="salary-field">Employee<br>
-                        <select name="employee_id">
+                        <select name="employee_id" class="employee-payment-select">
                             <option value="">All Employees</option>
                             @foreach($employees as $employee)
                                 <option value="{{ $employee->id }}" {{ (string) old('employee_id', $workStatusFilters['employee_id'] ?? '') === (string) $employee->id ? 'selected' : '' }}>
@@ -247,6 +327,7 @@
                         </select>
                     </p>
                 </div>
+                @include('admin.payroll.partials.employee-payment-card')
                 <div class="salary-actions">
                     <button class="btn" type="submit">Preview Salary</button>
                 </div>
@@ -335,7 +416,7 @@
                 <h2>Salary Setup</h2>
                 <div class="salary-form-grid salary-setup-grid">
                     <p class="salary-field">Employee<br>
-                        <select name="employee_id" id="employee_id" required>
+                        <select name="employee_id" id="employee_id" class="employee-payment-select" required>
                             <option value="" data-salary="0">Select Employee</option>
                             @foreach($employees as $employee)
                                 <option value="{{ $employee->id }}" data-salary="{{ (float) $employee->monthly_salary }}" {{ old('employee_id') == $employee->id ? 'selected' : '' }}>
@@ -375,6 +456,8 @@
                 </div>
                 <div class="fund-warning" id="fund_warning"></div>
             </div>
+
+            @include('admin.payroll.partials.employee-payment-card')
 
             <div class="salary-section">
                 <h2>Calculation Summary</h2>
@@ -457,6 +540,7 @@
         const fixedSalaryMonthDays = 30;
         let dateAdjustmentsExpanded = true;
         const workStatusRecords = @json($workStatusRecords ?? []);
+        const employeePaymentInfo = @json($employeePaymentInfo ?? []);
         const workStatusReasonMap = {
             working: 'active_working',
             half_day: 'active_working',
@@ -485,6 +569,91 @@
         });
 
         setSalaryMode(@json($activeMode));
+
+        function hasBankInformation(info) {
+            return Boolean(info?.bank_name && info?.account_name && info?.account_number);
+        }
+
+        function paymentInfoText(info) {
+            return [
+                `Employee: ${info?.name || '-'}`,
+                '',
+                `Bank: ${info?.bank_name || '-'}`,
+                `Account Name: ${info?.account_name || '-'}`,
+                `Account Number: ${info?.account_number || '-'}`,
+                `Branch: ${info?.branch_name || '-'}`,
+            ].join('\n');
+        }
+
+        function copyText(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                return navigator.clipboard.writeText(text);
+            }
+
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            document.execCommand('copy');
+            textarea.remove();
+
+            return Promise.resolve();
+        }
+
+        function updateEmployeePaymentCards(sourceSelect = null) {
+            const selectedEmployeeId = sourceSelect?.value || employeeSelect?.value || '';
+            const info = employeePaymentInfo[selectedEmployeeId] || null;
+            const bankReady = hasBankInformation(info);
+
+            document.querySelectorAll('[data-payment-info-card]').forEach((card) => {
+                card.classList.toggle('is-visible', Boolean(info));
+                if (!info) {
+                    return;
+                }
+
+                card.querySelector('[data-payment-field="employee"]').textContent = info.name || '-';
+                card.querySelector('[data-payment-field="employee_id"]').textContent = info.employee_id || '-';
+                card.querySelector('[data-payment-field="status"]').textContent = info.status || '-';
+                card.querySelector('[data-payment-field="joining_date"]').textContent = info.joining_date || '-';
+                card.querySelector('[data-payment-field="bank_name"]').textContent = info.bank_name || '-';
+                card.querySelector('[data-payment-field="account_name"]').textContent = info.account_name || '-';
+                card.querySelector('[data-payment-field="account_number"]').textContent = info.account_number || '-';
+                card.querySelector('[data-payment-field="branch_name"]').textContent = info.branch_name || '-';
+                card.querySelector('[data-payment-field="routing_number"]').textContent = info.routing_number || '-';
+                card.querySelector('[data-payment-warning]').classList.toggle('is-visible', !bankReady);
+                card.querySelectorAll('[data-copy-payment]').forEach((button) => {
+                    button.disabled = !bankReady;
+                    button.dataset.employeeId = selectedEmployeeId;
+                });
+            });
+        }
+
+        document.querySelectorAll('.employee-payment-select').forEach((select) => {
+            select.addEventListener('change', () => updateEmployeePaymentCards(select));
+            select.addEventListener('input', () => updateEmployeePaymentCards(select));
+        });
+
+        document.querySelectorAll('[data-copy-payment]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const info = employeePaymentInfo[button.dataset.employeeId] || null;
+                if (!hasBankInformation(info)) {
+                    return;
+                }
+
+                const text = button.dataset.copyPayment === 'account'
+                    ? info.account_number
+                    : paymentInfoText(info);
+
+                copyText(text).then(() => {
+                    const original = button.textContent;
+                    button.textContent = 'Copied';
+                    setTimeout(() => button.textContent = original, 1400);
+                });
+            });
+        });
 
         function money(amount) {
             return 'BDT ' + amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -736,6 +905,8 @@
         @if(old('working_days') === null)
             syncWorkingDays();
         @endif
+        const initialPaymentSelect = Array.from(document.querySelectorAll('.employee-payment-select')).find((select) => select.value) || employeeSelect;
+        updateEmployeePaymentCards(initialPaymentSelect);
         calculateSalary();
     </script>
 @endsection

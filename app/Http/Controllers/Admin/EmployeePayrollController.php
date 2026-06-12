@@ -78,6 +78,7 @@ class EmployeePayrollController extends Controller
         $employees = Employee::orderBy('name')->get();
         $clients = Client::orderBy('company_name')->get();
         $clientBalances = $clientFundDashboardService->clientBalanceMap();
+        $employeePaymentInfo = $this->employeePaymentInfo($employees);
         $workStatusRecords = EmployeeWorkStatus::orderBy('work_date')
             ->get()
             ->map(fn (EmployeeWorkStatus $workStatus) => [
@@ -97,7 +98,7 @@ class EmployeePayrollController extends Controller
             'client_id' => null,
         ];
 
-        return view('admin.payroll.create', compact('employees', 'clients', 'clientBalances', 'workStatusRecords', 'workStatusPreviewRows', 'workStatusFilters'));
+        return view('admin.payroll.create', compact('employees', 'clients', 'clientBalances', 'employeePaymentInfo', 'workStatusRecords', 'workStatusPreviewRows', 'workStatusFilters'));
     }
 
     public function store(Request $request)
@@ -168,8 +169,9 @@ class EmployeePayrollController extends Controller
         $paidAmount = (float) ($data['paid_amount'] ?? 0);
         $paymentStatus = EmployeePayroll::paymentStatusFor(null, $calculation['payable_salary'], $paidAmount);
         $this->validatePaymentWorkflow($request, $paidAmount);
+        $paymentSnapshot = $this->employeePaymentSnapshot($employee);
 
-        $payroll = EmployeePayroll::create([
+        $payroll = EmployeePayroll::create(array_merge([
             'employee_id' => $data['employee_id'],
             'client_id' => $data['client_id'] ?? null,
             'salary_source' => $employee->defaultSalarySource(),
@@ -196,7 +198,7 @@ class EmployeePayrollController extends Controller
             'generation_status' => $existingPayroll ? 'regenerated' : 'generated',
             'regenerated_from_id' => $existingPayroll?->id,
             'note' => $data['note'] ?? null,
-        ]);
+        ], $paymentSnapshot));
 
         $payroll->markAudit(
             $existingPayroll ? 'salary_regenerated' : 'salary_generated',
@@ -254,7 +256,7 @@ class EmployeePayrollController extends Controller
                     continue;
                 }
 
-                $payroll = EmployeePayroll::create([
+                $payroll = EmployeePayroll::create(array_merge([
                     'employee_id' => $previewRow['employee']->id,
                     'client_id' => $previewRow['client']?->id,
                     'salary_source' => $previewRow['employee']->defaultSalarySource(),
@@ -277,7 +279,7 @@ class EmployeePayrollController extends Controller
                     'generation_status' => $existingPayroll ? 'regenerated' : 'generated',
                     'regenerated_from_id' => $existingPayroll?->id,
                     'note' => 'Generated from Work Status records.',
-                ]);
+                ], $this->employeePaymentSnapshot($previewRow['employee'])));
 
                 $payroll->markAudit(
                     $existingPayroll ? 'salary_regenerated' : 'salary_generated',
@@ -310,6 +312,7 @@ class EmployeePayrollController extends Controller
         $employees = Employee::orderBy('name')->get();
         $clients = Client::orderBy('company_name')->get();
         $clientBalances = app(ClientFundDashboardService::class)->clientBalanceMap();
+        $employeePaymentInfo = $this->employeePaymentInfo($employees);
         $workStatusRecords = EmployeeWorkStatus::orderBy('work_date')
             ->get()
             ->map(fn (EmployeeWorkStatus $workStatus) => [
@@ -325,7 +328,7 @@ class EmployeePayrollController extends Controller
         $workStatusPreviewRows = $this->workStatusPreviewRows($filters);
         $workStatusFilters = $filters;
 
-        return view('admin.payroll.create', compact('employees', 'clients', 'clientBalances', 'workStatusRecords', 'workStatusPreviewRows', 'workStatusFilters'));
+        return view('admin.payroll.create', compact('employees', 'clients', 'clientBalances', 'employeePaymentInfo', 'workStatusRecords', 'workStatusPreviewRows', 'workStatusFilters'));
     }
 
     public function show($id)
@@ -525,6 +528,35 @@ class EmployeePayrollController extends Controller
             'client_issue' => $adjustments->where('reason', 'client_issue')->count(),
             'boosting_off' => $adjustments->where('reason', 'boosting_off')->count(),
         ];
+    }
+
+    private function employeePaymentSnapshot(Employee $employee): array
+    {
+        return [
+            'payroll_bank_name' => $employee->bank_name,
+            'payroll_account_name' => $employee->account_name,
+            'payroll_account_number' => $employee->account_number,
+            'payroll_branch_name' => $employee->branch_name,
+        ];
+    }
+
+    private function employeePaymentInfo($employees): array
+    {
+        return $employees
+            ->mapWithKeys(fn (Employee $employee) => [
+                $employee->id => [
+                    'name' => $employee->name,
+                    'employee_id' => $employee->employee_id,
+                    'status' => $employee->statusLabel(),
+                    'joining_date' => $employee->joining_date?->toDateString(),
+                    'bank_name' => $employee->bank_name,
+                    'account_name' => $employee->account_name,
+                    'account_number' => $employee->account_number,
+                    'branch_name' => $employee->branch_name,
+                    'routing_number' => $employee->routing_number ?? null,
+                ],
+            ])
+            ->all();
     }
 
     private function payrollExportRows(array $filters)

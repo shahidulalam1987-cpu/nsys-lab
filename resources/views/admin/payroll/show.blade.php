@@ -146,6 +146,10 @@
             <div class="info-list">
                 <p><strong>Paid Salary:</strong> BDT {{ number_format($payroll->paid_amount, 2) }}</p>
                 <p><strong>Paid By:</strong> {{ $payroll->payer?->name ?: '-' }}</p>
+                <p><strong>Bank Name:</strong> {{ $payroll->snapshotBankName() }}</p>
+                <p><strong>Account Name:</strong> {{ $payroll->snapshotAccountName() }}</p>
+                <p><strong>Account Number:</strong> {{ $payroll->snapshotAccountNumber() }}</p>
+                <p><strong>Branch Name:</strong> {{ $payroll->snapshotBranchName() }}</p>
                 <p><strong>Payment Method:</strong> {{ $payroll->payment_method ?: '-' }}</p>
                 <p><strong>Payment Date:</strong> {{ $payroll->payment_date?->toDateString() ?: '-' }}</p>
                 <p><strong>Transaction ID / Reference:</strong> {{ $payroll->transaction_id ?: '-' }}</p>

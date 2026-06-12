@@ -63,6 +63,7 @@
                     <th>Paid Salary</th>
                     <th>Remaining Due</th>
                     <th>Status</th>
+                    <th>Payment Information</th>
                     <th>Payment Date</th>
                 </tr>
 
@@ -83,11 +84,23 @@
                         <td>BDT {{ number_format($payroll->paid_amount, 2) }}</td>
                         <td>BDT {{ number_format(max($payroll->payable_salary - $payroll->paid_amount, 0), 2) }}</td>
                         <td>{{ ['upcoming' => 'Upcoming', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'][$payroll->calculated_status] ?? ucfirst($payroll->calculated_status) }}</td>
+                        <td>
+                            <details>
+                                <summary>Payment Information</summary>
+                                <p style="margin:8px 0 0;">
+                                    <strong>Bank:</strong> {{ $payroll->snapshotBankName() }}<br>
+                                    <strong>Account Name:</strong> {{ $payroll->snapshotAccountName() }}<br>
+                                    <strong>Account Number:</strong> {{ $payroll->snapshotAccountNumber() }}<br>
+                                    <strong>Branch:</strong> {{ $payroll->snapshotBranchName() }}<br>
+                                    <strong>Reference:</strong> {{ $payroll->transaction_id ?: '-' }}
+                                </p>
+                            </details>
+                        </td>
                         <td>{{ $payroll->payment_date?->toDateString() ?: '-' }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9">No generated salary records found for this month.</td>
+                        <td colspan="10">No generated salary records found for this month.</td>
                     </tr>
                 @endforelse
             </table>

@@ -30,6 +30,10 @@ class EmployeePayroll extends Model
         'salary_month',
         'payable_salary',
         'paid_amount',
+        'payroll_bank_name',
+        'payroll_account_name',
+        'payroll_account_number',
+        'payroll_branch_name',
         'payment_method',
         'payment_date',
         'status',
@@ -206,6 +210,26 @@ class EmployeePayroll extends Model
     public function salarySourceLabel(): string
     {
         return Employee::SALARY_SOURCES[$this->salary_source ?: 'client_fund'] ?? 'Client Fund';
+    }
+
+    public function snapshotBankName(): string
+    {
+        return $this->payroll_bank_name ?: ($this->employee?->bank_name ?: '-');
+    }
+
+    public function snapshotAccountName(): string
+    {
+        return $this->payroll_account_name ?: ($this->employee?->account_name ?: '-');
+    }
+
+    public function snapshotAccountNumber(): string
+    {
+        return $this->payroll_account_number ?: ($this->employee?->account_number ?: '-');
+    }
+
+    public function snapshotBranchName(): string
+    {
+        return $this->payroll_branch_name ?: ($this->employee?->branch_name ?: '-');
     }
 
     public function getStatusAttribute($value): string
