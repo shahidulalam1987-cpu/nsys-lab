@@ -18,6 +18,8 @@ class FacebookCardController extends Controller
             'cards' => $cards,
             'summary' => [
                 'total_balance' => (float) $cards->sum('current_balance'),
+                'redotpay_balance' => (float) $cards->filter(fn (FacebookCard $card) => strcasecmp((string) $card->provider, 'RedotPay') === 0)->sum('current_balance'),
+                'tavao_balance' => (float) $cards->filter(fn (FacebookCard $card) => strcasecmp((string) $card->provider, 'Tavao') === 0)->sum('current_balance'),
                 'low_balance' => $cards->filter(fn (FacebookCard $card) => $card->effectiveStatus() === 'low_balance')->count(),
                 'disabled' => $cards->where('status', 'disabled')->count(),
                 'expired' => $cards->where('status', 'expired')->count(),

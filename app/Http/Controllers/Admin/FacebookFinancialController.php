@@ -40,6 +40,9 @@ class FacebookFinancialController extends Controller
         $monthTransactions = CardTransaction::whereMonth('transaction_date', now()->month)
             ->whereYear('transaction_date', now()->year)
             ->get();
+        $cards = FacebookCard::all();
+        $redotPayBalance = (float) $cards->filter(fn (FacebookCard $card) => strcasecmp((string) $card->provider, 'RedotPay') === 0)->sum('current_balance');
+        $tavaoBalance = (float) $cards->filter(fn (FacebookCard $card) => strcasecmp((string) $card->provider, 'Tavao') === 0)->sum('current_balance');
 
         return view('admin.facebook-financial.funding-dashboard', [
             'balanceRows' => $balanceRows,
@@ -53,8 +56,14 @@ class FacebookFinancialController extends Controller
                 'low_tavao' => $balanceRows->firstWhere('source', 'tavao')['is_low'] ?? true,
                 'monthly_facebook_spend' => (float) $monthTransactions->sum('spend_usd'),
                 'monthly_card_fees' => (float) $monthTransactions->sum('fee_usd'),
+                'monthly_extra_charges' => (float) $monthTransactions->sum('extra_charge_usd'),
+                'monthly_total_deducted' => (float) $monthTransactions->sum('total_deducted_usd'),
                 'monthly_revenue' => (float) $monthTransactions->sum('client_revenue'),
+                'monthly_actual_cost' => (float) $monthTransactions->sum('bdt_cost'),
                 'estimated_profit' => (float) $monthTransactions->sum('net_profit'),
+                'redotpay_card_balance' => $redotPayBalance,
+                'tavao_card_balance' => $tavaoBalance,
+                'total_card_balance' => (float) $cards->sum('current_balance'),
             ],
             'history' => $history,
         ]);
@@ -115,12 +124,14 @@ class FacebookFinancialController extends Controller
     {
         $purchases = BinancePurchase::latest('purchase_date')->latest()->get();
         $totalUsd = (float) $purchases->sum('usd_amount');
+        $remainingUsd = (float) $purchases->sum('remaining_usd');
         $totalCost = (float) $purchases->sum('total_bdt_cost');
 
         return view('admin.facebook-financial.binance-purchases', [
             'purchases' => $purchases,
             'summary' => [
                 'total_usd' => $totalUsd,
+                'remaining_usd' => $remainingUsd,
                 'average_buy_rate' => $totalUsd > 0 ? $totalCost / $totalUsd : 0,
                 'total_bdt_cost' => $totalCost,
             ],
@@ -161,8 +172,16 @@ class FacebookFinancialController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
+        $purchase = BinancePurchase::findOrFail($data['binance_purchase_id']);
+        if ((float) $data['usd_loaded'] > (float) $purchase->remaining_usd) {
+            return back()
+                ->withInput()
+                ->withErrors(['usd_loaded' => 'USD loaded cannot exceed selected Binance available USD.']);
+        }
+
         $load = CardLoad::create($data);
         $load->card->increment('current_balance', (float) $load->usd_loaded);
+        $purchase->decrement('remaining_usd', (float) $load->usd_loaded);
 
         return redirect('/admin/facebook-financial/card-loads')->with('success', 'Card load saved and card balance updated.');
     }
@@ -189,6 +208,7 @@ class FacebookFinancialController extends Controller
             'campaign_id' => ['nullable', 'exists:campaigns,id'],
             'spend_usd' => ['required', 'numeric', 'min:0'],
             'fee_usd' => ['required', 'numeric', 'min:0'],
+            'extra_charge_usd' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],
         ]);
 
@@ -198,6 +218,7 @@ class FacebookFinancialController extends Controller
             $client = Campaign::find($data['campaign_id'])?->client;
             $data['client_id'] = $client?->id;
         }
+        $data['extra_charge_usd'] = (float) ($data['extra_charge_usd'] ?? 0);
 
         $transaction = CardTransaction::create($data + [
             'buy_rate' => (float) $purchase->buy_rate,
@@ -245,8 +266,16 @@ class FacebookFinancialController extends Controller
             'client_revenue' => (float) $transactions->sum('client_revenue'),
             'facebook_spend' => (float) $transactions->sum('spend_usd'),
             'card_fees' => (float) $transactions->sum('fee_usd'),
+            'extra_charges' => (float) $transactions->sum('extra_charge_usd'),
+            'total_deducted' => (float) $transactions->sum('total_deducted_usd'),
             'actual_bdt_cost' => (float) $transactions->sum('bdt_cost'),
             'net_profit' => (float) $transactions->sum('net_profit'),
+            'average_buy_rate' => (float) $transactions->sum('total_deducted_usd') > 0
+                ? (float) $transactions->sum('bdt_cost') / (float) $transactions->sum('total_deducted_usd')
+                : 0,
+            'average_profit_per_usd' => (float) $transactions->sum('spend_usd') > 0
+                ? (float) $transactions->sum('net_profit') / (float) $transactions->sum('spend_usd')
+                : 0,
         ];
     }
 

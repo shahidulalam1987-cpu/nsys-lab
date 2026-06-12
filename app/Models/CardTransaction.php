@@ -16,6 +16,7 @@ class CardTransaction extends Model
         'campaign_id',
         'spend_usd',
         'fee_usd',
+        'extra_charge_usd',
         'total_deducted_usd',
         'buy_rate',
         'bdt_cost',
@@ -31,6 +32,7 @@ class CardTransaction extends Model
             'transaction_date' => 'date',
             'spend_usd' => 'decimal:2',
             'fee_usd' => 'decimal:2',
+            'extra_charge_usd' => 'decimal:2',
             'total_deducted_usd' => 'decimal:2',
             'buy_rate' => 'decimal:4',
             'bdt_cost' => 'decimal:2',
@@ -43,7 +45,7 @@ class CardTransaction extends Model
     protected static function booted(): void
     {
         static::saving(function (CardTransaction $transaction) {
-            $transaction->total_deducted_usd = round((float) $transaction->spend_usd + (float) $transaction->fee_usd, 2);
+            $transaction->total_deducted_usd = round((float) $transaction->spend_usd + (float) $transaction->fee_usd + (float) $transaction->extra_charge_usd, 2);
             $transaction->bdt_cost = round((float) $transaction->total_deducted_usd * (float) $transaction->buy_rate, 2);
             $transaction->client_revenue = round((float) $transaction->spend_usd * (float) $transaction->client_rate, 2);
             $transaction->net_profit = round((float) $transaction->client_revenue - (float) $transaction->bdt_cost, 2);
@@ -78,5 +80,12 @@ class CardTransaction extends Model
     public function campaign()
     {
         return $this->belongsTo(Campaign::class);
+    }
+
+    public function profitPerUsd(): float
+    {
+        $spend = (float) $this->spend_usd;
+
+        return $spend > 0 ? round((float) $this->net_profit / $spend, 2) : 0;
     }
 }

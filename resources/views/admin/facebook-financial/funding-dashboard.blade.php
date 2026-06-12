@@ -14,6 +14,9 @@
         <div class="stat-card"><p>RedotPay Balance</p><h2>USD {{ number_format($summary['redotpay_balance'], 2) }}</h2></div>
         <div class="stat-card"><p>Tavao Balance</p><h2>USD {{ number_format($summary['tavao_balance'], 2) }}</h2></div>
         <div class="stat-card"><p>Total Available USD</p><h2>USD {{ number_format($summary['total_available_usd'], 2) }}</h2></div>
+        <div class="stat-card"><p>RedotPay Card Balance</p><h2>USD {{ number_format($summary['redotpay_card_balance'], 2) }}</h2></div>
+        <div class="stat-card"><p>Tavao Card Balance</p><h2>USD {{ number_format($summary['tavao_card_balance'], 2) }}</h2></div>
+        <div class="stat-card"><p>Total Card Balance</p><h2>USD {{ number_format($summary['total_card_balance'], 2) }}</h2></div>
     </div>
 
     <div class="card">
@@ -67,7 +70,10 @@
             <div class="stat-card"><p>Total USD Available</p><h2>USD {{ number_format($summary['total_available_usd'], 2) }}</h2></div>
             <div class="stat-card"><p>Monthly Facebook Spend</p><h2>USD {{ number_format($summary['monthly_facebook_spend'], 2) }}</h2></div>
             <div class="stat-card"><p>Monthly Card Fees</p><h2>USD {{ number_format($summary['monthly_card_fees'], 2) }}</h2></div>
+            <div class="stat-card"><p>Monthly Extra Charges</p><h2>USD {{ number_format($summary['monthly_extra_charges'], 2) }}</h2></div>
+            <div class="stat-card"><p>Total Deducted USD</p><h2>USD {{ number_format($summary['monthly_total_deducted'], 2) }}</h2></div>
             <div class="stat-card"><p>Monthly Revenue</p><h2>BDT {{ number_format($summary['monthly_revenue'], 2) }}</h2></div>
+            <div class="stat-card"><p>Actual Cost</p><h2>BDT {{ number_format($summary['monthly_actual_cost'], 2) }}</h2></div>
             <div class="stat-card"><p>Estimated Profit</p><h2>BDT {{ number_format($summary['estimated_profit'], 2) }}</h2></div>
         </div>
     </div>

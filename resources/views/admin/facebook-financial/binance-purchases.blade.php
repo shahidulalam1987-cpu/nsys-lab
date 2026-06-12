@@ -6,6 +6,7 @@
 
     <div class="stats-grid">
         <div class="stat-card"><p>Total USD Purchased</p><h2>USD {{ number_format($summary['total_usd'], 2) }}</h2></div>
+        <div class="stat-card"><p>Available Binance USD</p><h2>USD {{ number_format($summary['remaining_usd'], 2) }}</h2></div>
         <div class="stat-card"><p>Average Buy Rate</p><h2>BDT {{ number_format($summary['average_buy_rate'], 4) }}</h2></div>
         <div class="stat-card"><p>Total BDT Cost</p><h2>BDT {{ number_format($summary['total_bdt_cost'], 2) }}</h2></div>
     </div>
@@ -31,6 +32,7 @@
                 <tr>
                     <th>Purchase Date</th>
                     <th>USD Amount</th>
+                    <th>Available USD</th>
                     <th>Buy Rate</th>
                     <th>Total Cost</th>
                     <th>Seller</th>
@@ -40,13 +42,14 @@
                     <tr>
                         <td>{{ $purchase->purchase_date?->toDateString() }}</td>
                         <td>USD {{ number_format((float) $purchase->usd_amount, 2) }}</td>
+                        <td>USD {{ number_format((float) $purchase->remaining_usd, 2) }}</td>
                         <td>BDT {{ number_format((float) $purchase->buy_rate, 4) }}</td>
                         <td>BDT {{ number_format((float) $purchase->total_bdt_cost, 2) }}</td>
                         <td>{{ $purchase->seller_name ?: '-' }}</td>
                         <td>{{ $purchase->reference ?: '-' }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="6">No Binance purchases found.</td></tr>
+                    <tr><td colspan="7">No Binance purchases found.</td></tr>
                 @endforelse
             </table>
         </div>

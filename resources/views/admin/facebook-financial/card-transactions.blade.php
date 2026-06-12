@@ -2,7 +2,7 @@
 
 @section('content')
     <h1>Card Transactions</h1>
-    <p>Track actual Facebook spend, card fees, and BDT cost using the selected Binance purchase rate.</p>
+    <p>Track exact Facebook spend profit using Binance purchase rate, card fees, extra charges, and client sell rate.</p>
 
     <div class="card">
         <h2>Add Card Transaction</h2>
@@ -13,7 +13,7 @@
                 <select name="facebook_card_id" required>
                     <option value="">Select Card</option>
                     @foreach($cards as $card)
-                        <option value="{{ $card->id }}">{{ $card->card_name }} | Balance USD {{ number_format((float) $card->current_balance, 2) }}</option>
+                        <option value="{{ $card->id }}">{{ $card->provider ?: 'Other' }} - {{ $card->card_name }} | Balance USD {{ number_format((float) $card->current_balance, 2) }}</option>
                     @endforeach
                 </select>
             </label>
@@ -59,9 +59,19 @@
             </label>
             <label>Spend USD<br><input type="number" step="0.01" min="0" name="spend_usd" required></label>
             <label>Fee USD<br><input type="number" step="0.01" min="0" name="fee_usd" value="0" required></label>
+            <label>Extra Charge USD<br><input type="number" step="0.01" min="0" name="extra_charge_usd" value="0"></label>
             <label style="grid-column:1/-1;">Notes<br><textarea name="notes" rows="2" style="width:100%;"></textarea></label>
             <button class="btn" type="submit">Save Transaction</button>
         </form>
+    </div>
+
+    <div class="card">
+        <h2>Formula</h2>
+        <p>Total Deducted USD = FB Spend USD + Card Fee USD + Extra Charge USD</p>
+        <p>Client Revenue BDT = FB Spend USD x Client Sell Rate</p>
+        <p>Actual Cost BDT = Total Deducted USD x Binance Buy Rate</p>
+        <p>Profit BDT = Client Revenue BDT - Actual Cost BDT</p>
+        <p>Profit Per USD = Profit BDT / FB Spend USD</p>
     </div>
 
     <div class="card">
@@ -69,31 +79,41 @@
             <table>
                 <tr>
                     <th>Date</th>
+                    <th>Provider</th>
                     <th>Card</th>
                     <th>Ad Account</th>
                     <th>Client</th>
                     <th>Spend USD</th>
                     <th>Fee USD</th>
+                    <th>Extra Charge</th>
                     <th>Total Deducted</th>
+                    <th>Buy Rate</th>
+                    <th>Client Rate</th>
                     <th>BDT Cost</th>
                     <th>Revenue</th>
                     <th>Profit</th>
+                    <th>Profit / USD</th>
                 </tr>
                 @forelse($transactions as $transaction)
                     <tr>
                         <td>{{ $transaction->transaction_date?->toDateString() }}</td>
+                        <td>{{ $transaction->card?->provider ?: '-' }}</td>
                         <td>{{ $transaction->card?->card_name ?: '-' }}</td>
                         <td>{{ $transaction->adAccount?->ad_account_name ?: '-' }}</td>
                         <td>{{ $transaction->client?->company_name ?: '-' }}</td>
                         <td>USD {{ number_format((float) $transaction->spend_usd, 2) }}</td>
                         <td>USD {{ number_format((float) $transaction->fee_usd, 2) }}</td>
+                        <td>USD {{ number_format((float) $transaction->extra_charge_usd, 2) }}</td>
                         <td>USD {{ number_format((float) $transaction->total_deducted_usd, 2) }}</td>
+                        <td>BDT {{ number_format((float) $transaction->buy_rate, 4) }}</td>
+                        <td>BDT {{ number_format((float) $transaction->client_rate, 4) }}</td>
                         <td>BDT {{ number_format((float) $transaction->bdt_cost, 2) }}</td>
                         <td>BDT {{ number_format((float) $transaction->client_revenue, 2) }}</td>
                         <td>BDT {{ number_format((float) $transaction->net_profit, 2) }}</td>
+                        <td>BDT {{ number_format($transaction->profitPerUsd(), 2) }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="10">No card transactions found.</td></tr>
+                    <tr><td colspan="15">No card transactions found.</td></tr>
                 @endforelse
             </table>
         </div>

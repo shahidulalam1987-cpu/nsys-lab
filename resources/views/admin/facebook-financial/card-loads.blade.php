@@ -13,7 +13,7 @@
                 <select name="facebook_card_id" required>
                     <option value="">Select Card</option>
                     @foreach($cards as $card)
-                        <option value="{{ $card->id }}">{{ $card->card_name }} ({{ $card->card_last_four ?: 'No Last 4' }})</option>
+                        <option value="{{ $card->id }}">{{ $card->provider ?: 'Other' }} - {{ $card->card_name }} ({{ $card->card_last_four ?: 'No Last 4' }})</option>
                     @endforeach
                 </select>
             </label>
@@ -21,7 +21,7 @@
                 <select name="binance_purchase_id" required>
                     <option value="">Select Purchase</option>
                     @foreach($purchases as $purchase)
-                        <option value="{{ $purchase->id }}">{{ $purchase->purchase_date?->toDateString() }} | USD {{ number_format((float) $purchase->usd_amount, 2) }} @ BDT {{ number_format((float) $purchase->buy_rate, 4) }}</option>
+                        <option value="{{ $purchase->id }}">{{ $purchase->purchase_date?->toDateString() }} | Available USD {{ number_format((float) $purchase->remaining_usd, 2) }} @ BDT {{ number_format((float) $purchase->buy_rate, 4) }}</option>
                     @endforeach
                 </select>
             </label>
@@ -36,21 +36,25 @@
             <table>
                 <tr>
                     <th>Date</th>
+                    <th>Provider</th>
                     <th>Card</th>
                     <th>Binance Purchase</th>
+                    <th>Buy Rate</th>
                     <th>USD Loaded</th>
                     <th>Notes</th>
                 </tr>
                 @forelse($loads as $load)
                     <tr>
                         <td>{{ $load->load_date?->toDateString() }}</td>
+                        <td>{{ $load->card?->provider ?: '-' }}</td>
                         <td>{{ $load->card?->card_name ?: '-' }}</td>
-                        <td>{{ $load->binancePurchase?->purchase_date?->toDateString() }} @ BDT {{ number_format((float) $load->binancePurchase?->buy_rate, 4) }}</td>
+                        <td>{{ $load->binancePurchase?->purchase_date?->toDateString() }}</td>
+                        <td>BDT {{ number_format((float) $load->binancePurchase?->buy_rate, 4) }}</td>
                         <td>USD {{ number_format((float) $load->usd_loaded, 2) }}</td>
                         <td>{{ $load->notes ?: '-' }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="5">No card loads found.</td></tr>
+                    <tr><td colspan="7">No card loads found.</td></tr>
                 @endforelse
             </table>
         </div>
