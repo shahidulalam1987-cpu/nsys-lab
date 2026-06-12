@@ -89,7 +89,7 @@ class ExportController extends Controller
             'CPM',
             'CPR',
             'CPL',
-            'CPP',
+            'Cost Per Order',
             'CPC',
             'Created At',
         ]);

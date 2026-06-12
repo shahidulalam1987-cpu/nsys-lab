@@ -52,7 +52,8 @@ class DailyPerformancePhase4Test extends TestCase
         $this->actingAs($admin)->get('/admin/daily-reports/' . $report->id)
             ->assertOk()
             ->assertSee('Performance Details')
-            ->assertSee('Calculated Metrics')
+            ->assertSee('Cost Metric')
+            ->assertSee('Cost Per Order')
             ->assertSee('Campaign Information')
             ->assertSee('Strong performance');
 
@@ -133,7 +134,8 @@ class DailyPerformancePhase4Test extends TestCase
         $this->actingAs($admin)->get('/admin/dashboard')
             ->assertOk()
             ->assertSeeText("Today's Spend")
-            ->assertSeeText("Today's Messages")
+            ->assertSeeText("Today's Orders")
+            ->assertSeeText("Today's Cost Per Order")
             ->assertSee('Recent Daily Performance');
 
         $this->actingAs($admin)->get('/admin/ad-accounts/' . $adAccount->id)
@@ -145,12 +147,23 @@ class DailyPerformancePhase4Test extends TestCase
         $this->actingAs($admin)->get('/admin/campaigns/' . $campaignOne->id)
             ->assertOk()
             ->assertSee('Performance History')
+            ->assertSee('Cost Per Order')
             ->assertSee('Spend History');
 
         $this->actingAs($admin)->get('/admin/clients/' . $client->id)
             ->assertOk()
             ->assertSee('Boosting Performance Summary')
             ->assertSee('Campaign Count');
+
+        $this->actingAs($admin)->get('/admin/profit-history')
+            ->assertOk()
+            ->assertSee('Analytics Dashboard')
+            ->assertSee('Client-wise Performance')
+            ->assertSee('Page-wise Performance')
+            ->assertSee('Campaign-wise Performance')
+            ->assertSee('BM-wise Performance')
+            ->assertSee('Ad Account-wise Performance')
+            ->assertSee('Cost Per Order');
     }
 
     public function test_non_admin_cannot_access_daily_performance(): void

@@ -62,34 +62,12 @@
         </div>
 
         <div class="stat-card">
-            <p>Today's Messages</p>
-            <h2>{{ number_format($todayPerformanceMessages) }}</h2>
-            <p>Today</p>
-        </div>
-
-        <div class="stat-card">
-            <p>Today's Leads</p>
-            <h2>{{ number_format($todayPerformanceLeads) }}</h2>
-        </div>
-
-        <div class="stat-card">
             <p>Today's Orders</p>
             <h2>{{ number_format($todayPerformanceOrders) }}</h2>
         </div>
+
         <div class="stat-card">
-            <p>Today's Results</p>
-            <h2>{{ number_format($todayPerformanceResults) }}</h2>
-        </div>
-        <div class="stat-card">
-            <p>Today's CPM</p>
-            <h2>USD {{ number_format($todayPerformanceCpm, 2) }}</h2>
-        </div>
-        <div class="stat-card">
-            <p>Today's CPL</p>
-            <h2>USD {{ number_format($todayPerformanceCpl, 2) }}</h2>
-        </div>
-        <div class="stat-card">
-            <p>Today's CPP</p>
+            <p>Today's Cost Per Order</p>
             <h2>USD {{ number_format($todayPerformanceCpp, 2) }}</h2>
         </div>
     </div>
@@ -174,9 +152,8 @@
                 <th>Client</th>
                 <th>Page</th>
                 <th>Spend</th>
-                <th>Messages</th>
-                <th>Leads</th>
                 <th>Orders</th>
+                <th>Cost Per Order</th>
             </tr>
 
             @forelse($recentPerformanceReports as $report)
@@ -186,13 +163,12 @@
                     <td>{{ $report->campaign?->client?->company_name ?: '-' }}</td>
                     <td>{{ $report->campaign?->page?->page_name ?: '-' }}</td>
                     <td>USD {{ number_format((float) $report->spend, 2) }}</td>
-                    <td>{{ number_format($report->messages) }}</td>
-                    <td>{{ number_format($report->leads) }}</td>
                     <td>{{ number_format($report->orders) }}</td>
+                    <td>USD {{ number_format((float) $report->cpp, 2) }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="8">No recent performance found.</td>
+                    <td colspan="7">No recent performance found.</td>
                 </tr>
             @endforelse
         </table>

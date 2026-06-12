@@ -7,11 +7,8 @@
 
     <div class="stats-grid" style="margin-top:20px;">
         <div class="stat-card"><p>Spend</p><h2>USD {{ number_format((float) $dailyReport->spend, 2) }}</h2></div>
-        <div class="stat-card"><p>Messages</p><h2>{{ number_format($dailyReport->messages) }}</h2></div>
-        <div class="stat-card"><p>Results</p><h2>{{ number_format($dailyReport->results) }}</h2></div>
-        <div class="stat-card"><p>Leads</p><h2>{{ number_format($dailyReport->leads) }}</h2></div>
         <div class="stat-card"><p>Orders</p><h2>{{ number_format($dailyReport->orders) }}</h2></div>
-        <div class="stat-card"><p>Clicks</p><h2>{{ number_format($dailyReport->clicks) }}</h2></div>
+        <div class="stat-card"><p>Cost Per Order</p><h2>USD {{ number_format((float) $dailyReport->cpp, 2) }}</h2></div>
     </div>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;">
@@ -32,17 +29,22 @@
         <div class="card">
             <h2>Daily Performance</h2>
             <p><strong>Date:</strong> {{ $dailyReport->report_date?->toDateString() }}</p>
-            <p><strong>Reach:</strong> {{ number_format($dailyReport->reach) }}</p>
-            <p><strong>Impressions:</strong> {{ number_format($dailyReport->impressions) }}</p>
+            <p><strong>Spend:</strong> USD {{ number_format((float) $dailyReport->spend, 2) }}</p>
+            <p><strong>Orders:</strong> {{ number_format($dailyReport->orders) }}</p>
             <p><strong>Notes:</strong> {{ $dailyReport->notes ?: '-' }}</p>
         </div>
         <div class="card">
-            <h2>Calculated Metrics</h2>
-            <p><strong>CPM:</strong> USD {{ number_format((float) $dailyReport->cpm, 2) }}</p>
-            <p><strong>CPR:</strong> USD {{ number_format((float) $dailyReport->cpr, 2) }}</p>
-            <p><strong>CPL:</strong> USD {{ number_format((float) $dailyReport->cpl, 2) }}</p>
-            <p><strong>CPP:</strong> USD {{ number_format((float) $dailyReport->cpp, 2) }}</p>
-            <p><strong>CPC:</strong> USD {{ number_format((float) $dailyReport->cpc, 2) }}</p>
+            <h2>Cost Metric</h2>
+            <p><strong>Cost Per Order:</strong> USD {{ number_format((float) $dailyReport->cpp, 2) }}</p>
+            <details style="margin-top:12px;">
+                <summary style="cursor:pointer;color:var(--cyan);font-weight:700;">Advanced Metrics</summary>
+                <p><strong>Messages:</strong> {{ number_format($dailyReport->messages) }}</p>
+                <p><strong>Results:</strong> {{ number_format($dailyReport->results) }}</p>
+                <p><strong>Leads:</strong> {{ number_format($dailyReport->leads) }}</p>
+                <p><strong>Reach:</strong> {{ number_format($dailyReport->reach) }}</p>
+                <p><strong>Impressions:</strong> {{ number_format($dailyReport->impressions) }}</p>
+                <p><strong>Clicks:</strong> {{ number_format($dailyReport->clicks) }}</p>
+            </details>
         </div>
     </div>
 @endsection

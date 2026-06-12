@@ -41,14 +41,19 @@
                     </select>
                 </label>
                 <label>Spend (USD)<br><input type="number" step="0.01" min="0" name="spend" value="{{ old('spend', $dailyReport?->spend ?? 0) }}" required></label>
-                <label>Messages<br><input type="number" min="0" name="messages" value="{{ old('messages', $dailyReport?->messages ?? 0) }}" required></label>
-                <label>Results<br><input type="number" min="0" name="results" value="{{ old('results', $dailyReport?->results ?? 0) }}" required></label>
-                <label>Leads<br><input type="number" min="0" name="leads" value="{{ old('leads', $dailyReport?->leads ?? 0) }}" required></label>
                 <label>Orders<br><input type="number" min="0" name="orders" value="{{ old('orders', $dailyReport?->orders ?? 0) }}" required></label>
-                <label>Reach<br><input type="number" min="0" name="reach" value="{{ old('reach', $dailyReport?->reach ?? 0) }}"></label>
-                <label>Impressions<br><input type="number" min="0" name="impressions" value="{{ old('impressions', $dailyReport?->impressions ?? 0) }}"></label>
-                <label>Clicks<br><input type="number" min="0" name="clicks" value="{{ old('clicks', $dailyReport?->clicks ?? 0) }}" required></label>
             </div>
+            <details style="margin-top:12px;">
+                <summary style="cursor:pointer;color:var(--cyan);font-weight:700;">Advanced Performance Fields</summary>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:12px;">
+                    <label>Messages<br><input type="number" min="0" name="messages" value="{{ old('messages', $dailyReport?->messages ?? 0) }}"></label>
+                    <label>Results<br><input type="number" min="0" name="results" value="{{ old('results', $dailyReport?->results ?? 0) }}"></label>
+                    <label>Leads<br><input type="number" min="0" name="leads" value="{{ old('leads', $dailyReport?->leads ?? 0) }}"></label>
+                    <label>Reach<br><input type="number" min="0" name="reach" value="{{ old('reach', $dailyReport?->reach ?? 0) }}"></label>
+                    <label>Impressions<br><input type="number" min="0" name="impressions" value="{{ old('impressions', $dailyReport?->impressions ?? 0) }}"></label>
+                    <label>Clicks<br><input type="number" min="0" name="clicks" value="{{ old('clicks', $dailyReport?->clicks ?? 0) }}"></label>
+                </div>
+            </details>
             <label style="display:flex;align-items:center;gap:8px;margin-top:12px;color:var(--muted);">
                 <input type="checkbox" name="update_existing" value="1">
                 Update existing report if Campaign + Date already exists
@@ -66,13 +71,7 @@
                             <th>Use</th>
                             <th>Campaign</th>
                             <th>Spend</th>
-                            <th>Messages</th>
-                            <th>Results</th>
-                            <th>Leads</th>
                             <th>Orders</th>
-                            <th>Reach</th>
-                            <th>Impressions</th>
-                            <th>Clicks</th>
                             <th>Notes</th>
                         </tr>
                         @foreach($campaigns as $index => $campaign)
@@ -83,13 +82,7 @@
                                     <input type="hidden" name="bulk_rows[{{ $index }}][campaign_id]" value="{{ $campaign->id }}">
                                 </td>
                                 <td><input type="number" step="0.01" min="0" name="bulk_rows[{{ $index }}][spend]" value="0" style="width:90px;"></td>
-                                <td><input type="number" min="0" name="bulk_rows[{{ $index }}][messages]" value="0" style="width:80px;"></td>
-                                <td><input type="number" min="0" name="bulk_rows[{{ $index }}][results]" value="0" style="width:80px;"></td>
-                                <td><input type="number" min="0" name="bulk_rows[{{ $index }}][leads]" value="0" style="width:80px;"></td>
                                 <td><input type="number" min="0" name="bulk_rows[{{ $index }}][orders]" value="0" style="width:80px;"></td>
-                                <td><input type="number" min="0" name="bulk_rows[{{ $index }}][reach]" value="0" style="width:90px;"></td>
-                                <td><input type="number" min="0" name="bulk_rows[{{ $index }}][impressions]" value="0" style="width:100px;"></td>
-                                <td><input type="number" min="0" name="bulk_rows[{{ $index }}][clicks]" value="0" style="width:80px;"></td>
                                 <td><input type="text" name="bulk_rows[{{ $index }}][notes]" style="width:160px;"></td>
                             </tr>
                         @endforeach

@@ -11,13 +11,8 @@
 
     <div class="stats-grid">
         <div class="stat-card"><p>Spend</p><h2>USD {{ number_format($summary['spend'], 2) }}</h2></div>
-        <div class="stat-card"><p>Messages</p><h2>{{ number_format($summary['messages']) }}</h2></div>
-        <div class="stat-card"><p>Results</p><h2>{{ number_format($summary['results']) }}</h2></div>
-        <div class="stat-card"><p>Leads</p><h2>{{ number_format($summary['leads']) }}</h2></div>
         <div class="stat-card"><p>Orders</p><h2>{{ number_format($summary['orders']) }}</h2></div>
-        <div class="stat-card"><p>CPM</p><h2>USD {{ number_format($summary['cpm'], 2) }}</h2></div>
-        <div class="stat-card"><p>CPL</p><h2>USD {{ number_format($summary['cpl'], 2) }}</h2></div>
-        <div class="stat-card"><p>CPP</p><h2>USD {{ number_format($summary['cpp'], 2) }}</h2></div>
+        <div class="stat-card"><p>Cost Per Order</p><h2>USD {{ number_format($summary['cost_per_order'], 2) }}</h2></div>
     </div>
 
     <div class="card">
@@ -87,17 +82,8 @@
                     <th>Client</th>
                     <th>Page</th>
                     <th>Spend</th>
-                    <th>Messages</th>
-                    <th>Results</th>
-                    <th>Leads</th>
                     <th>Orders</th>
-                    <th>Reach</th>
-                    <th>Clicks</th>
-                    <th>CPM</th>
-                    <th>CPR</th>
-                    <th>CPL</th>
-                    <th>CPP</th>
-                    <th>CPC</th>
+                    <th>Cost Per Order</th>
                     <th>Actions</th>
                 </tr>
                 @forelse($reports as $report)
@@ -108,17 +94,8 @@
                         <td>{{ $report->campaign?->client?->company_name ?: '-' }}</td>
                         <td>{{ $report->campaign?->page?->page_name ?: '-' }}</td>
                         <td>USD {{ number_format((float) $report->spend, 2) }}</td>
-                        <td>{{ number_format($report->messages) }}</td>
-                        <td>{{ number_format($report->results) }}</td>
-                        <td>{{ number_format($report->leads) }}</td>
                         <td>{{ number_format($report->orders) }}</td>
-                        <td>{{ number_format($report->reach) }}</td>
-                        <td>{{ number_format($report->clicks) }}</td>
-                        <td>USD {{ number_format((float) $report->cpm, 2) }}</td>
-                        <td>USD {{ number_format((float) $report->cpr, 2) }}</td>
-                        <td>USD {{ number_format((float) $report->cpl, 2) }}</td>
                         <td>USD {{ number_format((float) $report->cpp, 2) }}</td>
-                        <td>USD {{ number_format((float) $report->cpc, 2) }}</td>
                         <td style="white-space:nowrap;">
                             <a href="/admin/daily-reports/{{ $report->id }}">View</a> |
                             <a href="/admin/daily-reports/{{ $report->id }}/edit">Edit</a> |
@@ -129,7 +106,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="18">No daily performance reports found.</td></tr>
+                    <tr><td colspan="9">No daily performance reports found.</td></tr>
                 @endforelse
             </table>
         </div>

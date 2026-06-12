@@ -109,13 +109,9 @@
         <h2>Boosting Performance Summary</h2>
         <div class="stats-grid">
             <div class="stat-card"><p>Total Spend</p><h2>USD {{ number_format($boostingPerformanceSummary['total_spend'], 2) }}</h2></div>
-            <div class="stat-card"><p>Total Messages</p><h2>{{ number_format($boostingPerformanceSummary['total_messages']) }}</h2></div>
-            <div class="stat-card"><p>Total Leads</p><h2>{{ number_format($boostingPerformanceSummary['total_leads']) }}</h2></div>
             <div class="stat-card"><p>Total Orders</p><h2>{{ number_format($boostingPerformanceSummary['total_orders']) }}</h2></div>
+            <div class="stat-card"><p>Cost Per Order</p><h2>USD {{ number_format($boostingPerformanceSummary['cpp'], 2) }}</h2></div>
             <div class="stat-card"><p>Campaign Count</p><h2>{{ number_format($boostingPerformanceSummary['campaign_count']) }}</h2></div>
-            <div class="stat-card"><p>CPM</p><h2>USD {{ number_format($boostingPerformanceSummary['cpm'], 2) }}</h2></div>
-            <div class="stat-card"><p>CPL</p><h2>USD {{ number_format($boostingPerformanceSummary['cpl'], 2) }}</h2></div>
-            <div class="stat-card"><p>CPP</p><h2>USD {{ number_format($boostingPerformanceSummary['cpp'], 2) }}</h2></div>
         </div>
     </div>
 
