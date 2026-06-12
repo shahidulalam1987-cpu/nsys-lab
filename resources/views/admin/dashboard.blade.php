@@ -103,6 +103,46 @@
         </div>
 
         <div class="card">
+            <h2>NSYS USD Profit Tracking</h2>
+            <p>Target profit is BDT {{ number_format($usdProfitSummary['target_profit_per_usd'], 2) }} per USD. Actual profit uses funding cost data when card transaction records exist.</p>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <p>Today USD Spend</p>
+                    <h2>USD {{ number_format($usdProfitSummary['today_usd_spend'], 2) }}</h2>
+                </div>
+                <div class="stat-card">
+                    <p>Today Estimated Profit</p>
+                    <h2>BDT {{ number_format($usdProfitSummary['today_estimated_profit'], 2) }}</h2>
+                    <p>USD Spend x BDT 15</p>
+                </div>
+                <div class="stat-card">
+                    <p>Monthly USD Spend</p>
+                    <h2>USD {{ number_format($usdProfitSummary['monthly_usd_spend'], 2) }}</h2>
+                </div>
+                <div class="stat-card">
+                    <p>Monthly Estimated Profit</p>
+                    <h2>BDT {{ number_format($usdProfitSummary['monthly_estimated_profit'], 2) }}</h2>
+                    <p>USD Spend x BDT 15</p>
+                </div>
+                <div class="stat-card">
+                    <p>Average Profit Per USD</p>
+                    <h2>BDT {{ number_format($usdProfitSummary['average_profit_per_usd'], 2) }}</h2>
+                    <p>Target rate</p>
+                </div>
+                <div class="stat-card">
+                    <p>Actual Profit</p>
+                    @if($usdProfitSummary['actual_profit_available'])
+                        <h2>BDT {{ number_format($usdProfitSummary['monthly_actual_profit'], 2) }}</h2>
+                        <p>BDT {{ number_format($usdProfitSummary['actual_profit_per_usd'], 2) }} per USD</p>
+                    @else
+                        <h2>Estimated Only</h2>
+                        <p>Funding cost data not available yet.</p>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
             <h2>Employee Department Counts</h2>
             <p>
                 @forelse($employeeDepartmentCounts as $department => $count)

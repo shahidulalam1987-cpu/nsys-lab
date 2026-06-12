@@ -33,6 +33,30 @@ class DashboardController extends Controller
             ->pluck('total', 'department');
         $totalFacebookSpend = (float) DailyPerformanceReport::sum('spend');
         $totalFacebookOrders = (int) DailyPerformanceReport::sum('orders');
+        $todayPerformance = DailyPerformanceReport::whereDate('report_date', $today)->get();
+        $todayUsdSpend = (float) $todayPerformance->sum('spend');
+        $monthlyPerformance = DailyPerformanceReport::whereMonth('report_date', now()->month)
+            ->whereYear('report_date', now()->year)
+            ->get();
+        $monthlyUsdSpend = (float) $monthlyPerformance->sum('spend');
+        $todayCardTransactions = CardTransaction::whereDate('transaction_date', $today)->get();
+        $monthlyCardTransactions = CardTransaction::whereMonth('transaction_date', now()->month)
+            ->whereYear('transaction_date', now()->year)
+            ->get();
+        $usdProfitSummary = [
+            'target_profit_per_usd' => 15,
+            'today_usd_spend' => $todayUsdSpend,
+            'today_estimated_profit' => round($todayUsdSpend * 15, 2),
+            'monthly_usd_spend' => $monthlyUsdSpend,
+            'monthly_estimated_profit' => round($monthlyUsdSpend * 15, 2),
+            'average_profit_per_usd' => $monthlyUsdSpend > 0 ? 15 : 0,
+            'actual_profit_available' => $monthlyCardTransactions->isNotEmpty(),
+            'today_actual_profit' => (float) $todayCardTransactions->sum('net_profit'),
+            'monthly_actual_profit' => (float) $monthlyCardTransactions->sum('net_profit'),
+            'actual_profit_per_usd' => (float) $monthlyCardTransactions->sum('spend_usd') > 0
+                ? round((float) $monthlyCardTransactions->sum('net_profit') / (float) $monthlyCardTransactions->sum('spend_usd'), 2)
+                : 0,
+        ];
         $clientFundDashboard = $clientFundDashboardService->dashboard();
         $clientFundSummary = $clientFundDashboard['summary'];
         $clientFundRows = $clientFundDashboard['rows'];
@@ -105,6 +129,7 @@ class DashboardController extends Controller
             'employeeDepartmentCounts',
             'totalFacebookSpend',
             'totalFacebookOrders',
+            'usdProfitSummary',
             'clientFundSummary',
             'clientFundRows',
             'employeeSalaryDue',
