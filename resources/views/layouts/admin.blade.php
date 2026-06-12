@@ -550,6 +550,7 @@
                 <div class="sidebar-section-title">Finance</div>
                 <a class="{{ request()->is('admin/financial-management') ? 'active-menu' : '' }}" href="/admin/financial-management">Finance Dashboard</a>
                 <a class="{{ request()->is('admin/finance/accounts*') ? 'active-menu' : '' }}" href="/admin/finance/accounts">Finance Accounts</a>
+                <a class="{{ request()->is('admin/finance/family-expenses*') ? 'active-menu' : '' }}" href="/admin/finance/family-expenses">Family Expenses</a>
                 <a class="{{ request()->is('admin/finance/loans*') ? 'active-menu' : '' }}" href="/admin/finance/loans">Loan Management</a>
                 <a class="{{ request()->is('admin/facebook-financial/profit-dashboard*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/profit-dashboard">Profit Dashboard</a>
                 <a class="sidebar-muted" href="#" onclick="return false;">Revenue Dashboard</a>
@@ -558,6 +559,7 @@
                 <div class="sidebar-section-title">Reports</div>
                 <a class="{{ request()->is('admin/finance/reports/balance-sheet') ? 'active-menu' : '' }}" href="/admin/finance/reports/balance-sheet">Balance Sheet</a>
                 <a class="{{ request()->is('admin/finance/reports/loan-report') ? 'active-menu' : '' }}" href="/admin/finance/reports/loan-report">Loan Report</a>
+                <a class="{{ request()->is('admin/finance/reports/family-expenses') ? 'active-menu' : '' }}" href="/admin/finance/reports/family-expenses">Family Expense Report</a>
                 <a class="sidebar-muted" href="#" onclick="return false;">Monthly Profit Report</a>
                 <a class="sidebar-muted" href="#" onclick="return false;">Funding Report</a>
                 <a class="sidebar-muted" href="#" onclick="return false;">Card Fee Report</a>

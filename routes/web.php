@@ -238,6 +238,11 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/finance/accounts/{account}/edit', [FinanceManagementController::class, 'editAccount']);
     Route::post('/admin/finance/accounts/{account}/update', [FinanceManagementController::class, 'updateAccount']);
     Route::post('/admin/finance/accounts/{account}/delete', [FinanceManagementController::class, 'destroyAccount']);
+    Route::get('/admin/finance/family-expenses', [FinanceManagementController::class, 'familyExpenses']);
+    Route::post('/admin/finance/family-expenses', [FinanceManagementController::class, 'storeFamilyExpense']);
+    Route::get('/admin/finance/family-expenses/{expense}/edit', [FinanceManagementController::class, 'editFamilyExpense']);
+    Route::post('/admin/finance/family-expenses/{expense}/update', [FinanceManagementController::class, 'updateFamilyExpense']);
+    Route::post('/admin/finance/family-expenses/{expense}/delete', [FinanceManagementController::class, 'destroyFamilyExpense']);
     Route::get('/admin/finance/loans', [FinanceManagementController::class, 'loans']);
     Route::post('/admin/finance/loans', [FinanceManagementController::class, 'storeLoan']);
     Route::get('/admin/finance/loans/{loan}', [FinanceManagementController::class, 'showLoan']);
@@ -247,6 +252,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/finance/loans/{loan}/repayments', [FinanceManagementController::class, 'storeRepayment']);
     Route::get('/admin/finance/reports/balance-sheet', [FinanceManagementController::class, 'balanceSheet']);
     Route::get('/admin/finance/reports/loan-report', [FinanceManagementController::class, 'loanReport']);
+    Route::get('/admin/finance/reports/family-expenses', [FinanceManagementController::class, 'familyExpenseReport']);
     Route::get('/admin/facebook-financial/binance-purchases', [FacebookFinancialController::class, 'binancePurchases']);
     Route::post('/admin/facebook-financial/binance-purchases', [FacebookFinancialController::class, 'storeBinancePurchase']);
     Route::get('/admin/facebook-financial/card-loads', [FacebookFinancialController::class, 'cardLoads']);
