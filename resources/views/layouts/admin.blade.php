@@ -475,13 +475,15 @@
             <div class="brand">NSYS Agency Admin</div>
 
             <div class="department-tabs">
-                <a class="department-tab {{ $isSystemTools ? 'active-department' : '' }}" href="/admin/bug-tracker">
-                    System Tools
-                    @if($openBugCount > 0)
-                        <span class="header-count-badge">{{ $openBugCount }}</span>
+                <a class="department-tab {{ $isAdminDashboard ? 'active-department' : '' }}" href="/admin/dashboard">Agency Dashboard</a>
+                <a class="department-tab {{ $isFinancialManagement ? 'active-department' : '' }}" href="/admin/financial-management">
+                    Finance
+                    @if(($financialBadges['low_card_count'] + $financialBadges['low_funding_count']) > 0)
+                        <span class="header-count-badge">{{ $financialBadges['low_card_count'] + $financialBadges['low_funding_count'] }}</span>
                     @endif
                 </a>
-                <a class="department-tab {{ $isAdminDashboard ? 'active-department' : '' }}" href="/admin/dashboard">Admin Dashboard</a>
+                <a class="department-tab {{ $isClientDepartment ? 'active-department' : '' }}" href="/admin/client-dashboard">Clients</a>
+                <a class="department-tab {{ $isEmployeeDepartment ? 'active-department' : '' }}" href="/admin/employee-dashboard">Employees</a>
                 <a class="department-tab {{ $isFacebook ? 'active-department' : '' }}" href="/admin/facebook-dashboard">
                     Facebook
                     @if($facebookBadges['billing_alert_count'] > 0)
@@ -489,14 +491,12 @@
                     @endif
                 </a>
                 <a class="department-tab {{ $isTikTok ? 'active-department' : '' }}" href="/admin/tiktok">TikTok</a>
-                <a class="department-tab {{ $isFinancialManagement ? 'active-department' : '' }}" href="/admin/facebook-financial/funding-dashboard">
-                    Financial Management
-                    @if(($financialBadges['low_card_count'] + $financialBadges['low_funding_count']) > 0)
-                        <span class="header-count-badge">{{ $financialBadges['low_card_count'] + $financialBadges['low_funding_count'] }}</span>
+                <a class="department-tab {{ $isSystemTools ? 'active-department' : '' }}" href="/admin/bug-tracker">
+                    System Tools
+                    @if($openBugCount > 0)
+                        <span class="header-count-badge">{{ $openBugCount }}</span>
                     @endif
                 </a>
-                <a class="department-tab {{ $isClientDepartment ? 'active-department' : '' }}" href="/admin/client-dashboard">Client Department</a>
-                <a class="department-tab {{ $isEmployeeDepartment ? 'active-department' : '' }}" href="/admin/employee-dashboard">Employee Department</a>
             </div>
         </div>
 
@@ -527,7 +527,7 @@
                 <a class="{{ request()->is('admin/tiktok/daily-performance') ? 'active-menu' : '' }}" href="/admin/tiktok/daily-performance">Daily Performance Entry</a>
                 <a class="{{ request()->is('admin/tiktok/analytics') ? 'active-menu' : '' }}" href="/admin/tiktok/analytics">Analytics Dashboard</a>
             @elseif($isFinancialManagement)
-                <div class="sidebar-section-title">Financial Management</div>
+                <div class="sidebar-section-title">Finance</div>
 
                 <div class="sidebar-section-title">Funding</div>
                 <a class="sidebar-link-with-badge {{ request()->is('admin/facebook-financial/funding-dashboard*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/funding-dashboard">
@@ -546,7 +546,7 @@
                 <a class="{{ request()->is('admin/facebook-financial/card-loads*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/card-loads">Card Loads</a>
                 <a class="{{ request()->is('admin/facebook-financial/card-transactions*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/card-transactions">Card Transactions</a>
 
-                <div class="sidebar-section-title">Profit & Revenue</div>
+                <div class="sidebar-section-title">Finance</div>
                 <a class="{{ request()->is('admin/facebook-financial/profit-dashboard*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/profit-dashboard">Profit Dashboard</a>
                 <a class="sidebar-muted" href="#" onclick="return false;">Revenue Dashboard</a>
                 <a class="sidebar-muted" href="#" onclick="return false;">Expense Dashboard</a>
@@ -556,13 +556,13 @@
                 <a class="sidebar-muted" href="#" onclick="return false;">Funding Report</a>
                 <a class="sidebar-muted" href="#" onclick="return false;">Card Fee Report</a>
             @elseif($isClientDepartment)
-                <div class="sidebar-section-title">Client Department</div>
+                <div class="sidebar-section-title">Clients</div>
 
                 <div class="sidebar-section-title">Client Management</div>
                 <a class="{{ request()->is('admin/client-dashboard') ? 'active-menu' : '' }}" href="/admin/client-dashboard">Client Dashboard</a>
                 <a class="{{ request()->is('admin/clients') || request()->is('admin/clients/create') ? 'active-menu' : '' }}" href="/admin/clients">Client List</a>
-                <a class="{{ request()->is('admin/clients/*') ? 'active-menu' : '' }}" href="/admin/clients">Client Details</a>
                 <a class="{{ request()->is('admin/client-users*') ? 'active-menu' : '' }}" href="/admin/client-users">Client Users</a>
+                <a class="{{ request()->is('admin/clients/*') ? 'active-menu' : '' }}" href="/admin/clients">Client Details</a>
 
                 <div class="sidebar-section-title">Client Fund</div>
                 <a class="{{ request()->is('admin/client-fund*') ? 'active-menu' : '' }}" href="/admin/client-fund">Dashboard</a>
@@ -578,22 +578,17 @@
                 <div class="sidebar-section-title">Client Portal</div>
                 <a class="sidebar-muted" href="#" onclick="return false;">Client Portal</a>
             @elseif($isEmployeeDepartment)
-                <div class="sidebar-section-title">Employee Department</div>
+                <div class="sidebar-section-title">Employees</div>
 
                 <div class="sidebar-section-title">Employee Management</div>
                 <a class="{{ request()->is('admin/employee-dashboard') ? 'active-menu' : '' }}" href="/admin/employee-dashboard">Employee Dashboard</a>
                 <a class="{{ request()->is('admin/employees*') ? 'active-menu' : '' }}" href="/admin/employees">Employee List</a>
 
-                <div class="sidebar-section-title">Assignment Management</div>
+                <div class="sidebar-section-title">Assignments</div>
                 <a class="{{ request()->is('admin/assignments*') ? 'active-menu' : '' }}" href="/admin/assignments">Assignment Management</a>
 
-                <div class="sidebar-section-title">Page Management</div>
-                <a class="{{ request()->is('admin/client-pages*') ? 'active-menu' : '' }}" href="/admin/client-pages">Page Management</a>
-
-                <div class="sidebar-section-title">Work Status</div>
+                <div class="sidebar-section-title">Operations</div>
                 <a class="{{ request()->is('admin/work-status*') ? 'active-menu' : '' }}" href="/admin/work-status">Work Status</a>
-
-                <div class="sidebar-section-title">Attendance</div>
                 <a class="{{ request()->is('admin/attendance*') ? 'active-menu' : '' }}" href="/admin/attendance">Attendance</a>
 
                 <div class="sidebar-section-title">Employee Portal</div>
@@ -617,6 +612,7 @@
                 </a>
             @elseif($isFacebook)
                 <div class="sidebar-section-title">Facebook</div>
+                <div class="sidebar-section-title">Facebook Dashboard</div>
                 <a class="{{ request()->is('admin/facebook-dashboard') ? 'active-menu' : '' }}" href="/admin/facebook-dashboard">Dashboard</a>
                 <a class="{{ request()->is('admin/business-managers*') ? 'active-menu' : '' }}" href="/admin/business-managers">BM Management</a>
                 <a class="sidebar-link-with-badge {{ request()->is('admin/ad-accounts*') ? 'active-menu' : '' }}" href="/admin/ad-accounts">
@@ -626,7 +622,6 @@
                     @endif
                 </a>
                 <a class="{{ request()->is('admin/ad-account-ledger*') ? 'active-menu' : '' }}" href="/admin/ad-account-ledger">Ad Account Ledger</a>
-                <div class="sidebar-section-title">Facebook Assets</div>
                 <a class="{{ request()->is('admin/client-pages*') ? 'active-menu' : '' }}" href="/admin/client-pages">Page Management</a>
                 <a class="{{ request()->is('admin/campaigns*') ? 'active-menu' : '' }}" href="/admin/campaigns">Campaign Management</a>
                 <a class="{{ request()->is('admin/daily-reports*') ? 'active-menu' : '' }}" href="/admin/daily-reports">Daily Performance Entry</a>
@@ -634,7 +629,7 @@
                 <a class="sidebar-muted" href="#" onclick="return false;">Orders & Leads</a>
                 <a class="sidebar-muted" href="#" onclick="return false;">Client Reports</a>
             @else
-                <div class="sidebar-section-title">Admin Dashboard</div>
+                <div class="sidebar-section-title">Agency Dashboard</div>
                 <a class="{{ request()->is('admin/dashboard') ? 'active-menu' : '' }}" href="/admin/dashboard">Overview</a>
             @endif
         </div>

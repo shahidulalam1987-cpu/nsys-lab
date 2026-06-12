@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
 @section('content')
-    <h1>Employee Department Dashboard</h1>
+    <h1>Employees</h1>
 
     <div class="stats-grid">
         <div class="stat-card">

@@ -73,7 +73,7 @@
             </table>
         </div>
     @else
-        <h1>Admin Dashboard</h1>
+        <h1>Agency Dashboard</h1>
         <p>Overall agency summary | Today: {{ $today }}</p>
 
         <div class="card">

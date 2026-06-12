@@ -3,8 +3,8 @@
 @section('content')
     <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
         <div>
-            <h1>Funding Dashboard</h1>
-            <p>Real-time USD funding visibility for Binance and payment card sources.</p>
+            <h1>Finance</h1>
+            <p>Funding Dashboard: real-time USD funding visibility for Binance and payment card sources.</p>
         </div>
         <a class="btn" href="/admin/facebook-financial/funding-dashboard/update">Manual Update</a>
     </div>
