@@ -34,6 +34,22 @@ class EmployeeController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->employee_type) {
+            $query->where('employee_type', $request->employee_type);
+        }
+
+        if ($request->department) {
+            $query->where('department', $request->department);
+        }
+
+        if ($request->role) {
+            $query->where('role', $request->role);
+        }
+
+        if ($request->salary_source) {
+            $query->where('salary_source', $request->salary_source);
+        }
+
         $employees = $query->latest()->get();
         $statusCounts = Employee::selectRaw('status, COUNT(*) as total')
             ->groupBy('status')
@@ -45,6 +61,8 @@ class EmployeeController extends Controller
             'on_leave' => (int) ($statusCounts['on_leave'] ?? 0),
             'inactive' => (int) ($statusCounts['inactive'] ?? 0),
             'terminated' => (int) ($statusCounts['terminated'] ?? 0),
+            'client_assigned' => Employee::where('employee_type', 'client_assigned')->count(),
+            'agency_internal' => Employee::where('employee_type', 'agency_internal')->count(),
         ];
 
         return view('admin.employees.index', compact('employees', 'summary'));
@@ -65,6 +83,8 @@ class EmployeeController extends Controller
         $data['employee_id'] = $employeeId;
         $data['salary_type'] = 'monthly';
         $data['status'] = $data['status'] ?? 'probation';
+        $data['employee_type'] = $data['employee_type'] ?? 'client_assigned';
+        $data['salary_source'] = $this->salarySourceForEmployeeType($data['employee_type'], $data['salary_source'] ?? null);
         $data['salary_day'] = $data['salary_day'] ?? $this->salaryDayFromConfirmation($data['confirmation_date'] ?? null);
         $this->storeEmployeeFiles($request, $data, $employeeId);
 
@@ -125,6 +145,7 @@ class EmployeeController extends Controller
     {
         $employee = Employee::findOrFail($id);
         $data = $this->validatedEmployee($request);
+        $data['salary_source'] = $this->salarySourceForEmployeeType($data['employee_type'] ?? $employee->employee_type, $data['salary_source'] ?? null);
         $data['salary_day'] = $data['salary_day'] ?? $this->salaryDayFromConfirmation($data['confirmation_date'] ?? null);
         $this->storeEmployeeFiles($request, $data, $employee->employee_id, $employee);
         $employee->update($data);
@@ -314,8 +335,11 @@ class EmployeeController extends Controller
             'cv_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png,webp', 'max:5120'],
             'appointment_letter_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png,webp', 'max:5120'],
             'agreement_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png,webp', 'max:5120'],
-            'department' => ['required', Rule::in(Employee::DEPARTMENTS)],
-            'role' => ['required', Rule::in(Employee::ROLES)],
+            'employee_type' => ['nullable', 'in:' . implode(',', array_keys(Employee::EMPLOYEE_TYPES))],
+            'department' => ['required', 'in:' . implode(',', array_values(array_unique(array_merge(Employee::DEPARTMENTS, Employee::AGENCY_DEPARTMENTS))))],
+            'role' => ['required', 'in:' . implode(',', Employee::ROLES)],
+            'salary_source' => ['nullable', 'in:' . implode(',', array_keys(Employee::SALARY_SOURCES))],
+            'permission_group' => ['nullable', 'in:' . implode(',', array_keys(Employee::PERMISSION_GROUPS))],
             'shift_id' => ['nullable', 'exists:shifts,id'],
             'joining_date' => ['required', 'date'],
             'confirmation_date' => ['nullable', 'date'],
@@ -390,6 +414,11 @@ class EmployeeController extends Controller
         }
 
         return (int) date('j', strtotime($confirmationDate));
+    }
+
+    private function salarySourceForEmployeeType(string $employeeType, ?string $selectedSource): string
+    {
+        return $employeeType === 'agency_internal' ? 'agency_payroll' : 'client_fund';
     }
 
     private function salarySummary(Employee $employee): array

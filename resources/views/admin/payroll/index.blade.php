@@ -37,6 +37,13 @@
                 @endforeach
             </select>
 
+            <select name="salary_source">
+                <option value="">All Salary Sources</option>
+                @foreach(\App\Models\Employee::SALARY_SOURCES as $value => $label)
+                    <option value="{{ $value }}" {{ request('salary_source') == $value ? 'selected' : '' }}>{{ $label }}</option>
+                @endforeach
+            </select>
+
             <button class="btn" type="submit">Filter</button>
             <a href="/admin/payroll">Reset</a>
         </form>
@@ -123,6 +130,7 @@
                     <th>Month / Period</th>
                     <th>Employee</th>
                     <th>Client</th>
+                    <th>Salary Source</th>
                     <th>Working Days</th>
                     <th>Payable Salary (BDT)</th>
                     <th>Paid Salary</th>
@@ -179,6 +187,7 @@
                             @endif
                         </td>
                         <td>{{ $payroll->client?->company_name ?: '-' }}</td>
+                        <td>{{ $payroll->salarySourceLabel() }}</td>
                         <td>{{ $payroll->working_days ?? '-' }}</td>
                         <td>BDT {{ number_format($payroll->payable_salary, 2) }}</td>
                         <td>BDT {{ number_format($payroll->paid_amount, 2) }}</td>
@@ -207,7 +216,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="13">No salary records found.</td></tr>
+                <tr><td colspan="14">No salary records found.</td></tr>
             @endforelse
         </table>
     </div>

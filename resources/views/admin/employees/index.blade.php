@@ -306,6 +306,8 @@
         <div class="employee-summary-badge"><span>Leave</span><strong>{{ number_format($summary['on_leave']) }}</strong></div>
         <div class="employee-summary-badge"><span>Inactive</span><strong>{{ number_format($summary['inactive']) }}</strong></div>
         <div class="employee-summary-badge"><span>Terminated</span><strong>{{ number_format($summary['terminated']) }}</strong></div>
+        <div class="employee-summary-badge"><span>Client Assigned</span><strong>{{ number_format($summary['client_assigned']) }}</strong></div>
+        <div class="employee-summary-badge"><span>Agency Internal</span><strong>{{ number_format($summary['agency_internal']) }}</strong></div>
     </div>
 
     <div class="card employee-filter-card">
@@ -315,6 +317,30 @@
                 <option value="">All Employees</option>
                 @foreach(\App\Models\Employee::STATUS_FILTERS as $value => $label)
                     <option value="{{ $value }}" {{ request('status') == $value ? 'selected' : '' }}>{{ $label }}</option>
+                @endforeach
+            </select>
+            <select name="employee_type">
+                <option value="">All Types</option>
+                @foreach(\App\Models\Employee::EMPLOYEE_TYPES as $value => $label)
+                    <option value="{{ $value }}" {{ request('employee_type') == $value ? 'selected' : '' }}>{{ $label }}</option>
+                @endforeach
+            </select>
+            <select name="department">
+                <option value="">All Departments</option>
+                @foreach(array_values(array_unique(array_merge(\App\Models\Employee::DEPARTMENTS, \App\Models\Employee::AGENCY_DEPARTMENTS))) as $department)
+                    <option value="{{ $department }}" {{ request('department') == $department ? 'selected' : '' }}>{{ $department }}</option>
+                @endforeach
+            </select>
+            <select name="role">
+                <option value="">All Roles</option>
+                @foreach(\App\Models\Employee::ROLES as $role)
+                    <option value="{{ $role }}" {{ request('role') == $role ? 'selected' : '' }}>{{ $role }}</option>
+                @endforeach
+            </select>
+            <select name="salary_source">
+                <option value="">All Salary Sources</option>
+                @foreach(\App\Models\Employee::SALARY_SOURCES as $value => $label)
+                    <option value="{{ $value }}" {{ request('salary_source') == $value ? 'selected' : '' }}>{{ $label }}</option>
                 @endforeach
             </select>
             <button class="btn" type="submit">Search</button>
@@ -341,11 +367,13 @@
                         <td>
                             <a class="employee-id-link" href="/admin/employees/{{ $employee->id }}">{{ $employee->employee_id }}</a>
                             <div><a class="employee-name-link" href="/admin/employees/{{ $employee->id }}">{{ $employee->name }}</a></div>
+                            <div class="employee-subtext">{{ $employee->employeeTypeLabel() }}</div>
                         </td>
                         <td>{{ $employee->mobile ?: '-' }}</td>
                         <td>
                             <strong>{{ $employee->department }}</strong>
                             <div class="employee-subtext">{{ $employee->role }}</div>
+                            <div class="employee-subtext">{{ $employee->salarySourceLabel() }}</div>
                         </td>
                         <td>{{ $employee->joining_date?->toDateString() ?: '-' }}</td>
                         <td>BDT {{ number_format($employee->monthly_salary, 2) }}</td>

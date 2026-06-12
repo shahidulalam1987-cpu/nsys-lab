@@ -57,10 +57,17 @@
 
         <h2>Employment Information</h2>
 
+        <p>Employee Type<br>
+            <select name="employee_type" id="employee_type" required>
+                @foreach(\App\Models\Employee::EMPLOYEE_TYPES as $value => $label)
+                    <option value="{{ $value }}" {{ old('employee_type', $employee?->employee_type ?? 'client_assigned') == $value ? 'selected' : '' }}>{{ $label }}</option>
+                @endforeach
+            </select>
+        </p>
         <p>Department<br>
             <select name="department" required>
                 <option value="">Select Department</option>
-                @foreach(\App\Models\Employee::DEPARTMENTS as $department)
+                @foreach(array_values(array_unique(array_merge(\App\Models\Employee::DEPARTMENTS, \App\Models\Employee::AGENCY_DEPARTMENTS))) as $department)
                     <option value="{{ $department }}" {{ old('department', $employee?->department) == $department ? 'selected' : '' }}>{{ $department }}</option>
                 @endforeach
             </select>
@@ -70,6 +77,21 @@
                 <option value="">Select Role</option>
                 @foreach(\App\Models\Employee::ROLES as $role)
                     <option value="{{ $role }}" {{ old('role', $employee?->role) == $role ? 'selected' : '' }}>{{ $role }}</option>
+                @endforeach
+            </select>
+        </p>
+        <p>Salary Source<br>
+            <select name="salary_source" id="salary_source">
+                @foreach(\App\Models\Employee::SALARY_SOURCES as $value => $label)
+                    <option value="{{ $value }}" {{ old('salary_source', $employee?->salary_source ?? 'client_fund') == $value ? 'selected' : '' }}>{{ $label }}</option>
+                @endforeach
+            </select>
+        </p>
+        <p>Permission Group<br>
+            <select name="permission_group">
+                <option value="">No Extra Access</option>
+                @foreach(\App\Models\Employee::PERMISSION_GROUPS as $value => $label)
+                    <option value="{{ $value }}" {{ old('permission_group', $employee?->permission_group) == $value ? 'selected' : '' }}>{{ $label }}</option>
                 @endforeach
             </select>
         </p>
@@ -153,3 +175,16 @@
         <button class="btn" type="submit">{{ $button }}</button>
     </form>
 </div>
+
+<script>
+    const employeeTypeSelect = document.getElementById('employee_type');
+    const salarySourceSelect = document.getElementById('salary_source');
+
+    employeeTypeSelect?.addEventListener('change', () => {
+        if (employeeTypeSelect.value === 'agency_internal') {
+            salarySourceSelect.value = 'agency_payroll';
+        } else {
+            salarySourceSelect.value = 'client_fund';
+        }
+    });
+</script>

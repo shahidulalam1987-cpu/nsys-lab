@@ -16,6 +16,7 @@ class EmployeePayroll extends Model
     protected $fillable = [
         'employee_id',
         'client_id',
+        'salary_source',
         'calculation_type',
         'salary_period_from',
         'salary_period_to',
@@ -200,6 +201,11 @@ class EmployeePayroll extends Model
             'salary_approved' => 'Salary Approved',
             'salary_paid' => 'Salary Paid',
         ][$action] ?? ucwords(str_replace('_', ' ', $action));
+    }
+
+    public function salarySourceLabel(): string
+    {
+        return Employee::SALARY_SOURCES[$this->salary_source ?: 'client_fund'] ?? 'Client Fund';
     }
 
     public function getStatusAttribute($value): string

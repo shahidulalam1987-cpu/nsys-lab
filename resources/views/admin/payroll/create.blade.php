@@ -346,8 +346,8 @@
                     </p>
 
                     <p class="salary-field">Client<br>
-                        <select name="client_id" id="client_id" required>
-                            <option value="">Select Client</option>
+                        <select name="client_id" id="client_id">
+                            <option value="">No Client / Agency Payroll</option>
                             @foreach($clients as $client)
                                 <option value="{{ $client->id }}" data-balance="{{ $clientBalances[$client->id] ?? 0 }}" {{ old('client_id') == $client->id ? 'selected' : '' }}>
                                     {{ $client->company_name }}

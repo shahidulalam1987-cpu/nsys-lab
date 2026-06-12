@@ -79,6 +79,8 @@
         <div class="stats-grid">
             <div class="stat-card"><p>Total Clients</p><h2>{{ number_format($totalClients) }}</h2></div>
             <div class="stat-card"><p>Total Employees</p><h2>{{ number_format($totalEmployees) }}</h2></div>
+            <div class="stat-card"><p>Client Assigned Employees</p><h2>{{ number_format($clientAssignedEmployees) }}</h2></div>
+            <div class="stat-card"><p>Agency Internal Employees</p><h2>{{ number_format($agencyInternalEmployees) }}</h2></div>
             <div class="stat-card"><p>Total Facebook Spend</p><h2>USD {{ number_format($totalFacebookSpend, 2) }}</h2></div>
             <div class="stat-card"><p>Total Orders</p><h2>{{ number_format($totalFacebookOrders) }}</h2></div>
             <div class="stat-card"><p>Client Fund Balance</p><h2>BDT {{ number_format($clientFundSummary['available_balance'], 2) }}</h2></div>
@@ -94,6 +96,17 @@
             <a class="btn" href="/admin/client-dashboard">Client Department</a>
             <a class="btn" href="/admin/employee-dashboard">Employee Department</a>
             <a class="btn" href="/admin/bug-tracker">System Tools</a>
+        </div>
+
+        <div class="card">
+            <h2>Employee Department Counts</h2>
+            <p>
+                @forelse($employeeDepartmentCounts as $department => $count)
+                    <span class="badge badge-info" style="margin:4px;">{{ $department }}: {{ number_format($count) }}</span>
+                @empty
+                    No employee department data found.
+                @endforelse
+            </p>
         </div>
 
         <div class="card">

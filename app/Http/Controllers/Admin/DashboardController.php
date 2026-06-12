@@ -25,6 +25,11 @@ class DashboardController extends Controller
 
         $totalClients = Client::count();
         $totalEmployees = Employee::count();
+        $clientAssignedEmployees = Employee::where('employee_type', 'client_assigned')->count();
+        $agencyInternalEmployees = Employee::where('employee_type', 'agency_internal')->count();
+        $employeeDepartmentCounts = Employee::selectRaw('department, COUNT(*) as total')
+            ->groupBy('department')
+            ->pluck('total', 'department');
         $totalFacebookSpend = (float) DailyPerformanceReport::sum('spend');
         $totalFacebookOrders = (int) DailyPerformanceReport::sum('orders');
         $clientFundDashboard = $clientFundDashboardService->dashboard();
@@ -85,6 +90,9 @@ class DashboardController extends Controller
             'today',
             'totalClients',
             'totalEmployees',
+            'clientAssignedEmployees',
+            'agencyInternalEmployees',
+            'employeeDepartmentCounts',
             'totalFacebookSpend',
             'totalFacebookOrders',
             'clientFundSummary',
@@ -206,6 +214,11 @@ class DashboardController extends Controller
         $clientFundDashboard = $clientFundDashboardService->dashboard();
         $clientFundSummary = $clientFundDashboard['summary'];
         $totalEmployees = Employee::count();
+        $clientAssignedEmployees = Employee::where('employee_type', 'client_assigned')->count();
+        $agencyInternalEmployees = Employee::where('employee_type', 'agency_internal')->count();
+        $departmentCounts = Employee::selectRaw('department, COUNT(*) as total')
+            ->groupBy('department')
+            ->pluck('total', 'department');
         $activeEmployees = Employee::where('status', 'active')->count();
         $probationEmployees = Employee::where('status', 'probation')->count();
         $attendanceRecords = EmployeeAttendance::whereMonth('attendance_date', now()->month)
@@ -217,6 +230,9 @@ class DashboardController extends Controller
 
         return view('admin.employee-dashboard', compact(
             'totalEmployees',
+            'clientAssignedEmployees',
+            'agencyInternalEmployees',
+            'departmentCounts',
             'activeEmployees',
             'probationEmployees',
             'attendanceRecords',

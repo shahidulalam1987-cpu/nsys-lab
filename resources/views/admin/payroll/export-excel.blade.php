@@ -9,6 +9,7 @@
         <tr>
             <th>Employee</th>
             <th>Client</th>
+            <th>Salary Source</th>
             <th>Salary Period</th>
             <th>Salary Date</th>
             <th>Working Days</th>
@@ -24,6 +25,7 @@
             <tr>
                 <td>{{ $row['employee'] }}</td>
                 <td>{{ $row['client'] }}</td>
+                <td>{{ $row['salary_source'] }}</td>
                 <td>{{ $row['salary_period'] }}</td>
                 <td>{{ $row['salary_date'] }}</td>
                 <td>{{ $row['working_days'] }}</td>

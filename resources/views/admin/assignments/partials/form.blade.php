@@ -12,17 +12,17 @@
 
         <div class="assignment-form-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; align-items:end;">
             <p>Employee<br>
-                <select name="employee_id" required>
+                <select name="employee_id" id="assignment-employee-select" required>
                     <option value="">Select Employee</option>
                     @foreach($employees as $employee)
-                        <option value="{{ $employee->id }}" {{ old('employee_id', $assignment?->employee_id) == $employee->id ? 'selected' : '' }}>
+                        <option value="{{ $employee->id }}" data-employee-type="{{ $employee->employee_type ?: 'client_assigned' }}" {{ old('employee_id', $assignment?->employee_id) == $employee->id ? 'selected' : '' }}>
                             {{ $employee->name }} ({{ $employee->employee_id }})
                         </option>
                     @endforeach
                 </select>
             </p>
 
-            <p>Client<br>
+            <p class="client-assignment-field">Client<br>
                 <select name="client_id" class="js-client-select" data-page-target="assignment-page-select" required>
                     <option value="">Select Client</option>
                     @foreach($clients as $client)
@@ -33,11 +33,11 @@
                 </select>
             </p>
 
-            <p>Page Search<br>
+            <p class="client-assignment-field">Page Search<br>
                 <input type="text" id="assignment-page-search" placeholder="Type page name">
             </p>
 
-            <p>Page<br>
+            <p class="client-assignment-field">Page<br>
                 <select id="assignment-page-select" name="client_page_id" required>
                     <option value="">Select Page</option>
                     @foreach($clientPages as $page)
@@ -48,7 +48,7 @@
                 </select>
             </p>
 
-            <p>Campaign<br>
+            <p class="client-assignment-field">Campaign<br>
                 <select name="campaign_id" id="assignment-campaign-select">
                     <option value="">No Campaign</option>
                     @foreach($campaigns as $campaign)
@@ -85,6 +85,7 @@
         </div>
 
         <p>Optional Notes<br><textarea name="note">{{ old('note', $assignment?->note) }}</textarea></p>
+        <p id="internal-assignment-note" style="display:none;color:var(--muted);">Agency Internal employees do not require client/page/campaign assignment. Save only if you intentionally want to assign them to a client context.</p>
 
         <button class="btn" type="submit">{{ $button }}</button>
     </form>
@@ -92,6 +93,7 @@
 
 <script>
     const clientSelect = document.querySelector('.js-client-select');
+    const employeeSelect = document.getElementById('assignment-employee-select');
     const pageSelect = document.getElementById('assignment-page-select');
     const pageSearch = document.getElementById('assignment-page-search');
     const campaignSelect = document.getElementById('assignment-campaign-select');
@@ -126,4 +128,18 @@
     pageSelect.addEventListener('change', filterAssignmentRelations);
     pageSearch.addEventListener('input', filterAssignmentRelations);
     filterAssignmentRelations();
+
+    function syncAssignmentEmployeeType() {
+        const type = employeeSelect.selectedOptions[0]?.dataset.employeeType || 'client_assigned';
+        const isInternal = type === 'agency_internal';
+        document.querySelectorAll('.client-assignment-field').forEach((field) => {
+            field.style.display = isInternal ? 'none' : '';
+        });
+        document.getElementById('internal-assignment-note').style.display = isInternal ? '' : 'none';
+        clientSelect.required = ! isInternal;
+        pageSelect.required = ! isInternal;
+    }
+
+    employeeSelect.addEventListener('change', syncAssignmentEmployeeType);
+    syncAssignmentEmployeeType();
 </script>

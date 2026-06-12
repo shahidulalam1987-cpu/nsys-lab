@@ -177,6 +177,7 @@
                 </div>
                 <div class="employee-info-grid">
                     <p><strong>Employee ID:</strong> {{ $employee->employee_id }}</p>
+                    <p><strong>Employment Type:</strong> <span class="badge badge-info">{{ $employee->employeeTypeLabel() }}</span></p>
                     <p><strong>Full Name:</strong> {{ $employee->name }}</p>
                     <p><strong>Mobile:</strong> {{ $employee->mobile ?: '-' }}</p>
                     <p><strong>Email:</strong> {{ $employee->email ?: '-' }}</p>
@@ -192,6 +193,8 @@
                 <div class="employee-info-grid">
                     <p><strong>Department:</strong> {{ $employee->department }}</p>
                     <p><strong>Role:</strong> {{ $employee->role }}</p>
+                    <p><strong>Salary Source:</strong> {{ $employee->salarySourceLabel() }}</p>
+                    <p><strong>Permission Group:</strong> {{ $employee->permissionGroupLabel() }}</p>
                     <p><strong>Shift Name:</strong> {{ $employee->shift?->name ?: '-' }}</p>
                     <p><strong>Shift Time:</strong> {{ $employee->shift?->timeRange() ?: '-' }}</p>
                     <p><strong>Joining Date:</strong> {{ $employee->joining_date?->toDateString() }}</p>
@@ -212,6 +215,7 @@
             <h2>Salary Overview</h2>
             <div class="employee-info-grid">
                 <p><strong>Monthly Salary:</strong> BDT {{ number_format($employee->monthly_salary, 2) }}</p>
+                <p><strong>Salary Source:</strong> {{ $employee->salarySourceLabel() }}</p>
                 <p><strong>Assigned Client:</strong> {{ $salarySummary['assigned_client']?->company_name ?: '-' }}</p>
                 <p>
                     <strong>Client Fund Balance:</strong>
@@ -295,6 +299,9 @@
     <div class="employee-tab-panel" data-tab-panel="assignment">
         <div class="card" style="margin-top:0;">
             <h2>Assign to Client/Page/Shift</h2>
+            @if($employee->isAgencyInternal())
+                <p>Agency Internal employees do not require client/page/campaign assignment. Use Assignment Management only if this employee needs a special client context.</p>
+            @else
             <form method="POST" action="/admin/employees/{{ $employee->id }}/assignments">
                 @csrf
                 <div class="assignment-form-grid">
@@ -336,6 +343,7 @@
                     <button class="btn" type="submit">Save Assignment</button>
                 </div>
             </form>
+            @endif
         </div>
 
         <div class="card">

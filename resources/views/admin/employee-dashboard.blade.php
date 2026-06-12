@@ -9,6 +9,14 @@
             <h2>{{ number_format($totalEmployees) }}</h2>
         </div>
         <div class="stat-card">
+            <p>Client Assigned Employees</p>
+            <h2>{{ number_format($clientAssignedEmployees) }}</h2>
+        </div>
+        <div class="stat-card">
+            <p>Agency Internal Employees</p>
+            <h2>{{ number_format($agencyInternalEmployees) }}</h2>
+        </div>
+        <div class="stat-card">
             <p>Attendance</p>
             <h2>{{ number_format($attendanceRecords) }}</h2>
             <p>This Month</p>
@@ -23,6 +31,17 @@
             <h2>BDT {{ number_format($clientFundSummary['unpaid_salary_due'], 2) }}</h2>
             <p>{{ number_format($clientFundSummary['unpaid_employee_count']) }} Employees</p>
         </div>
+    </div>
+
+    <div class="card">
+        <h2>Department Wise Counts</h2>
+        <p>
+            @forelse($departmentCounts as $department => $count)
+                <span class="badge badge-info" style="margin:4px;">{{ $department }}: {{ number_format($count) }}</span>
+            @empty
+                No department data found.
+            @endforelse
+        </p>
     </div>
 
     <div class="card">

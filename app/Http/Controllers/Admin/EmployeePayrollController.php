@@ -37,12 +37,13 @@ class EmployeePayrollController extends Controller
 
         return response()->streamDownload(function () use ($rows) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Employee', 'Client', 'Salary Period', 'Salary Date', 'Working Days', 'Payable Salary', 'Paid Salary', 'Remaining Due', 'Status', 'Payment Date', 'Method', 'Reference']);
+            fputcsv($handle, ['Employee', 'Client', 'Salary Source', 'Salary Period', 'Salary Date', 'Working Days', 'Payable Salary', 'Paid Salary', 'Remaining Due', 'Status', 'Payment Date', 'Method', 'Reference']);
 
             foreach ($rows as $row) {
                 fputcsv($handle, [
                     $row['employee'],
                     $row['client'],
+                    $row['salary_source'],
                     $row['salary_period'],
                     $row['salary_date'],
                     $row['working_days'],
@@ -107,7 +108,7 @@ class EmployeePayrollController extends Controller
 
         $data = $request->validate([
             'employee_id' => ['required', 'exists:employees,id'],
-            'client_id' => ['required', 'exists:clients,id'],
+            'client_id' => ['nullable', 'exists:clients,id'],
             'calculation_type' => ['required', Rule::in(['date_to_date', 'monthly_cycle'])],
             'salary_month' => ['nullable', 'required_if:calculation_type,monthly_cycle', 'date_format:Y-m'],
             'from_date' => ['nullable', 'required_if:calculation_type,date_to_date', 'date'],
@@ -144,10 +145,14 @@ class EmployeePayrollController extends Controller
         ]);
 
         $employee = Employee::findOrFail($data['employee_id']);
+        if (! $employee->isAgencyInternal() && empty($data['client_id'])) {
+            return back()->withInput()->withErrors(['client_id' => 'Client is required for Client Assigned employees.']);
+        }
+
         $calculation = $this->calculatePayroll($employee, $data);
         $existingPayroll = $this->existingPayrollForPeriod(
             (int) $data['employee_id'],
-            (int) $data['client_id'],
+            isset($data['client_id']) ? (int) $data['client_id'] : null,
             $calculation['salary_month']
         );
 
@@ -166,7 +171,8 @@ class EmployeePayrollController extends Controller
 
         $payroll = EmployeePayroll::create([
             'employee_id' => $data['employee_id'],
-            'client_id' => $data['client_id'],
+            'client_id' => $data['client_id'] ?? null,
+            'salary_source' => $employee->defaultSalarySource(),
             'calculation_type' => $data['calculation_type'],
             'salary_period_from' => $calculation['from_date']->toDateString(),
             'salary_period_to' => $calculation['to_date']->toDateString(),
@@ -218,7 +224,7 @@ class EmployeePayrollController extends Controller
                 'salary_month' => ['required', 'date_format:Y-m'],
                 'rows' => ['nullable', 'array'],
                 'rows.*.employee_id' => ['required', 'exists:employees,id'],
-                'rows.*.client_id' => ['required', 'exists:clients,id'],
+                'rows.*.client_id' => ['nullable', 'exists:clients,id'],
                 'rows.*.action' => ['required', Rule::in(['skip', 'generate', 'regenerate'])],
             ]);
 
@@ -230,7 +236,7 @@ class EmployeePayrollController extends Controller
                 ->filter(fn (array $row) => in_array($row['action'], ['generate', 'regenerate'], true));
 
             foreach ($selectedRows as $row) {
-                $existingPayroll = $this->existingPayrollForPeriod((int) $row['employee_id'], (int) $row['client_id'], $salaryMonth);
+                $existingPayroll = $this->existingPayrollForPeriod((int) $row['employee_id'], isset($row['client_id']) ? (int) $row['client_id'] : null, $salaryMonth);
 
                 if ($existingPayroll && $row['action'] !== 'regenerate') {
                     $skipped++;
@@ -250,7 +256,8 @@ class EmployeePayrollController extends Controller
 
                 $payroll = EmployeePayroll::create([
                     'employee_id' => $previewRow['employee']->id,
-                    'client_id' => $previewRow['client']->id,
+                    'client_id' => $previewRow['client']?->id,
+                    'salary_source' => $previewRow['employee']->defaultSalarySource(),
                     'calculation_type' => 'monthly_cycle',
                     'salary_period_from' => $salaryMonth->toDateString(),
                     'salary_period_to' => $salaryMonth->copy()->endOfMonth()->toDateString(),
@@ -447,6 +454,7 @@ class EmployeePayrollController extends Controller
             'month' => ['nullable', 'date_format:Y-m'],
             'employee_id' => ['nullable', 'exists:employees,id'],
             'status' => ['nullable', 'in:upcoming,unpaid,partial,paid,due'],
+            'salary_source' => ['nullable', 'in:' . implode(',', array_keys(Employee::SALARY_SOURCES))],
         ]);
     }
 
@@ -454,7 +462,8 @@ class EmployeePayrollController extends Controller
     {
         $query = EmployeePayroll::with(['employee', 'client'])
             ->when($filters['month'] ?? null, fn ($query, $month) => $query->whereDate('salary_month', $month . '-01'))
-            ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId));
+            ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
+            ->when($filters['salary_source'] ?? null, fn ($query, $salarySource) => $query->where('salary_source', $salarySource));
 
         $payrolls = $query->latest('salary_month')
             ->latest()
@@ -463,6 +472,11 @@ class EmployeePayrollController extends Controller
             ->values();
 
         $cycleEmployees = $this->cycleEmployeesForStatus($filters['status'] ?? null);
+        if (! empty($filters['salary_source'])) {
+            $cycleEmployees = $cycleEmployees
+                ->filter(fn (Employee $employee) => ($employee->salary_source ?: $employee->defaultSalarySource()) === $filters['salary_source'])
+                ->values();
+        }
 
         return [
             'payrolls' => $payrolls,
@@ -490,11 +504,11 @@ class EmployeePayrollController extends Controller
         ];
     }
 
-    private function existingPayrollForPeriod(int $employeeId, int $clientId, Carbon $salaryMonth): ?EmployeePayroll
+    private function existingPayrollForPeriod(int $employeeId, ?int $clientId, Carbon $salaryMonth): ?EmployeePayroll
     {
         return EmployeePayroll::with(['employee', 'client'])
             ->where('employee_id', $employeeId)
-            ->where('client_id', $clientId)
+            ->when($clientId, fn ($query) => $query->where('client_id', $clientId), fn ($query) => $query->whereNull('client_id'))
             ->whereDate('salary_month', $salaryMonth->copy()->startOfMonth()->toDateString())
             ->latest()
             ->first();
@@ -527,6 +541,7 @@ class EmployeePayrollController extends Controller
             return [
                 'employee' => trim(($payroll->employee?->employee_id ?: '-') . ' ' . ($payroll->employee?->name ?: '')),
                 'client' => $payroll->client?->company_name ?: '-',
+                'salary_source' => $payroll->salarySourceLabel(),
                 'salary_period' => $payroll->salary_period,
                 'salary_date' => $payroll->employee?->salaryDateForMonth($payroll->salary_month?->copy() ?: now())?->toDateString() ?: '-',
                 'working_days' => $payroll->working_days ?? 0,
@@ -549,6 +564,7 @@ class EmployeePayrollController extends Controller
                 return [
                     'employee' => trim(($employee->employee_id ?: '-') . ' ' . $employee->name),
                     'client' => $employee->activeAssignments->first()?->client?->company_name ?: '-',
+                    'salary_source' => $employee->salarySourceLabel(),
                     'salary_period' => $salaryDate?->format('Y-m') ?: '-',
                     'salary_date' => $salaryDate?->toDateString() ?: '-',
                     'working_days' => EmployeePayroll::FIXED_SALARY_MONTH_DAYS,

@@ -46,7 +46,15 @@ class EmployeeAssignmentController extends Controller
 
     public function storeFromManagement(Request $request)
     {
-        $data = $this->validatedData($request, requirePage: true);
+        $employee = Employee::findOrFail($request->validate([
+            'employee_id' => ['required', 'exists:employees,id'],
+        ])['employee_id']);
+
+        if ($employee->isAgencyInternal() && ! $request->filled('client_id')) {
+            return redirect('/admin/assignments')->with('success', 'Agency Internal employees do not require client/page assignment.');
+        }
+
+        $data = $this->validatedData($request, requirePage: ! $employee->isAgencyInternal(), employee: $employee);
         $this->ensureNoDuplicateActivePageAssignment($data);
 
         $assignment = EmployeeAssignment::create($data);
@@ -72,7 +80,8 @@ class EmployeeAssignmentController extends Controller
 
     public function updateFromManagement(Request $request, EmployeeAssignment $assignment)
     {
-        $data = $this->validatedData($request, requirePage: true, assignment: $assignment);
+        $employee = Employee::findOrFail($request->input('employee_id', $assignment->employee_id));
+        $data = $this->validatedData($request, requirePage: ! $employee->isAgencyInternal(), assignment: $assignment, employee: $employee);
         $this->ensureNoDuplicateActivePageAssignment($data, $assignment);
 
         $assignment->update($data);
@@ -176,15 +185,15 @@ class EmployeeAssignmentController extends Controller
         ];
     }
 
-    private function validatedData(Request $request, bool $requirePage, ?EmployeeAssignment $assignment = null): array
+    private function validatedData(Request $request, bool $requirePage, ?EmployeeAssignment $assignment = null, ?Employee $employee = null): array
     {
         return $request->validate([
             'employee_id' => ['required', 'exists:employees,id'],
-            'client_id' => ['required', 'exists:clients,id'],
+            'client_id' => [$employee?->isAgencyInternal() ? 'nullable' : 'required', 'exists:clients,id'],
             'client_page_id' => [$requirePage ? 'required' : 'nullable', 'exists:client_pages,id'],
             'campaign_id' => ['nullable', 'exists:campaigns,id'],
             'campaign' => ['nullable', 'string', 'max:255'],
-            'shift_id' => ['required', 'exists:shifts,id'],
+            'shift_id' => [$employee?->isAgencyInternal() ? 'nullable' : 'required', 'exists:shifts,id'],
             'assigned_from' => ['required', 'date'],
             'assigned_to' => ['nullable', 'date', 'after_or_equal:assigned_from'],
             'status' => ['required', 'in:active,ended'],

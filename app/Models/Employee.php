@@ -32,7 +32,28 @@ class Employee extends Model
         'Support',
     ];
 
+    public const AGENCY_DEPARTMENTS = [
+        'Administration',
+        'Facebook Operations',
+        'TikTok Operations',
+        'Client Department',
+        'Employee Department',
+        'Finance',
+        'HR',
+        'Development',
+        'Design',
+        'Support',
+        'Management',
+    ];
+
     public const ROLES = [
+        'Admin',
+        'Manager',
+        'Team Leader',
+        'HR',
+        'Finance Officer',
+        'Developer',
+        'Designer',
         'Trainee Moderator',
         'Moderator',
         'Senior Moderator',
@@ -40,12 +61,35 @@ class Employee extends Model
         'Sales Executive',
         'Graphic Designer',
         'Video Editor',
-        'Team Leader',
-        'Manager',
+        'Support',
+        'Custom',
+    ];
+
+    public const EMPLOYEE_TYPES = [
+        'client_assigned' => 'Client Assigned',
+        'agency_internal' => 'Agency Internal',
+    ];
+
+    public const SALARY_SOURCES = [
+        'client_fund' => 'Client Fund',
+        'agency_payroll' => 'Agency Payroll',
+    ];
+
+    public const PERMISSION_GROUPS = [
+        'system_tools' => 'System Tools',
+        'admin_dashboard' => 'Admin Dashboard',
+        'facebook' => 'Facebook',
+        'tiktok' => 'TikTok',
+        'client_department' => 'Client Department',
+        'employee_department' => 'Employee Department',
+        'reports' => 'Reports',
+        'finance' => 'Finance',
+        'future_modules' => 'Future Modules',
     ];
 
     protected $fillable = [
         'user_id',
+        'employee_type',
         'employee_id',
         'name',
         'mobile',
@@ -70,6 +114,8 @@ class Employee extends Model
         'salary_type',
         'salary_day',
         'monthly_salary',
+        'salary_source',
+        'permission_group',
         'bank_name',
         'account_name',
         'account_number',
@@ -143,6 +189,33 @@ class Employee extends Model
     public function statusLabel(): string
     {
         return self::STATUSES[$this->status] ?? ucwords(str_replace('_', ' ', $this->status));
+    }
+
+    public function employeeTypeLabel(): string
+    {
+        return self::EMPLOYEE_TYPES[$this->employee_type ?: 'client_assigned'] ?? 'Client Assigned';
+    }
+
+    public function salarySourceLabel(): string
+    {
+        return self::SALARY_SOURCES[$this->salary_source ?: $this->defaultSalarySource()] ?? 'Client Fund';
+    }
+
+    public function permissionGroupLabel(): string
+    {
+        return $this->permission_group
+            ? (self::PERMISSION_GROUPS[$this->permission_group] ?? ucwords(str_replace('_', ' ', $this->permission_group)))
+            : '-';
+    }
+
+    public function isAgencyInternal(): bool
+    {
+        return $this->employee_type === 'agency_internal';
+    }
+
+    public function defaultSalarySource(): string
+    {
+        return $this->employee_type === 'agency_internal' ? 'agency_payroll' : 'client_fund';
     }
 
     public function shortStatusLabel(): string

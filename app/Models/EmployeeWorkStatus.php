@@ -15,6 +15,10 @@ class EmployeeWorkStatus extends Model
         'client_issue' => 'Client Issue',
         'boosting_off' => 'Boosting OFF',
         'agency_closed' => 'Agency Closed',
+        'training' => 'Training',
+        'meeting' => 'Meeting',
+        'office_work' => 'Office Work',
+        'remote_work' => 'Remote Work',
     ];
 
     public const SALARY_COUNT_VALUES = [
@@ -26,6 +30,10 @@ class EmployeeWorkStatus extends Model
         'client_issue' => 0.0,
         'boosting_off' => 0.0,
         'agency_closed' => 0.0,
+        'training' => 1.0,
+        'meeting' => 1.0,
+        'office_work' => 1.0,
+        'remote_work' => 1.0,
     ];
 
     protected $fillable = [
