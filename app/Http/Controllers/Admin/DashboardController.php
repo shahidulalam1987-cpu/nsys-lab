@@ -11,17 +11,44 @@ use App\Models\DailyReport;
 use App\Models\DailyPerformanceReport;
 use App\Models\Employee;
 use App\Models\EmployeeAttendance;
+use App\Models\EmployeePayroll;
 use App\Models\SalaryPayment;
 use App\Services\ClientFundDashboardService;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(ClientFundDashboardService $clientFundDashboardService)
     {
         $today = date('Y-m-d');
 
         $totalClients = Client::count();
-        $activeClients = Client::where('status', 'active')->count();
+        $totalEmployees = Employee::count();
+        $totalFacebookSpend = (float) DailyPerformanceReport::sum('spend');
+        $totalFacebookOrders = (int) DailyPerformanceReport::sum('orders');
+        $clientFundSummary = $clientFundDashboardService->dashboard()['summary'];
+        $employeeSalaryDue = (float) EmployeePayroll::query()
+            ->whereColumn('paid_amount', '<', 'payable_salary')
+            ->get()
+            ->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0));
+        $openBugCount = \App\Models\BugReport::where('status', 'open')->count();
+        $paymentIssueAdAccounts = AdAccount::where('status', 'payment_issue')->count();
+        $systemAlerts = $openBugCount + $paymentIssueAdAccounts + (int) $clientFundSummary['pending_client_payment_count'];
+
+        return view('admin.dashboard', compact(
+            'today',
+            'totalClients',
+            'totalEmployees',
+            'totalFacebookSpend',
+            'totalFacebookOrders',
+            'clientFundSummary',
+            'employeeSalaryDue',
+            'systemAlerts'
+        ));
+    }
+
+    public function facebookDashboard()
+    {
+        $today = date('Y-m-d');
 
         $totalDollarSpend = DailyReport::sum('dollar_spend');
         $totalOrders = DailyReport::sum('orders');
@@ -30,12 +57,7 @@ class DashboardController extends Controller
         $todayOrders = DailyReport::whereDate('report_date', $today)->sum('orders');
         $todayPerformanceReports = DailyPerformanceReport::whereDate('report_date', $today)->get();
         $todayPerformanceSpend = (float) $todayPerformanceReports->sum('spend');
-        $todayPerformanceMessages = (int) $todayPerformanceReports->sum('messages');
-        $todayPerformanceLeads = (int) $todayPerformanceReports->sum('leads');
         $todayPerformanceOrders = (int) $todayPerformanceReports->sum('orders');
-        $todayPerformanceResults = (int) $todayPerformanceReports->sum('results');
-        $todayPerformanceCpm = DailyPerformanceReport::costPer($todayPerformanceSpend, $todayPerformanceMessages);
-        $todayPerformanceCpl = DailyPerformanceReport::costPer($todayPerformanceSpend, $todayPerformanceLeads);
         $todayPerformanceCpp = DailyPerformanceReport::costPer($todayPerformanceSpend, $todayPerformanceOrders);
 
         $totalApprovedPayments = Payment::where('status', 'approved')->sum('amount');
@@ -45,6 +67,7 @@ class DashboardController extends Controller
         $totalAdAccounts = $adAccounts->count();
         $activeAdAccounts = $adAccounts->where('status', 'active')->count();
         $paymentIssueAdAccounts = $adAccounts->where('status', 'payment_issue')->count();
+        $activeCampaigns = \App\Models\Campaign::where('status', 'active')->count();
         $totalThreshold = (float) $adAccounts->sum('threshold_amount');
         $remainingThreshold = (float) $adAccounts->sum(fn (AdAccount $account) => $account->remaining_threshold);
         $adAccountCurrentBalance = (float) $adAccounts->sum('current_balance');
@@ -92,25 +115,19 @@ class DashboardController extends Controller
 
         return view('admin.dashboard', compact(
             'today',
-            'totalClients',
-            'activeClients',
             'totalDollarSpend',
             'totalOrders',
             'todayDollarSpend',
             'todayOrders',
             'todayPerformanceSpend',
-            'todayPerformanceMessages',
-            'todayPerformanceLeads',
             'todayPerformanceOrders',
-            'todayPerformanceResults',
-            'todayPerformanceCpm',
-            'todayPerformanceCpl',
             'todayPerformanceCpp',
             'totalApprovedPayments',
             'totalPendingPayments',
             'totalBusinessManagers',
             'totalAdAccounts',
             'activeAdAccounts',
+            'activeCampaigns',
             'paymentIssueAdAccounts',
             'totalThreshold',
             'remainingThreshold',
@@ -125,6 +142,11 @@ class DashboardController extends Controller
             'recentReports',
             'recentPerformanceReports'
         ));
+    }
+
+    public function tiktokPlaceholder()
+    {
+        return view('admin.tiktok.placeholder');
     }
 
     public function employeeDepartment(ClientFundDashboardService $clientFundDashboardService)

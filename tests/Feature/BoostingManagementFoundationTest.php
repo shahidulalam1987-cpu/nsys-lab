@@ -102,10 +102,11 @@ class BoostingManagementFoundationTest extends TestCase
             ->assertSee('NSYS Ad Account 1');
 
         $this->actingAs($admin)
-            ->get('/admin/dashboard')
+            ->get('/admin/facebook-dashboard')
             ->assertOk()
             ->assertSee('Total BM')
             ->assertSee('Total Ad Accounts')
+            ->assertSee('Active Campaigns')
             ->assertSee('Remaining Threshold')
             ->assertSee('Critical Accounts')
             ->assertSee('Add BM')

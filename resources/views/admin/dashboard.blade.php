@@ -1,176 +1,98 @@
 @extends('layouts.admin')
 
 @section('content')
-    <h1>Admin Dashboard</h1>
+    @if(request()->is('admin/facebook-dashboard'))
+        <h1>Facebook Dashboard</h1>
+        <p>Facebook advertising summary for BM, ad accounts, campaigns, and daily performance.</p>
 
-    <p>Welcome NSYS Admin | Today: {{ $today }}</p>
-
-    <div class="stats-grid">
-        <div class="stat-card">
-            <p>Total BM</p>
-            <h2>{{ number_format($totalBusinessManagers) }}</h2>
+        <div class="stats-grid">
+            <div class="stat-card"><p>Total BM</p><h2>{{ number_format($totalBusinessManagers) }}</h2></div>
+            <div class="stat-card"><p>Total Ad Accounts</p><h2>{{ number_format($totalAdAccounts) }}</h2></div>
+            <div class="stat-card"><p>Active Campaigns</p><h2>{{ number_format($activeCampaigns) }}</h2></div>
+            <div class="stat-card"><p>Today Spend</p><h2>USD {{ number_format($todayPerformanceSpend, 2) }}</h2></div>
+            <div class="stat-card"><p>Today Orders</p><h2>{{ number_format($todayPerformanceOrders) }}</h2></div>
+            <div class="stat-card"><p>Cost Per Order</p><h2>USD {{ number_format($todayPerformanceCpp, 2) }}</h2></div>
+            <div class="stat-card"><p>Payment Issue Accounts</p><h2>{{ number_format($paymentIssueAdAccounts) }}</h2></div>
         </div>
 
-        <div class="stat-card">
-            <p>Total Ad Accounts</p>
-            <h2>{{ number_format($totalAdAccounts) }}</h2>
+        <div class="card">
+            <h2>Quick Actions</h2>
+            <a class="btn" href="/admin/business-managers/create">Add BM</a>
+            <a class="btn" href="/admin/ad-accounts/create">Add Ad Account</a>
+            <a class="btn" href="/admin/campaigns/create">Add Campaign</a>
+            <a class="btn" href="/admin/daily-reports/create">Add Daily Performance</a>
+            <a class="btn" href="/admin/profit-history">Analytics Dashboard</a>
+            <a class="btn" href="/admin/export/daily-reports">Export Reports CSV</a>
         </div>
 
-        <div class="stat-card">
-            <p>Active Ad Accounts</p>
-            <h2>{{ number_format($activeAdAccounts) }}</h2>
-        </div>
-
-        <div class="stat-card">
-            <p>Payment Issue</p>
-            <h2>{{ number_format($paymentIssueAdAccounts) }}</h2>
-        </div>
-    </div>
-
-    <div class="stats-grid">
-        <div class="stat-card">
-            <p>Total Threshold</p>
-            <h2>USD {{ number_format($totalThreshold, 2) }}</h2>
-        </div>
-
-        <div class="stat-card">
-            <p>Remaining Threshold</p>
-            <h2>USD {{ number_format($remainingThreshold, 2) }}</h2>
-        </div>
-
-        <div class="stat-card">
-            <p>Current Balance</p>
-            <h2>USD {{ number_format($adAccountCurrentBalance, 2) }}</h2>
-        </div>
-
-        <div class="stat-card">
-            <p>Upcoming Billing</p>
-            <h2>{{ number_format($upcomingBillingAccounts) }}</h2>
-        </div>
-
-        <div class="stat-card">
-            <p>Critical Accounts</p>
-            <h2>{{ number_format($criticalAdAccounts) }}</h2>
-        </div>
-    </div>
-
-    <div class="stats-grid">
-        <div class="stat-card">
-            <p>Today's Spend</p>
-            <h2>USD {{ number_format($todayPerformanceSpend, 2) }}</h2>
-            <p>Today</p>
-        </div>
-
-        <div class="stat-card">
-            <p>Today's Orders</p>
-            <h2>{{ number_format($todayPerformanceOrders) }}</h2>
-        </div>
-
-        <div class="stat-card">
-            <p>Today's Cost Per Order</p>
-            <h2>USD {{ number_format($todayPerformanceCpp, 2) }}</h2>
-        </div>
-    </div>
-
-    <div class="card">
-        <h2>Business Summary</h2>
-
-        <table>
-            <tr>
-                <th>Total Dollar Spend</th>
-                <th>Total Orders</th>
-                <th>Total Revenue</th>
-                <th>Total Cost</th>
-            </tr>
-            <tr>
-                <td>${{ number_format($totalDollarSpend, 2) }}</td>
-                <td>{{ $totalOrders }}</td>
-                <td>BDT {{ number_format($totalRevenue, 2) }}</td>
-                <td>BDT {{ number_format($totalCost, 2) }}</td>
-            </tr>
-        </table>
-    </div>
-
-    <div class="card">
-        <h2>Quick Actions</h2>
-
-        <a class="btn" href="/admin/business-managers/create">Add BM</a>
-        <a class="btn" href="/admin/ad-accounts/create">Add Ad Account</a>
-        <a class="btn" href="/admin/campaigns/create">Add Campaign</a>
-        <a class="btn" href="/admin/daily-reports/create">Add Daily Performance</a>
-        <a class="btn" href="/admin/clients/create">Add Client</a>
-        <a class="btn" href="/admin/payments/pending">Pending Payments</a>
-        <a class="btn" href="/admin/profit-history">Profit History</a>
-        <a class="btn" href="/admin/export/payments">Export Payments CSV</a>
-        <a class="btn" href="/admin/export/daily-reports">Export Reports CSV</a>
-        <a class="btn" href="/admin/export/profit-history">Export Profit CSV</a>
-    </div>
-
-    <div class="card">
-        <h2>Recent Payments</h2>
-
-        <table>
-            <tr>
-                <th>Client</th>
-                <th>Amount</th>
-                <th>Method</th>
-                <th>Status</th>
-                <th>Date</th>
-            </tr>
-
-            @forelse($recentPayments as $payment)
+        <div class="card">
+            <h2>Financial Control</h2>
+            <table>
                 <tr>
-                    <td>{{ $payment->client->company_name ?? 'N/A' }}</td>
-                    <td>BDT {{ number_format($payment->amount, 2) }}</td>
-                    <td>{{ $payment->payment_method }}</td>
-                    <td>
-                        @if($payment->status == 'approved')
-                            <span class="badge badge-success">Approved</span>
-                        @elseif($payment->status == 'pending')
-                            <span class="badge badge-warning">Pending</span>
-                        @else
-                            <span class="badge badge-danger">Rejected</span>
-                        @endif
-                    </td>
-                    <td>{{ $payment->created_at }}</td>
+                    <th>Total Threshold</th>
+                    <th>Remaining Threshold</th>
+                    <th>Current Balance</th>
+                    <th>Upcoming Billing</th>
+                    <th>Critical Accounts</th>
                 </tr>
-            @empty
                 <tr>
-                    <td colspan="5">No recent payments found.</td>
+                    <td>USD {{ number_format($totalThreshold, 2) }}</td>
+                    <td>USD {{ number_format($remainingThreshold, 2) }}</td>
+                    <td>USD {{ number_format($adAccountCurrentBalance, 2) }}</td>
+                    <td>{{ number_format($upcomingBillingAccounts) }}</td>
+                    <td>{{ number_format($criticalAdAccounts) }}</td>
                 </tr>
-            @endforelse
-        </table>
-    </div>
+            </table>
+        </div>
 
-    <div class="card">
-        <h2>Recent Daily Performance</h2>
-
-        <table>
-            <tr>
-                <th>Campaign</th>
-                <th>Date</th>
-                <th>Client</th>
-                <th>Page</th>
-                <th>Spend</th>
-                <th>Orders</th>
-                <th>Cost Per Order</th>
-            </tr>
-
-            @forelse($recentPerformanceReports as $report)
+        <div class="card">
+            <h2>Recent Daily Performance</h2>
+            <table>
                 <tr>
-                    <td>{{ $report->campaign?->campaign_name ?: '-' }}</td>
-                    <td>{{ $report->report_date?->toDateString() }}</td>
-                    <td>{{ $report->campaign?->client?->company_name ?: '-' }}</td>
-                    <td>{{ $report->campaign?->page?->page_name ?: '-' }}</td>
-                    <td>USD {{ number_format((float) $report->spend, 2) }}</td>
-                    <td>{{ number_format($report->orders) }}</td>
-                    <td>USD {{ number_format((float) $report->cpp, 2) }}</td>
+                    <th>Campaign</th>
+                    <th>Date</th>
+                    <th>Client</th>
+                    <th>Page</th>
+                    <th>Spend</th>
+                    <th>Orders</th>
+                    <th>Cost Per Order</th>
                 </tr>
-            @empty
-                <tr>
-                    <td colspan="7">No recent performance found.</td>
-                </tr>
-            @endforelse
-        </table>
-    </div>
+                @forelse($recentPerformanceReports as $report)
+                    <tr>
+                        <td>{{ $report->campaign?->campaign_name ?: '-' }}</td>
+                        <td>{{ $report->report_date?->toDateString() }}</td>
+                        <td>{{ $report->campaign?->client?->company_name ?: '-' }}</td>
+                        <td>{{ $report->campaign?->page?->page_name ?: '-' }}</td>
+                        <td>USD {{ number_format((float) $report->spend, 2) }}</td>
+                        <td>{{ number_format($report->orders) }}</td>
+                        <td>USD {{ number_format((float) $report->cpp, 2) }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="7">No recent performance found.</td></tr>
+                @endforelse
+            </table>
+        </div>
+    @else
+        <h1>Admin Dashboard</h1>
+        <p>Overall agency summary | Today: {{ $today }}</p>
+
+        <div class="stats-grid">
+            <div class="stat-card"><p>Total Clients</p><h2>{{ number_format($totalClients) }}</h2></div>
+            <div class="stat-card"><p>Total Employees</p><h2>{{ number_format($totalEmployees) }}</h2></div>
+            <div class="stat-card"><p>Total Facebook Spend</p><h2>USD {{ number_format($totalFacebookSpend, 2) }}</h2></div>
+            <div class="stat-card"><p>Total Orders</p><h2>{{ number_format($totalFacebookOrders) }}</h2></div>
+            <div class="stat-card"><p>Client Fund Balance</p><h2>BDT {{ number_format($clientFundSummary['available_balance'], 2) }}</h2></div>
+            <div class="stat-card"><p>Employee Salary Due</p><h2>BDT {{ number_format($employeeSalaryDue, 2) }}</h2></div>
+            <div class="stat-card"><p>System Alerts</p><h2>{{ number_format($systemAlerts) }}</h2></div>
+        </div>
+
+        <div class="card">
+            <h2>Department Entry Points</h2>
+            <a class="btn" href="/admin/facebook-dashboard">Facebook</a>
+            <a class="btn" href="/admin/tiktok">TikTok</a>
+            <a class="btn" href="/admin/client-dashboard">Client Department</a>
+            <a class="btn" href="/admin/employee-dashboard">Employee Department</a>
+            <a class="btn" href="/admin/bug-tracker">System Tools</a>
+        </div>
+    @endif
 @endsection

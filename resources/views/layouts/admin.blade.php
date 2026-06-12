@@ -440,7 +440,16 @@
             || request()->is('admin/work-status*')
             || request()->is('admin/employee-notices*')
             || request()->is('admin/payroll*');
-        $isAdminDashboard = ! $isSystemTools && ! $isClientDepartment && ! $isEmployeeDepartment;
+        $isTikTok = request()->is('admin/tiktok*');
+        $isFacebook = request()->is('admin/facebook-dashboard')
+            || request()->is('admin/business-managers*')
+            || request()->is('admin/ad-accounts*')
+            || request()->is('admin/ad-account-ledger*')
+            || request()->is('admin/client-pages*')
+            || request()->is('admin/campaigns*')
+            || request()->is('admin/daily-reports*')
+            || request()->is('admin/profit-history*');
+        $isAdminDashboard = request()->is('admin/dashboard');
         $openBugCount = \App\Models\BugReport::where('status', 'open')->count();
         $clientFundBadges = ($isEmployeeDepartment || $isClientDepartment)
             ? app(\App\Services\ClientFundDashboardService::class)->sidebarBadges()
@@ -459,6 +468,8 @@
                     @endif
                 </a>
                 <a class="department-tab {{ $isAdminDashboard ? 'active-department' : '' }}" href="/admin/dashboard">Admin Dashboard</a>
+                <a class="department-tab {{ $isFacebook ? 'active-department' : '' }}" href="/admin/facebook-dashboard">Facebook</a>
+                <a class="department-tab {{ $isTikTok ? 'active-department' : '' }}" href="/admin/tiktok">TikTok</a>
                 <a class="department-tab {{ $isClientDepartment ? 'active-department' : '' }}" href="/admin/client-dashboard">Client Department</a>
                 <a class="department-tab {{ $isEmployeeDepartment ? 'active-department' : '' }}" href="/admin/employee-dashboard">Employee Department</a>
             </div>
@@ -482,6 +493,14 @@
                 <a class="sidebar-muted" href="#" onclick="return false;">Backup</a>
                 <a class="sidebar-muted" href="#" onclick="return false;">System Health</a>
                 <a class="sidebar-muted" href="#" onclick="return false;">Error Logs</a>
+            @elseif($isTikTok)
+                <div class="sidebar-section-title">TikTok</div>
+                <a class="{{ request()->is('admin/tiktok') ? 'active-menu' : '' }}" href="/admin/tiktok">Dashboard</a>
+                <a class="{{ request()->is('admin/tiktok/ad-accounts') ? 'active-menu' : '' }}" href="/admin/tiktok/ad-accounts">Ad Account Management</a>
+                <a class="{{ request()->is('admin/tiktok/pages') ? 'active-menu' : '' }}" href="/admin/tiktok/pages">Page Management</a>
+                <a class="{{ request()->is('admin/tiktok/campaigns') ? 'active-menu' : '' }}" href="/admin/tiktok/campaigns">Campaign Management</a>
+                <a class="{{ request()->is('admin/tiktok/daily-performance') ? 'active-menu' : '' }}" href="/admin/tiktok/daily-performance">Daily Performance Entry</a>
+                <a class="{{ request()->is('admin/tiktok/analytics') ? 'active-menu' : '' }}" href="/admin/tiktok/analytics">Analytics Dashboard</a>
             @elseif($isClientDepartment)
                 <div class="sidebar-section-title">Client Department</div>
 
@@ -542,11 +561,9 @@
                         <span class="sidebar-count-badge danger">{{ $clientFundBadges['unpaid_salary_count'] }}</span>
                     @endif
                 </a>
-            @else
-                <div class="sidebar-section-title">Admin Dashboard</div>
-                <a class="{{ request()->is('admin/dashboard') ? 'active-menu' : '' }}" href="/admin/dashboard">Overview</a>
-
-                <div class="sidebar-section-title">Boosting Management</div>
+            @elseif($isFacebook)
+                <div class="sidebar-section-title">Facebook</div>
+                <a class="{{ request()->is('admin/facebook-dashboard') ? 'active-menu' : '' }}" href="/admin/facebook-dashboard">Dashboard</a>
                 <a class="{{ request()->is('admin/business-managers*') ? 'active-menu' : '' }}" href="/admin/business-managers">BM Management</a>
                 <a class="{{ request()->is('admin/ad-accounts*') ? 'active-menu' : '' }}" href="/admin/ad-accounts">Ad Account Management</a>
                 <a class="{{ request()->is('admin/ad-account-ledger*') ? 'active-menu' : '' }}" href="/admin/ad-account-ledger">Ad Account Ledger</a>
@@ -556,11 +573,9 @@
                 <a class="{{ request()->is('admin/profit-history') ? 'active-menu' : '' }}" href="/admin/profit-history">Analytics Dashboard</a>
                 <a class="sidebar-muted" href="#" onclick="return false;">Orders & Leads</a>
                 <a class="sidebar-muted" href="#" onclick="return false;">Client Reports</a>
-
-                <div class="sidebar-section-title">Future Ready</div>
-                <a class="sidebar-muted" href="#" onclick="return false;">Meta API Integration</a>
-                <a class="sidebar-muted" href="#" onclick="return false;">Pixel Tracking</a>
-                <a class="sidebar-muted" href="#" onclick="return false;">Conversion Tracking</a>
+            @else
+                <div class="sidebar-section-title">Admin Dashboard</div>
+                <a class="{{ request()->is('admin/dashboard') ? 'active-menu' : '' }}" href="/admin/dashboard">Overview</a>
             @endif
         </div>
 

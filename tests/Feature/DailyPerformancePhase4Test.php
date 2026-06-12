@@ -131,11 +131,11 @@ class DailyPerformancePhase4Test extends TestCase
 
         $this->assertDatabaseCount('daily_performance_reports', 2);
 
-        $this->actingAs($admin)->get('/admin/dashboard')
+        $this->actingAs($admin)->get('/admin/facebook-dashboard')
             ->assertOk()
-            ->assertSeeText("Today's Spend")
-            ->assertSeeText("Today's Orders")
-            ->assertSeeText("Today's Cost Per Order")
+            ->assertSeeText("Today Spend")
+            ->assertSeeText("Today Orders")
+            ->assertSeeText("Cost Per Order")
             ->assertSee('Recent Daily Performance');
 
         $this->actingAs($admin)->get('/admin/ad-accounts/' . $adAccount->id)
