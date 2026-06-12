@@ -441,12 +441,13 @@
             || request()->is('admin/employee-notices*')
             || request()->is('admin/payroll*');
         $isTikTok = request()->is('admin/tiktok*');
+        $isFinancialManagement = request()->is('admin/financial-management*')
+            || request()->is('admin/facebook-cards*')
+            || request()->is('admin/facebook-financial*');
         $isFacebook = request()->is('admin/facebook-dashboard')
             || request()->is('admin/business-managers*')
             || request()->is('admin/ad-accounts*')
             || request()->is('admin/ad-account-ledger*')
-            || request()->is('admin/facebook-cards*')
-            || request()->is('admin/facebook-financial*')
             || request()->is('admin/client-pages*')
             || request()->is('admin/campaigns*')
             || request()->is('admin/daily-reports*')
@@ -459,10 +460,14 @@
         $facebookBadges = ($isFacebook || $isAdminDashboard)
             ? [
                 'billing_alert_count' => \App\Models\AdAccount::all()->filter(fn ($account) => in_array($account->billingStatus(), ['upcoming', 'overdue'], true))->count(),
+            ]
+            : ['billing_alert_count' => 0];
+        $financialBadges = ($isFinancialManagement || $isAdminDashboard)
+            ? [
                 'low_card_count' => \App\Models\FacebookCard::all()->filter(fn ($card) => $card->effectiveStatus() === 'low_balance')->count(),
                 'low_funding_count' => \App\Models\FundingBalance::all()->filter(fn ($balance) => $balance->isLowBalance())->count(),
             ]
-            : ['billing_alert_count' => 0, 'low_card_count' => 0, 'low_funding_count' => 0];
+            : ['low_card_count' => 0, 'low_funding_count' => 0];
     @endphp
 
     <div class="topbar">
@@ -479,11 +484,17 @@
                 <a class="department-tab {{ $isAdminDashboard ? 'active-department' : '' }}" href="/admin/dashboard">Admin Dashboard</a>
                 <a class="department-tab {{ $isFacebook ? 'active-department' : '' }}" href="/admin/facebook-dashboard">
                     Facebook
-                    @if(($facebookBadges['billing_alert_count'] + $facebookBadges['low_card_count'] + $facebookBadges['low_funding_count']) > 0)
-                        <span class="header-count-badge">{{ $facebookBadges['billing_alert_count'] + $facebookBadges['low_card_count'] + $facebookBadges['low_funding_count'] }}</span>
+                    @if($facebookBadges['billing_alert_count'] > 0)
+                        <span class="header-count-badge">{{ $facebookBadges['billing_alert_count'] }}</span>
                     @endif
                 </a>
                 <a class="department-tab {{ $isTikTok ? 'active-department' : '' }}" href="/admin/tiktok">TikTok</a>
+                <a class="department-tab {{ $isFinancialManagement ? 'active-department' : '' }}" href="/admin/facebook-financial/funding-dashboard">
+                    Financial Management
+                    @if(($financialBadges['low_card_count'] + $financialBadges['low_funding_count']) > 0)
+                        <span class="header-count-badge">{{ $financialBadges['low_card_count'] + $financialBadges['low_funding_count'] }}</span>
+                    @endif
+                </a>
                 <a class="department-tab {{ $isClientDepartment ? 'active-department' : '' }}" href="/admin/client-dashboard">Client Department</a>
                 <a class="department-tab {{ $isEmployeeDepartment ? 'active-department' : '' }}" href="/admin/employee-dashboard">Employee Department</a>
             </div>
@@ -515,6 +526,35 @@
                 <a class="{{ request()->is('admin/tiktok/campaigns') ? 'active-menu' : '' }}" href="/admin/tiktok/campaigns">Campaign Management</a>
                 <a class="{{ request()->is('admin/tiktok/daily-performance') ? 'active-menu' : '' }}" href="/admin/tiktok/daily-performance">Daily Performance Entry</a>
                 <a class="{{ request()->is('admin/tiktok/analytics') ? 'active-menu' : '' }}" href="/admin/tiktok/analytics">Analytics Dashboard</a>
+            @elseif($isFinancialManagement)
+                <div class="sidebar-section-title">Financial Management</div>
+
+                <div class="sidebar-section-title">Funding</div>
+                <a class="sidebar-link-with-badge {{ request()->is('admin/facebook-financial/funding-dashboard*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/funding-dashboard">
+                    <span>Funding Dashboard</span>
+                    @if($financialBadges['low_funding_count'] > 0)
+                        <span class="sidebar-count-badge danger">{{ $financialBadges['low_funding_count'] }}</span>
+                    @endif
+                </a>
+                <a class="{{ request()->is('admin/facebook-financial/binance-purchases*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/binance-purchases">Binance Purchases</a>
+                <a class="sidebar-link-with-badge {{ request()->is('admin/facebook-cards*') ? 'active-menu' : '' }}" href="/admin/facebook-cards">
+                    <span>Card Management</span>
+                    @if($financialBadges['low_card_count'] > 0)
+                        <span class="sidebar-count-badge danger">{{ $financialBadges['low_card_count'] }}</span>
+                    @endif
+                </a>
+                <a class="{{ request()->is('admin/facebook-financial/card-loads*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/card-loads">Card Loads</a>
+                <a class="{{ request()->is('admin/facebook-financial/card-transactions*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/card-transactions">Card Transactions</a>
+
+                <div class="sidebar-section-title">Profit & Revenue</div>
+                <a class="{{ request()->is('admin/facebook-financial/profit-dashboard*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/profit-dashboard">Profit Dashboard</a>
+                <a class="sidebar-muted" href="#" onclick="return false;">Revenue Dashboard</a>
+                <a class="sidebar-muted" href="#" onclick="return false;">Expense Dashboard</a>
+
+                <div class="sidebar-section-title">Reports</div>
+                <a class="sidebar-muted" href="#" onclick="return false;">Monthly Profit Report</a>
+                <a class="sidebar-muted" href="#" onclick="return false;">Funding Report</a>
+                <a class="sidebar-muted" href="#" onclick="return false;">Card Fee Report</a>
             @elseif($isClientDepartment)
                 <div class="sidebar-section-title">Client Department</div>
 
@@ -586,23 +626,6 @@
                     @endif
                 </a>
                 <a class="{{ request()->is('admin/ad-account-ledger*') ? 'active-menu' : '' }}" href="/admin/ad-account-ledger">Ad Account Ledger</a>
-                <div class="sidebar-section-title">Financial Management</div>
-                <a class="sidebar-link-with-badge {{ request()->is('admin/facebook-financial/funding-dashboard*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/funding-dashboard">
-                    <span>Funding Dashboard</span>
-                    @if($facebookBadges['low_funding_count'] > 0)
-                        <span class="sidebar-count-badge danger">{{ $facebookBadges['low_funding_count'] }}</span>
-                    @endif
-                </a>
-                <a class="{{ request()->is('admin/facebook-financial/binance-purchases*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/binance-purchases">Binance Purchases</a>
-                <a class="sidebar-link-with-badge {{ request()->is('admin/facebook-cards*') ? 'active-menu' : '' }}" href="/admin/facebook-cards">
-                    <span>Card Management</span>
-                    @if($facebookBadges['low_card_count'] > 0)
-                        <span class="sidebar-count-badge danger">{{ $facebookBadges['low_card_count'] }}</span>
-                    @endif
-                </a>
-                <a class="{{ request()->is('admin/facebook-financial/card-loads*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/card-loads">Card Load History</a>
-                <a class="{{ request()->is('admin/facebook-financial/card-transactions*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/card-transactions">Card Transactions</a>
-                <a class="{{ request()->is('admin/facebook-financial/profit-dashboard*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/profit-dashboard">Profit Dashboard</a>
                 <div class="sidebar-section-title">Facebook Assets</div>
                 <a class="{{ request()->is('admin/client-pages*') ? 'active-menu' : '' }}" href="/admin/client-pages">Page Management</a>
                 <a class="{{ request()->is('admin/campaigns*') ? 'active-menu' : '' }}" href="/admin/campaigns">Campaign Management</a>

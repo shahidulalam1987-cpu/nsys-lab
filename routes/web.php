@@ -231,6 +231,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/facebook-cards/{card}/edit', [FacebookCardController::class, 'edit']);
     Route::post('/admin/facebook-cards/{card}/update', [FacebookCardController::class, 'update']);
     Route::post('/admin/facebook-cards/{card}/balance', [FacebookCardController::class, 'updateBalance']);
+    Route::redirect('/admin/financial-management', '/admin/facebook-financial/funding-dashboard');
     Route::get('/admin/facebook-financial/binance-purchases', [FacebookFinancialController::class, 'binancePurchases']);
     Route::post('/admin/facebook-financial/binance-purchases', [FacebookFinancialController::class, 'storeBinancePurchase']);
     Route::get('/admin/facebook-financial/card-loads', [FacebookFinancialController::class, 'cardLoads']);
