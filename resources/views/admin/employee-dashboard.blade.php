@@ -26,10 +26,11 @@
     </div>
 
     <div class="card">
-        <a class="btn" href="/admin/employees">Employees</a>
+        <a class="btn" href="/admin/employees">Employee List</a>
         <a class="btn" href="/admin/assignments">Assignments</a>
-        <a class="btn" href="/admin/attendance">Attendance</a>
         <a class="btn" href="/admin/work-status">Work Status</a>
+        <a class="btn" href="/admin/attendance">Attendance</a>
+        <a class="btn" href="/admin/payroll">Salary Generate</a>
         <a class="btn" href="/admin/payroll?status=upcoming">Upcoming Salary</a>
         <a class="btn" href="/admin/payroll?status=due">Unpaid Salary</a>
     </div>

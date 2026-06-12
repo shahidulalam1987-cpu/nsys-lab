@@ -26,9 +26,10 @@
 
     <div class="card">
         <a class="btn" href="/admin/clients">Client List</a>
-        <a class="btn" href="/admin/client-fund">Client Fund Dashboard</a>
         <a class="btn" href="/admin/salary-payments/create">Receive Payment</a>
+        <a class="btn" href="/admin/salary-payments/pending">Pending Payments</a>
         <a class="btn" href="/admin/salary-payments">Payment History</a>
+        <a class="btn" href="/admin/client-users">Client Users</a>
     </div>
 
     <div class="card">
