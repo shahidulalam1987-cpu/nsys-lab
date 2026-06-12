@@ -18,6 +18,7 @@ class ClientPageController extends Controller
             ->when($request->client_id, fn ($query, $clientId) => $query->where('client_id', $clientId))
             ->when($request->business_manager_id, fn ($query, $bmId) => $query->where('business_manager_id', $bmId))
             ->when($request->ad_account_id, fn ($query, $accountId) => $query->where('ad_account_id', $accountId))
+            ->when($request->platform, fn ($query, $platform) => $query->where('platform', $platform))
             ->when($request->status, fn ($query, $status) => $query->where('status', $status));
 
         return view('admin.client-pages.index', [
@@ -25,6 +26,7 @@ class ClientPageController extends Controller
             'clients' => Client::orderBy('company_name')->get(),
             'businessManagers' => BusinessManager::orderBy('bm_name')->get(),
             'adAccounts' => AdAccount::orderBy('ad_account_name')->get(),
+            'platforms' => ClientPage::PLATFORMS,
         ]);
     }
 

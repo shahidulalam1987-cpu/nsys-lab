@@ -97,7 +97,7 @@ class BoostingManagementFoundationTest extends TestCase
             ->get('/admin/client-pages')
             ->assertOk()
             ->assertSee('NSYS Test Page')
-            ->assertSee('PAGE-1001')
+            ->assertDontSee('PAGE-1001')
             ->assertSee('NSYS Main BM')
             ->assertSee('NSYS Ad Account 1');
 
