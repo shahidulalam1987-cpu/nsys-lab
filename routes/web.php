@@ -237,6 +237,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/facebook-financial/card-loads', [FacebookFinancialController::class, 'storeCardLoad']);
     Route::get('/admin/facebook-financial/card-transactions', [FacebookFinancialController::class, 'cardTransactions']);
     Route::post('/admin/facebook-financial/card-transactions', [FacebookFinancialController::class, 'storeCardTransaction']);
+    Route::get('/admin/facebook-financial/funding-dashboard', [FacebookFinancialController::class, 'fundingDashboard']);
+    Route::get('/admin/facebook-financial/funding-dashboard/update', [FacebookFinancialController::class, 'createFundingBalance']);
+    Route::post('/admin/facebook-financial/funding-dashboard/update', [FacebookFinancialController::class, 'storeFundingBalance']);
+    Route::get('/admin/facebook-financial/funding-history/{history}', [FacebookFinancialController::class, 'fundingHistoryShow']);
     Route::get('/admin/facebook-financial/profit-dashboard', [FacebookFinancialController::class, 'profitDashboard']);
 
     Route::get('/admin/campaigns', [CampaignController::class, 'index']);

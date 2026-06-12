@@ -11,10 +11,106 @@ use App\Models\CardTransaction;
 use App\Models\Client;
 use App\Models\ClientPage;
 use App\Models\FacebookCard;
+use App\Models\FundingBalance;
+use App\Models\FundingBalanceHistory;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class FacebookFinancialController extends Controller
 {
+    public function fundingDashboard()
+    {
+        $balances = FundingBalance::with('updatedBy')->get()->keyBy('source');
+        $balanceRows = collect(FundingBalance::SOURCES)->map(function (string $label, string $source) use ($balances) {
+            $balance = $balances->get($source);
+
+            return [
+                'source' => $source,
+                'label' => $label,
+                'balance' => $balance,
+                'current_balance' => (float) ($balance?->current_balance ?? 0),
+                'last_updated' => $balance?->updated_at,
+                'status' => $balance?->statusLabel() ?? 'Not Updated',
+                'status_class' => $balance?->statusBadgeClass() ?? 'badge-neutral',
+                'is_low' => $balance ? $balance->isLowBalance() : true,
+                'limit' => (float) (FundingBalance::LOW_BALANCE_LIMITS[$source] ?? 100),
+            ];
+        });
+        $history = FundingBalanceHistory::with('createdBy')->latest('balance_date')->latest()->take(20)->get();
+        $monthTransactions = CardTransaction::whereMonth('transaction_date', now()->month)
+            ->whereYear('transaction_date', now()->year)
+            ->get();
+
+        return view('admin.facebook-financial.funding-dashboard', [
+            'balanceRows' => $balanceRows,
+            'summary' => [
+                'binance_balance' => $balanceRows->firstWhere('source', 'binance')['current_balance'] ?? 0,
+                'redotpay_balance' => $balanceRows->firstWhere('source', 'redotpay')['current_balance'] ?? 0,
+                'tavao_balance' => $balanceRows->firstWhere('source', 'tavao')['current_balance'] ?? 0,
+                'total_available_usd' => (float) $balanceRows->sum('current_balance'),
+                'low_binance' => $balanceRows->firstWhere('source', 'binance')['is_low'] ?? true,
+                'low_redotpay' => $balanceRows->firstWhere('source', 'redotpay')['is_low'] ?? true,
+                'low_tavao' => $balanceRows->firstWhere('source', 'tavao')['is_low'] ?? true,
+                'monthly_facebook_spend' => (float) $monthTransactions->sum('spend_usd'),
+                'monthly_card_fees' => (float) $monthTransactions->sum('fee_usd'),
+                'monthly_revenue' => (float) $monthTransactions->sum('client_revenue'),
+                'estimated_profit' => (float) $monthTransactions->sum('net_profit'),
+            ],
+            'history' => $history,
+        ]);
+    }
+
+    public function createFundingBalance()
+    {
+        return view('admin.facebook-financial.funding-balance-form', [
+            'sources' => FundingBalance::SOURCES,
+        ]);
+    }
+
+    public function storeFundingBalance(Request $request)
+    {
+        $data = $request->validate([
+            'source' => ['required', Rule::in(array_keys(FundingBalance::SOURCES))],
+            'balance' => ['required', 'numeric', 'min:0'],
+            'balance_date' => ['required', 'date'],
+            'note' => ['nullable', 'string'],
+        ]);
+
+        $balance = FundingBalance::firstOrNew(['source' => $data['source']]);
+        $previousBalance = (float) ($balance->current_balance ?? 0);
+        $newBalance = round((float) $data['balance'], 2);
+
+        $balance->fill([
+            'current_balance' => $newBalance,
+            'currency' => FundingBalance::CURRENCY,
+            'balance_date' => $data['balance_date'],
+            'notes' => $data['note'] ?? null,
+            'updated_by' => $request->user()?->id,
+        ]);
+        $balance->save();
+
+        FundingBalanceHistory::create([
+            'funding_balance_id' => $balance->id,
+            'source' => $data['source'],
+            'previous_balance' => $previousBalance,
+            'new_balance' => $newBalance,
+            'difference' => round($newBalance - $previousBalance, 2),
+            'currency' => FundingBalance::CURRENCY,
+            'balance_date' => $data['balance_date'],
+            'note' => $data['note'] ?? null,
+            'created_by' => $request->user()?->id,
+        ]);
+
+        return redirect('/admin/facebook-financial/funding-dashboard')->with('success', 'Funding balance updated successfully.');
+    }
+
+    public function fundingHistoryShow(FundingBalanceHistory $history)
+    {
+        return view('admin.facebook-financial.funding-history-show', [
+            'history' => $history->load('createdBy', 'fundingBalance'),
+        ]);
+    }
+
     public function binancePurchases()
     {
         $purchases = BinancePurchase::latest('purchase_date')->latest()->get();

@@ -87,6 +87,10 @@
             <div class="stat-card"><p>Employee Salary Due</p><h2>BDT {{ number_format($employeeSalaryDue, 2) }}</h2></div>
             <div class="stat-card"><p>Facebook Billing Alerts</p><h2>{{ number_format($facebookBillingAlerts) }}</h2></div>
             <div class="stat-card"><p>Card Balance</p><h2>USD {{ number_format($cardAlerts['total_balance'], 2) }}</h2></div>
+            <div class="stat-card"><p>Binance Balance</p><h2>USD {{ number_format($fundingAlerts['binance_balance'], 2) }}</h2></div>
+            <div class="stat-card"><p>RedotPay Balance</p><h2>USD {{ number_format($fundingAlerts['redotpay_balance'], 2) }}</h2></div>
+            <div class="stat-card"><p>Tavao Balance</p><h2>USD {{ number_format($fundingAlerts['tavao_balance'], 2) }}</h2></div>
+            <div class="stat-card"><p>Total Available USD</p><h2>USD {{ number_format($fundingAlerts['total_available_usd'], 2) }}</h2></div>
         </div>
 
         <div class="card">
@@ -146,6 +150,11 @@
                     <p>Card Balance</p>
                     <h2>USD {{ number_format($cardAlerts['total_balance'], 2) }}</h2>
                     <p>{{ number_format($cardAlerts['low_balance_cards']) }} Low | {{ number_format($cardAlerts['negative_balance_cards']) }} Negative</p>
+                </a>
+                <a class="stat-card" href="/admin/facebook-financial/funding-dashboard" style="text-decoration:none;">
+                    <p>Total Available USD</p>
+                    <h2>USD {{ number_format($fundingAlerts['total_available_usd'], 2) }}</h2>
+                    <p>Binance, RedotPay, Tavao</p>
                 </a>
             </div>
         </div>

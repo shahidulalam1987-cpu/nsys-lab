@@ -14,6 +14,7 @@ use App\Models\EmployeeAttendance;
 use App\Models\EmployeePayroll;
 use App\Models\CardTransaction;
 use App\Models\FacebookCard;
+use App\Models\FundingBalance;
 use App\Models\SalaryPayment;
 use App\Services\ClientFundDashboardService;
 
@@ -85,6 +86,15 @@ class DashboardController extends Controller
             'negative_balance_cards' => $negativeBalanceCards,
             'high_fee_transactions' => $highFeeTransactions,
         ];
+        $fundingBalances = FundingBalance::all()->keyBy('source');
+        $fundingAlerts = [
+            'binance_balance' => (float) ($fundingBalances->get('binance')?->current_balance ?? 0),
+            'redotpay_balance' => (float) ($fundingBalances->get('redotpay')?->current_balance ?? 0),
+            'tavao_balance' => (float) ($fundingBalances->get('tavao')?->current_balance ?? 0),
+        ];
+        $fundingAlerts['total_available_usd'] = $fundingAlerts['binance_balance']
+            + $fundingAlerts['redotpay_balance']
+            + $fundingAlerts['tavao_balance'];
 
         return view('admin.dashboard', compact(
             'today',
@@ -102,6 +112,7 @@ class DashboardController extends Controller
             'employeeAlerts',
             'facebookAlerts',
             'cardAlerts',
+            'fundingAlerts',
             'cards'
         ));
     }
