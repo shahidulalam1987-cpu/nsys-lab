@@ -39,6 +39,16 @@ class FacebookCard extends Model
         return $this->belongsTo(AdAccount::class);
     }
 
+    public function loads()
+    {
+        return $this->hasMany(CardLoad::class);
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(CardTransaction::class);
+    }
+
     public function getCurrencyAttribute($value): string
     {
         return $value ?: self::CURRENCY;

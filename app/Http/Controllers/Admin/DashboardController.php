@@ -12,6 +12,7 @@ use App\Models\DailyPerformanceReport;
 use App\Models\Employee;
 use App\Models\EmployeeAttendance;
 use App\Models\EmployeePayroll;
+use App\Models\CardTransaction;
 use App\Models\FacebookCard;
 use App\Models\SalaryPayment;
 use App\Services\ClientFundDashboardService;
@@ -54,6 +55,8 @@ class DashboardController extends Controller
         $totalCardBalance = (float) $cards->sum('current_balance');
         $lowBalanceCards = $cards->filter(fn (FacebookCard $card) => $card->effectiveStatus() === 'low_balance')->count();
         $disabledCards = $cards->where('status', 'disabled')->count();
+        $negativeBalanceCards = $cards->filter(fn (FacebookCard $card) => (float) $card->current_balance < 0)->count();
+        $highFeeTransactions = CardTransaction::where('fee_usd', '>=', 5)->count();
         $employeeAlerts = [
             'upcoming_count' => $upcomingPayrolls->count(),
             'upcoming_amount' => (float) $upcomingPayrolls->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
@@ -74,6 +77,8 @@ class DashboardController extends Controller
             'total_balance' => $totalCardBalance,
             'low_balance_cards' => $lowBalanceCards,
             'disabled_cards' => $disabledCards,
+            'negative_balance_cards' => $negativeBalanceCards,
+            'high_fee_transactions' => $highFeeTransactions,
         ];
 
         return view('admin.dashboard', compact(

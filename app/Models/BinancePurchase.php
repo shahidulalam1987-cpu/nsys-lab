@@ -1,0 +1,46 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class BinancePurchase extends Model
+{
+    protected $fillable = [
+        'purchase_date',
+        'usd_amount',
+        'buy_rate',
+        'total_bdt_cost',
+        'source',
+        'seller_name',
+        'reference',
+        'notes',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'purchase_date' => 'date',
+            'usd_amount' => 'decimal:2',
+            'buy_rate' => 'decimal:4',
+            'total_bdt_cost' => 'decimal:2',
+        ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (BinancePurchase $purchase) {
+            $purchase->total_bdt_cost = round((float) $purchase->usd_amount * (float) $purchase->buy_rate, 2);
+        });
+    }
+
+    public function loads()
+    {
+        return $this->hasMany(CardLoad::class);
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(CardTransaction::class);
+    }
+}

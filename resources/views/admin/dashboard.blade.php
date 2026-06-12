@@ -132,7 +132,7 @@
                 <a class="stat-card" href="/admin/facebook-cards" style="text-decoration:none;">
                     <p>Card Balance</p>
                     <h2>USD {{ number_format($cardAlerts['total_balance'], 2) }}</h2>
-                    <p>{{ number_format($cardAlerts['low_balance_cards']) }} Low Balance</p>
+                    <p>{{ number_format($cardAlerts['low_balance_cards']) }} Low | {{ number_format($cardAlerts['negative_balance_cards']) }} Negative</p>
                 </a>
             </div>
         </div>
@@ -178,6 +178,7 @@
                 <a class="stat-card" href="/admin/ad-accounts?balance_status=low" style="text-decoration:none;"><p>Low Balance Accounts</p><h2>{{ number_format($facebookAlerts['low_balance_accounts']) }}</h2></a>
                 <a class="stat-card" href="/admin/ad-accounts?threshold_status=critical" style="text-decoration:none;"><p>Critical Threshold Accounts</p><h2>{{ number_format($facebookAlerts['critical_threshold_accounts']) }}</h2></a>
                 <div class="stat-card"><p>Monthly Billing Amount</p><h2>USD {{ number_format($facebookAlerts['monthly_billing_amount'], 2) }}</h2></div>
+                <a class="stat-card" href="/admin/facebook-financial/card-transactions" style="text-decoration:none;"><p>High Fee Transactions</p><h2>{{ number_format($cardAlerts['high_fee_transactions']) }}</h2></a>
             </div>
         </div>
 

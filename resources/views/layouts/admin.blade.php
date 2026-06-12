@@ -446,6 +446,7 @@
             || request()->is('admin/ad-accounts*')
             || request()->is('admin/ad-account-ledger*')
             || request()->is('admin/facebook-cards*')
+            || request()->is('admin/facebook-financial*')
             || request()->is('admin/client-pages*')
             || request()->is('admin/campaigns*')
             || request()->is('admin/daily-reports*')
@@ -584,12 +585,18 @@
                     @endif
                 </a>
                 <a class="{{ request()->is('admin/ad-account-ledger*') ? 'active-menu' : '' }}" href="/admin/ad-account-ledger">Ad Account Ledger</a>
+                <div class="sidebar-section-title">Financial Management</div>
+                <a class="{{ request()->is('admin/facebook-financial/binance-purchases*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/binance-purchases">Binance Purchases</a>
                 <a class="sidebar-link-with-badge {{ request()->is('admin/facebook-cards*') ? 'active-menu' : '' }}" href="/admin/facebook-cards">
-                    <span>Card Balance</span>
+                    <span>Card Management</span>
                     @if($facebookBadges['low_card_count'] > 0)
                         <span class="sidebar-count-badge danger">{{ $facebookBadges['low_card_count'] }}</span>
                     @endif
                 </a>
+                <a class="{{ request()->is('admin/facebook-financial/card-loads*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/card-loads">Card Load History</a>
+                <a class="{{ request()->is('admin/facebook-financial/card-transactions*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/card-transactions">Card Transactions</a>
+                <a class="{{ request()->is('admin/facebook-financial/profit-dashboard*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/profit-dashboard">Profit Dashboard</a>
+                <div class="sidebar-section-title">Facebook Assets</div>
                 <a class="{{ request()->is('admin/client-pages*') ? 'active-menu' : '' }}" href="/admin/client-pages">Page Management</a>
                 <a class="{{ request()->is('admin/campaigns*') ? 'active-menu' : '' }}" href="/admin/campaigns">Campaign Management</a>
                 <a class="{{ request()->is('admin/daily-reports*') ? 'active-menu' : '' }}" href="/admin/daily-reports">Daily Performance Entry</a>

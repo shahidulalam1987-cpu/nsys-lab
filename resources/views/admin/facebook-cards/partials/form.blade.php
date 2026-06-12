@@ -11,7 +11,12 @@
         <input type="text" name="card_last_four" value="{{ old('card_last_four', $card->card_last_four) }}" maxlength="4">
     </label>
     <label>Provider<br>
-        <input type="text" name="provider" value="{{ old('provider', $card->provider) }}" placeholder="Bank or card provider">
+        <select name="provider">
+            <option value="">Select Provider</option>
+            @foreach(['RedotPay', 'Tavao', 'Other'] as $provider)
+                <option value="{{ $provider }}" @selected(old('provider', $card->provider) === $provider)>{{ $provider }}</option>
+            @endforeach
+        </select>
     </label>
     <label>Current Balance<br>
         <input type="number" step="0.01" name="current_balance" value="{{ old('current_balance', $card->current_balance ?? 0) }}" required>

@@ -37,6 +37,7 @@ use App\Http\Controllers\Admin\SystemToolsController;
 use App\Http\Controllers\Admin\BusinessManagerController;
 use App\Http\Controllers\Admin\AdAccountController;
 use App\Http\Controllers\Admin\FacebookCardController;
+use App\Http\Controllers\Admin\FacebookFinancialController;
 use App\Http\Controllers\Admin\CampaignController;
 
 Route::get('/', [DashboardController::class, 'index']);
@@ -230,6 +231,13 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/facebook-cards/{card}/edit', [FacebookCardController::class, 'edit']);
     Route::post('/admin/facebook-cards/{card}/update', [FacebookCardController::class, 'update']);
     Route::post('/admin/facebook-cards/{card}/balance', [FacebookCardController::class, 'updateBalance']);
+    Route::get('/admin/facebook-financial/binance-purchases', [FacebookFinancialController::class, 'binancePurchases']);
+    Route::post('/admin/facebook-financial/binance-purchases', [FacebookFinancialController::class, 'storeBinancePurchase']);
+    Route::get('/admin/facebook-financial/card-loads', [FacebookFinancialController::class, 'cardLoads']);
+    Route::post('/admin/facebook-financial/card-loads', [FacebookFinancialController::class, 'storeCardLoad']);
+    Route::get('/admin/facebook-financial/card-transactions', [FacebookFinancialController::class, 'cardTransactions']);
+    Route::post('/admin/facebook-financial/card-transactions', [FacebookFinancialController::class, 'storeCardTransaction']);
+    Route::get('/admin/facebook-financial/profit-dashboard', [FacebookFinancialController::class, 'profitDashboard']);
 
     Route::get('/admin/campaigns', [CampaignController::class, 'index']);
     Route::get('/admin/campaigns/create', [CampaignController::class, 'create']);
