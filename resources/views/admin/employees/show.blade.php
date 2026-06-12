@@ -426,17 +426,12 @@
 
     <div class="employee-tab-panel" data-tab-panel="banking">
         <div class="card" style="margin-top:0;">
-            <h2>Banking / Mobile Banking Information</h2>
+            <h2>Banking Information</h2>
             <div class="employee-info-grid">
                 <p><strong>Bank Name:</strong> {{ $employee->bank_name ?: '-' }}</p>
                 <p><strong>Account Name:</strong> {{ $employee->account_name ?: '-' }}</p>
                 <p><strong>Account Number:</strong> {{ $employee->account_number ?: '-' }}</p>
                 <p><strong>Branch Name:</strong> {{ $employee->branch_name ?: '-' }}</p>
-                <p><strong>bKash Number:</strong> {{ $employee->bkash_number ?: '-' }}</p>
-                <p><strong>Nagad Number:</strong> {{ $employee->nagad_number ?: '-' }}</p>
-                <p><strong>Rocket Number:</strong> {{ $employee->rocket_number ?: '-' }}</p>
-                <p><strong>Preferred Payment Method:</strong> {{ $employee->preferred_payment_method ? ucfirst($employee->preferred_payment_method) : '-' }}</p>
-                <p><strong>Mobile Banking Info:</strong> {{ $employee->mobile_banking_info ?: '-' }}</p>
             </div>
         </div>
     </div>

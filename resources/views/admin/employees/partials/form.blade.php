@@ -118,24 +118,12 @@
         </p>
         <p>Monthly Salary<br><input type="number" step="0.01" name="monthly_salary" value="{{ old('monthly_salary', $employee?->monthly_salary ?? 0) }}" required></p>
 
-        <h2>Banking / Mobile Banking Information</h2>
+        <h2>Banking Information</h2>
 
         <p>Bank Name<br><input type="text" name="bank_name" value="{{ old('bank_name', $employee?->bank_name) }}"></p>
         <p>Account Name<br><input type="text" name="account_name" value="{{ old('account_name', $employee?->account_name) }}"></p>
         <p>Account Number<br><input type="text" name="account_number" value="{{ old('account_number', $employee?->account_number) }}"></p>
         <p>Branch Name<br><input type="text" name="branch_name" value="{{ old('branch_name', $employee?->branch_name) }}"></p>
-        <p>bKash Number<br><input type="text" name="bkash_number" value="{{ old('bkash_number', $employee?->bkash_number) }}"></p>
-        <p>Nagad Number<br><input type="text" name="nagad_number" value="{{ old('nagad_number', $employee?->nagad_number) }}"></p>
-        <p>Rocket Number<br><input type="text" name="rocket_number" value="{{ old('rocket_number', $employee?->rocket_number) }}"></p>
-        <p>Preferred Payment Method<br>
-            <select name="preferred_payment_method">
-                <option value="">Select Payment Method</option>
-                @foreach(['bank' => 'Bank', 'bkash' => 'bKash', 'nagad' => 'Nagad', 'rocket' => 'Rocket', 'cash' => 'Cash'] as $value => $label)
-                    <option value="{{ $value }}" {{ old('preferred_payment_method', $employee?->preferred_payment_method) == $value ? 'selected' : '' }}>{{ $label }}</option>
-                @endforeach
-            </select>
-        </p>
-        <p>Mobile Banking Info<br><textarea name="mobile_banking_info">{{ old('mobile_banking_info', $employee?->mobile_banking_info) }}</textarea></p>
 
         <h2>Employee Documents</h2>
         <p>NID Front<br>
