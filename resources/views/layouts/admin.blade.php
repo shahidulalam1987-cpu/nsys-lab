@@ -453,7 +453,8 @@
             || request()->is('admin/campaigns*')
             || request()->is('admin/daily-reports*')
             || request()->is('admin/profit-history*');
-        $isAdminDashboard = request()->is('admin/dashboard');
+        $isAdminDashboard = request()->is('admin/dashboard') || request()->is('admin/notifications*');
+        $notificationHeaderSummary = app(\App\Services\NotificationCenterService::class)->summary();
         $openBugCount = \App\Models\BugReport::where('status', 'open')->count();
         $clientFundBadges = ($isEmployeeDepartment || $isClientDepartment)
             ? app(\App\Services\ClientFundDashboardService::class)->sidebarBadges()
@@ -476,7 +477,12 @@
             <div class="brand">NSYS Agency Admin</div>
 
             <div class="department-tabs">
-                <a class="department-tab {{ $isAdminDashboard ? 'active-department' : '' }}" href="/admin/dashboard">Agency Dashboard</a>
+                <a class="department-tab {{ $isAdminDashboard ? 'active-department' : '' }}" href="/admin/dashboard">
+                    Agency Dashboard
+                    @if($notificationHeaderSummary['unread'] > 0)
+                        <span class="header-count-badge">{{ $notificationHeaderSummary['unread'] }}</span>
+                    @endif
+                </a>
                 <a class="department-tab {{ $isFinancialManagement ? 'active-department' : '' }}" href="/admin/financial-management">
                     Finance
                     @if(($financialBadges['low_card_count'] + $financialBadges['low_funding_count']) > 0)
@@ -501,10 +507,18 @@
             </div>
         </div>
 
-        <form method="POST" action="/logout">
-            @csrf
-            <button class="logout-btn" type="submit">Logout</button>
-        </form>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <a class="department-tab {{ request()->is('admin/notifications*') ? 'active-department' : '' }}" href="/admin/notifications" title="Notification Center">
+                Alerts
+                @if($notificationHeaderSummary['unread'] > 0)
+                    <span class="header-count-badge">{{ $notificationHeaderSummary['unread'] }}</span>
+                @endif
+            </a>
+            <form method="POST" action="/logout">
+                @csrf
+                <button class="logout-btn" type="submit">Logout</button>
+            </form>
+        </div>
     </div>
 
     <div class="layout">
@@ -639,6 +653,12 @@
             @else
                 <div class="sidebar-section-title">Agency Dashboard</div>
                 <a class="{{ request()->is('admin/dashboard') ? 'active-menu' : '' }}" href="/admin/dashboard">Overview</a>
+                <a class="sidebar-link-with-badge {{ request()->is('admin/notifications*') ? 'active-menu' : '' }}" href="/admin/notifications">
+                    <span>Notification Center</span>
+                    @if($notificationHeaderSummary['unread'] > 0)
+                        <span class="sidebar-count-badge danger">{{ $notificationHeaderSummary['unread'] }}</span>
+                    @endif
+                </a>
             @endif
         </div>
 

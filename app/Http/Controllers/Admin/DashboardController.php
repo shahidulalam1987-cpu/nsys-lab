@@ -17,10 +17,11 @@ use App\Models\FacebookCard;
 use App\Models\FundingBalance;
 use App\Models\SalaryPayment;
 use App\Services\ClientFundDashboardService;
+use App\Services\NotificationCenterService;
 
 class DashboardController extends Controller
 {
-    public function index(ClientFundDashboardService $clientFundDashboardService)
+    public function index(ClientFundDashboardService $clientFundDashboardService, NotificationCenterService $notificationCenterService)
     {
         $today = date('Y-m-d');
 
@@ -120,6 +121,8 @@ class DashboardController extends Controller
         $fundingAlerts['total_available_usd'] = $fundingAlerts['binance_balance']
             + $fundingAlerts['redotpay_balance']
             + $fundingAlerts['tavao_balance'];
+        $notificationSummary = $notificationCenterService->summary();
+        $notificationGroups = $notificationCenterService->groupedOpenNotifications();
 
         return view('admin.dashboard', compact(
             'today',
@@ -140,7 +143,9 @@ class DashboardController extends Controller
             'facebookAlerts',
             'cardAlerts',
             'fundingAlerts',
-            'cards'
+            'cards',
+            'notificationSummary',
+            'notificationGroups'
         ));
     }
 

@@ -39,6 +39,7 @@ use App\Http\Controllers\Admin\AdAccountController;
 use App\Http\Controllers\Admin\FacebookCardController;
 use App\Http\Controllers\Admin\FacebookFinancialController;
 use App\Http\Controllers\Admin\FinanceManagementController;
+use App\Http\Controllers\Admin\NotificationCenterController;
 use App\Http\Controllers\Admin\CampaignController;
 
 Route::get('/', [DashboardController::class, 'index']);
@@ -73,6 +74,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/export/payments', [ExportController::class, 'paymentsCsv']);
     Route::get('/admin/export/daily-reports', [ExportController::class, 'dailyReportsCsv']);
     Route::get('/admin/dashboard', [AdminDashboardController::class, 'index']);
+    Route::get('/admin/notifications', [NotificationCenterController::class, 'index']);
+    Route::post('/admin/notifications/{notification}/status', [NotificationCenterController::class, 'updateStatus']);
     Route::get('/admin/facebook-dashboard', [AdminDashboardController::class, 'facebookDashboard']);
     Route::get('/admin/tiktok', [AdminDashboardController::class, 'tiktokPlaceholder']);
     Route::get('/admin/tiktok/ad-accounts', [AdminDashboardController::class, 'tiktokPlaceholder']);

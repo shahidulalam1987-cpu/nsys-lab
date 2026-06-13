@@ -77,6 +77,44 @@
         <p>Overall agency summary | Today: {{ $today }}</p>
 
         <div class="card">
+            <h2>Notification Center</h2>
+            <div class="stats-grid">
+                <a class="stat-card" href="/admin/notifications?priority=critical" style="text-decoration:none;border-color:#ef4444;"><p>Critical Alerts</p><h2>{{ number_format($notificationSummary['critical']) }}</h2></a>
+                <a class="stat-card" href="/admin/notifications?priority=warning" style="text-decoration:none;border-color:#f59e0b;"><p>Warning Alerts</p><h2>{{ number_format($notificationSummary['warning']) }}</h2></a>
+                <a class="stat-card" href="/admin/payroll?status=upcoming" style="text-decoration:none;"><p>Upcoming Salaries</p><h2>{{ number_format($notificationSummary['upcoming_salaries']) }}</h2></a>
+                <a class="stat-card" href="/admin/salary-payments/pending" style="text-decoration:none;"><p>Pending Client Payments</p><h2>{{ number_format($notificationSummary['pending_client_payments']) }}</h2></a>
+                <a class="stat-card" href="/admin/facebook-financial/funding-dashboard" style="text-decoration:none;"><p>Low Funding Balance</p><h2>{{ number_format($notificationSummary['low_funding_balance']) }}</h2></a>
+                <a class="stat-card" href="/admin/ad-accounts" style="text-decoration:none;"><p>Ad Account Billing Due</p><h2>{{ number_format($notificationSummary['ad_account_billing_due']) }}</h2></a>
+                <div class="stat-card"><p>Today's Profit</p><h2>BDT {{ number_format($notificationSummary['today_profit'], 2) }}</h2></div>
+                <div class="stat-card"><p>Monthly Profit</p><h2>BDT {{ number_format($notificationSummary['monthly_profit'], 2) }}</h2></div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:18px;">
+                @foreach(['critical' => 'Critical Alerts', 'warning' => 'Warning Alerts', 'information' => 'Information Alerts'] as $priority => $heading)
+                    <div class="card" style="margin:0;background:rgba(255,255,255,.05);">
+                        <h3>{{ $heading }}</h3>
+                        @forelse($notificationGroups[$priority] as $notification)
+                            <p style="margin:10px 0;">
+                                <span class="badge {{ $notification->priorityBadgeClass() }}">{{ $notification->priorityLabel() }}</span>
+                                <br>
+                                <strong>{{ $notification->message }}</strong>
+                                <br>
+                                <span style="color:var(--muted);">{{ $notification->department }} | {{ $notification->target_team ?: 'Management' }}</span>
+                                @if($notification->action_url)
+                                    <br><a href="{{ $notification->action_url }}">Open Action</a>
+                                @endif
+                            </p>
+                        @empty
+                            <p>No {{ strtolower($heading) }}.</p>
+                        @endforelse
+                    </div>
+                @endforeach
+            </div>
+
+            <p><a class="btn" href="/admin/notifications">View All Notifications</a></p>
+        </div>
+
+        <div class="card">
             <h2>Agency Overview</h2>
             <div class="stats-grid">
                 <div class="stat-card"><p>Total Clients</p><h2>{{ number_format($totalClients) }}</h2></div>
