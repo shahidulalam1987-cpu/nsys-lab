@@ -117,6 +117,85 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertSee('Unpaid');
     }
 
+    public function test_unpaid_salary_page_shows_terminated_final_settlement_records(): void
+    {
+        Carbon::setTestNow('2026-06-24');
+
+        $admin = $this->admin();
+        $client = $this->client();
+        $terminated = $this->employee([
+            'name' => 'Final Settlement Employee',
+            'status' => 'terminated',
+            'last_working_date' => '2026-06-20',
+            'salary_day' => 20,
+        ]);
+
+        $this->payroll($terminated, $client, [
+            'salary_period_from' => '2026-06-01',
+            'salary_period_to' => '2026-06-20',
+            'working_days' => 14,
+            'non_working_days' => 6,
+            'payable_salary' => 14000,
+            'paid_amount' => 0,
+            'payment_status' => 'unpaid',
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/payroll?status=due&employee_scope=terminated');
+
+        $response->assertOk();
+        $response->assertSee('Terminated Final Settlement');
+        $response->assertSee('Final Settlement Employee');
+        $response->assertSee('Final Settlement Unpaid');
+        $response->assertSee('Final Settlement Overdue: 4 Days');
+        $response->assertSee('Working: 14.00');
+        $response->assertSee('Non Working: 6.00');
+    }
+
+    public function test_due_filter_shows_final_salary_pending_for_terminated_employee_without_payroll(): void
+    {
+        Carbon::setTestNow('2026-06-24');
+
+        $admin = $this->admin();
+        $this->employee([
+            'name' => 'Final Salary Pending Employee',
+            'status' => 'terminated',
+            'last_working_date' => '2026-06-20',
+            'salary_day' => 20,
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/payroll?status=due&employee_scope=terminated');
+
+        $response->assertOk();
+        $response->assertSee('Final Salary Pending Employee');
+        $response->assertSee('Final salary not generated yet');
+        $response->assertSee('Generate Final Salary');
+    }
+
+    public function test_terminated_employee_profile_shows_final_settlement_card(): void
+    {
+        Carbon::setTestNow('2026-06-24');
+
+        $admin = $this->admin();
+        $client = $this->client();
+        $terminated = $this->employee([
+            'name' => 'Profile Settlement Employee',
+            'status' => 'terminated',
+            'last_working_date' => '2026-06-20',
+        ]);
+        $this->payroll($terminated, $client, [
+            'payable_salary' => 12000,
+            'paid_amount' => 5000,
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/employees/' . $terminated->id);
+
+        $response->assertOk();
+        $response->assertSee('Final Settlement');
+        $response->assertSee('Remaining Due');
+        $response->assertSee('BDT 7,000.00');
+        $response->assertSee('Final Settlement Unpaid');
+    }
+
     public function test_payment_amount_overrides_salary_cycle_status(): void
     {
         Carbon::setTestNow('2026-06-08');

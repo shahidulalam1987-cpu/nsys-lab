@@ -433,6 +433,8 @@ class EmployeeController extends Controller
             ->filter(fn ($payroll) => (float) $payroll->paid_amount > 0)
             ->sortByDesc(fn ($payroll) => $payroll->payment_date ?: $payroll->created_at)
             ->first();
+        $finalSettlementPayrolls = $payrolls->filter(fn ($payroll) => $employee->status === 'terminated'
+            && (float) $payroll->paid_amount < (float) $payroll->payable_salary);
 
         return [
             'working_days' => $employee->salaryDays->where('is_counted', true)->count(),
@@ -447,6 +449,12 @@ class EmployeeController extends Controller
                 : null,
             'upcoming_salary_date' => $employee->nextSalaryDate(),
             'salary_status' => $employee->salaryStatusLabel(),
+            'final_settlement_payable' => (float) $finalSettlementPayrolls->sum('payable_salary'),
+            'final_settlement_paid' => (float) $finalSettlementPayrolls->sum('paid_amount'),
+            'final_settlement_due' => $finalSettlementPayrolls->sum(fn ($payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
+            'final_settlement_status' => $employee->status === 'terminated'
+                ? ($finalSettlementPayrolls->isNotEmpty() ? 'Final Settlement Unpaid' : 'Final Salary Pending')
+                : '-',
         ];
     }
 

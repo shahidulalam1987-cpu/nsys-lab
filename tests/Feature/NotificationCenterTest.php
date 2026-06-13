@@ -118,6 +118,52 @@ class NotificationCenterTest extends TestCase
         $this->assertNotNull($notification->fresh()->resolved_at);
     }
 
+    public function test_terminated_employee_final_settlement_uses_separate_notification(): void
+    {
+        Carbon::setTestNow('2026-06-24');
+        $admin = $this->admin();
+        $client = $this->client();
+        $employee = Employee::create([
+            'employee_id' => 'NSYS-EM-901',
+            'name' => 'Terminated Settlement Alert',
+            'department' => 'Moderator',
+            'role' => 'Moderator',
+            'joining_date' => '2026-06-01',
+            'status' => 'terminated',
+            'last_working_date' => '2026-06-20',
+            'monthly_salary' => 30000,
+            'bank_name' => 'Bank',
+            'account_name' => 'Terminated Settlement Alert',
+            'account_number' => '123',
+        ]);
+        $employee->payrolls()->create([
+            'client_id' => $client->id,
+            'calculation_type' => 'date_to_date',
+            'salary_period_from' => '2026-06-01',
+            'salary_period_to' => '2026-06-20',
+            'working_days' => 12,
+            'non_working_days' => 8,
+            'month_days' => 30,
+            'daily_salary' => 1000,
+            'salary_month' => '2026-06-01',
+            'payable_salary' => 12000,
+            'paid_amount' => 0,
+            'payment_status' => 'unpaid',
+            'status' => 'unpaid',
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/notifications');
+
+        $response->assertOk();
+        $response->assertSee('Final Settlements Due');
+        $response->assertSee('Terminated Settlement Alert');
+        $response->assertSee('Final Settlement Overdue');
+        $this->assertDatabaseHas('system_notifications', [
+            'notification_key' => 'employee.final_settlement_due',
+            'priority' => 'critical',
+        ]);
+    }
+
     private function admin(): User
     {
         return User::factory()->create([

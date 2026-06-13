@@ -153,6 +153,19 @@
         <div class="stat-card"><p>Current Status</p><h2>{{ $employee->statusLabel() }}</h2></div>
     </div>
 
+    @if($employee->status === 'terminated')
+        <div class="card" style="border-color:#f59e0b;">
+            <h2>Final Settlement</h2>
+            <div class="stats-grid">
+                <div class="stat-card"><p>Payable Salary</p><h2>BDT {{ number_format($salarySummary['final_settlement_payable'], 2) }}</h2></div>
+                <div class="stat-card"><p>Paid Salary</p><h2>BDT {{ number_format($salarySummary['final_settlement_paid'], 2) }}</h2></div>
+                <div class="stat-card"><p>Remaining Due</p><h2>BDT {{ number_format($salarySummary['final_settlement_due'], 2) }}</h2></div>
+                <div class="stat-card"><p>Last Working Date</p><h2>{{ $employee->last_working_date?->toDateString() ?: '-' }}</h2></div>
+                <div class="stat-card"><p>Final Settlement Status</p><h2>{{ $salarySummary['final_settlement_status'] }}</h2></div>
+            </div>
+        </div>
+    @endif
+
     <div class="employee-tabs" role="tablist">
         <button class="employee-tab-button active" type="button" data-tab="overview">Overview</button>
         <button class="employee-tab-button" type="button" data-tab="salary">Salary</button>

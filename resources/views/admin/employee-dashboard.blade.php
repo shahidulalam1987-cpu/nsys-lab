@@ -29,7 +29,12 @@
         <div class="stat-card">
             <p>Unpaid Salary Due</p>
             <h2>BDT {{ number_format($clientFundSummary['unpaid_salary_due'], 2) }}</h2>
-            <p>{{ number_format($clientFundSummary['unpaid_employee_count']) }} Employees</p>
+            <p>{{ number_format($employeeDashboardAlerts['unpaid_count']) }} Employees</p>
+        </div>
+        <div class="stat-card">
+            <p>Final Settlement Due</p>
+            <h2>BDT {{ number_format($employeeDashboardAlerts['final_settlement_amount'], 2) }}</h2>
+            <p>{{ number_format($employeeDashboardAlerts['final_settlement_count']) }} Employees</p>
         </div>
     </div>
 
@@ -52,6 +57,7 @@
         <a class="btn" href="/admin/payroll">Salary Generate</a>
         <a class="btn" href="/admin/payroll?status=upcoming">Upcoming Salary</a>
         <a class="btn" href="/admin/payroll?status=due">Unpaid Salary</a>
+        <a class="btn" href="/admin/payroll?status=due&employee_scope=terminated">Final Settlement Due</a>
     </div>
 
     <div class="card">

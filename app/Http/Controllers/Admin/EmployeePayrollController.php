@@ -640,6 +640,7 @@ class EmployeePayrollController extends Controller
             'employee_id' => ['nullable', 'exists:employees,id'],
             'status' => ['nullable', 'in:upcoming,unpaid,partial,paid,due'],
             'salary_source' => ['nullable', 'in:' . implode(',', array_keys(Employee::SALARY_SOURCES))],
+            'employee_scope' => ['nullable', 'in:all,active,terminated'],
         ]);
     }
 
@@ -654,9 +655,29 @@ class EmployeePayrollController extends Controller
             ->latest()
             ->get()
             ->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter($filters['status'] ?? null))
+            ->filter(function (EmployeePayroll $payroll) use ($filters) {
+                if (($filters['status'] ?? null) !== 'due') {
+                    return true;
+                }
+
+                return match ($filters['employee_scope'] ?? 'all') {
+                    'active' => $payroll->employee?->status !== 'terminated',
+                    'terminated' => $payroll->employee?->status === 'terminated',
+                    default => true,
+                };
+            })
             ->values();
 
         $cycleEmployees = $this->cycleEmployeesForStatus($filters['status'] ?? null);
+        if (($filters['status'] ?? null) === 'due') {
+            $cycleEmployees = $cycleEmployees->filter(function (Employee $employee) use ($filters) {
+                return match ($filters['employee_scope'] ?? 'all') {
+                    'active' => $employee->status !== 'terminated',
+                    'terminated' => $employee->status === 'terminated',
+                    default => true,
+                };
+            })->values();
+        }
         if (! empty($filters['salary_source'])) {
             $cycleEmployees = $cycleEmployees
                 ->filter(fn (Employee $employee) => ($employee->salary_source ?: $employee->defaultSalarySource()) === $filters['salary_source'])
@@ -673,9 +694,17 @@ class EmployeePayrollController extends Controller
                 'total_due' => $payrolls->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0))
                     + $cycleEmployees->sum(fn (Employee $employee) => (float) $employee->monthly_salary),
                 'record_count' => $payrolls->count() + $cycleEmployees->count(),
-                'upcoming_count' => $payrolls->where('calculated_status', 'upcoming')->count() + (($filters['status'] ?? null) === 'upcoming' ? $cycleEmployees->count() : 0),
-                'overdue_count' => $payrolls->filter(fn (EmployeePayroll $payroll) => in_array($payroll->calculated_status, ['unpaid', 'partial'], true))->count()
-                    + (($filters['status'] ?? null) === 'due' ? $cycleEmployees->count() : 0),
+                'upcoming_count' => $payrolls->where('calculated_status', 'upcoming')->filter(fn (EmployeePayroll $payroll) => $payroll->employee?->status !== 'terminated')->count()
+                    + (($filters['status'] ?? null) === 'upcoming' ? $cycleEmployees->where('status', '!=', 'terminated')->count() : 0),
+                'overdue_count' => $payrolls->filter(fn (EmployeePayroll $payroll) => in_array($payroll->calculated_status, ['unpaid', 'partial'], true) && $payroll->employee?->status !== 'terminated')->count()
+                    + (($filters['status'] ?? null) === 'due' ? $cycleEmployees->where('status', '!=', 'terminated')->count() : 0),
+                'final_settlement_count' => $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlement())->count()
+                    + (($filters['status'] ?? null) === 'due' ? $cycleEmployees->where('status', 'terminated')->count() : 0),
+                'final_settlement_amount' => $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlement())
+                    ->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0))
+                    + (($filters['status'] ?? null) === 'due'
+                        ? $cycleEmployees->where('status', 'terminated')->sum(fn (Employee $employee) => (float) $employee->monthly_salary)
+                        : 0),
                 'current_month_payable' => $payrolls
                     ->filter(fn (EmployeePayroll $payroll) => $payroll->salary_month?->isSameMonth(now()))
                     ->sum('payable_salary'),
@@ -1055,13 +1084,15 @@ class EmployeePayrollController extends Controller
             ->orderBy('name')
             ->get()
             ->filter(function (Employee $employee) use ($status, $today) {
-                if ($employee->status === 'terminated') {
+                if ($employee->status === 'terminated' && $status !== 'due') {
                     return false;
                 }
 
-                $cycleDate = $status === 'upcoming'
-                    ? $employee->nextSalaryDate()
-                    : $employee->currentSalaryDueDate($today);
+                $cycleDate = $employee->status === 'terminated'
+                    ? $employee->last_working_date
+                    : ($status === 'upcoming'
+                        ? $employee->nextSalaryDate()
+                        : $employee->currentSalaryDueDate($today));
 
                 if (! $cycleDate) {
                     return false;
@@ -1070,6 +1101,10 @@ class EmployeePayrollController extends Controller
                 $cycleMonth = $cycleDate->copy()->startOfMonth()->toDateString();
                 $hasGeneratedSalary = $employee->payrolls->contains(
                     fn (EmployeePayroll $payroll) => $payroll->salary_month?->copy()->startOfMonth()->toDateString() === $cycleMonth
+                        || ($employee->status === 'terminated'
+                            && $payroll->salary_period_from
+                            && $payroll->salary_period_to
+                            && $cycleDate->betweenIncluded($payroll->salary_period_from, $payroll->salary_period_to))
                 );
 
                 if ($hasGeneratedSalary) {
@@ -1080,7 +1115,7 @@ class EmployeePayrollController extends Controller
                     return $cycleDate->betweenIncluded($today, $today->copy()->addDays(5));
                 }
 
-                return $cycleDate->lt($today);
+                return $employee->status === 'terminated' || $cycleDate->lt($today);
             })
             ->values();
     }

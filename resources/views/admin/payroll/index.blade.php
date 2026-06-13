@@ -45,6 +45,14 @@
                 @endforeach
             </select>
 
+            @if(request('status') === 'due')
+                <select name="employee_scope">
+                    <option value="all" {{ request('employee_scope', 'all') === 'all' ? 'selected' : '' }}>All</option>
+                    <option value="active" {{ request('employee_scope') === 'active' ? 'selected' : '' }}>Active Employees</option>
+                    <option value="terminated" {{ request('employee_scope') === 'terminated' ? 'selected' : '' }}>Terminated Final Settlement</option>
+                </select>
+            @endif
+
             <button class="btn" type="submit">Filter</button>
             <a href="/admin/payroll">Reset</a>
         </form>
@@ -70,6 +78,11 @@
         <div class="stat-card">
             <p>Overdue Payroll</p>
             <h2>{{ number_format($summary['overdue_count'] ?? 0) }}</h2>
+        </div>
+        <div class="stat-card">
+            <p>Final Settlement Due</p>
+            <h2>{{ number_format($summary['final_settlement_count'] ?? 0) }}</h2>
+            <p>BDT {{ number_format($summary['final_settlement_amount'] ?? 0, 2) }}</p>
         </div>
     </div>
 
@@ -133,7 +146,7 @@
                     <th>Client</th>
                     <th>Amount Due</th>
                     <th>Salary Date</th>
-                    <th>Days Overdue</th>
+                    <th>Overdue</th>
                     <th>Status</th>
                     <th>Action</th>
                 </tr>
@@ -189,12 +202,20 @@
                             @endif
                         </td>
                     @elseif($activeStatus === 'due')
-                        <td><a href="/admin/employees/{{ $payroll->employee?->id }}">{{ $payroll->employee?->name ?: '-' }}</a></td>
+                        <td>
+                            <a href="/admin/employees/{{ $payroll->employee?->id }}">{{ $payroll->employee?->name ?: '-' }}</a>
+                            @if($payroll->isFinalSettlement())
+                                <br><span style="color:var(--muted);">Last Working: {{ $payroll->employee?->last_working_date?->toDateString() ?: '-' }}</span>
+                                <br><span style="color:var(--muted);">Period: {{ $payroll->salary_period }}</span>
+                                <br><span style="color:var(--muted);">Working: {{ number_format((float) $payroll->working_days, 2) }} | Non Working: {{ number_format((float) $payroll->non_working_days, 2) }}</span>
+                                <br><span style="color:var(--muted);">Payable: BDT {{ number_format((float) $payroll->payable_salary, 2) }}</span>
+                            @endif
+                        </td>
                         <td>{{ $payroll->client?->company_name ?: '-' }}</td>
                         <td>BDT {{ number_format($remainingDue, 2) }}</td>
-                        <td>{{ $salaryDate?->toDateString() ?: '-' }}</td>
-                        <td>{{ $salaryDate ? max(now()->startOfDay()->diffInDays($salaryDate, false) * -1, 0) . ' Days Due' : '-' }}</td>
-                        <td>{{ $statusLabels[$payroll->calculated_status] ?? ucfirst($payroll->calculated_status) }}</td>
+                        <td>{{ $payroll->salaryDueDate()?->toDateString() ?: '-' }}</td>
+                        <td>{{ $payroll->overdueLabel() }}</td>
+                        <td>{{ $payroll->settlementStatusLabel() }}</td>
                     @else
                         <td>{{ $payroll->salary_period }}</td>
                         <td>
@@ -296,9 +317,9 @@
                     <th>Employee</th>
                     <th>Client</th>
                     <th>Salary Day</th>
-                    <th>Salary Date</th>
-                    <th>Amount Due</th>
-                    <th>Current Salary Status</th>
+                        <th>Salary Date</th>
+                        <th>Amount Due</th>
+                        <th>Current Salary Status</th>
                     <th>Action</th>
                 </tr>
                 @foreach($cycleEmployees as $cycleEmployee)
@@ -311,13 +332,17 @@
                         <td>
                             <a href="/admin/employees/{{ $cycleEmployee->id }}">{{ $cycleEmployee->employee_id }}</a><br>
                             {{ $cycleEmployee->name }}
+                            @if($cycleEmployee->status === 'terminated')
+                                <br><span style="color:var(--muted);">Last Working Date: {{ $cycleEmployee->last_working_date?->toDateString() ?: '-' }}</span>
+                                <br><span style="color:var(--muted);">Final salary not generated yet</span>
+                            @endif
                         </td>
                         <td>{{ $cycleEmployee->activeAssignments->first()?->client?->company_name ?: '-' }}</td>
                         <td>{{ $cycleEmployee->salaryCycleDay() ?: '-' }}</td>
                         <td>{{ $cycleSalaryDate?->toDateString() ?: '-' }}</td>
                         <td>BDT {{ number_format($cycleEmployee->monthly_salary, 2) }}</td>
-                        <td>{{ $cycleEmployee->salaryStatusLabel() }}</td>
-                        <td><a class="btn" href="/admin/payroll/create">Generate Salary</a></td>
+                        <td>{{ $cycleEmployee->status === 'terminated' ? 'Final Salary Pending' : $cycleEmployee->salaryStatusLabel() }}</td>
+                        <td><a class="btn" href="/admin/payroll/create">{{ $cycleEmployee->status === 'terminated' ? 'Generate Final Salary' : 'Generate Salary' }}</a></td>
                     </tr>
                 @endforeach
             </table>

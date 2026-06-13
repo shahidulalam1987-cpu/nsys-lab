@@ -107,8 +107,9 @@ class NotificationCenterService
     private function employeeAlerts(): array
     {
         $payrolls = EmployeePayroll::with('employee')->get();
-        $upcoming = $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('upcoming'));
-        $unpaid = $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('due'));
+        $upcoming = $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('upcoming') && $payroll->employee?->status !== 'terminated');
+        $unpaid = $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('due') && $payroll->employee?->status !== 'terminated');
+        $finalSettlements = $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlement());
         $overdue = $unpaid->filter(function (EmployeePayroll $payroll) {
             $salaryDate = $payroll->employee?->salaryDateForMonth($payroll->salary_month?->copy() ?: now());
 
@@ -122,11 +123,14 @@ class NotificationCenterService
         $onLeave = $employees->where('status', 'on_leave');
         $missingAssignment = $employees->filter(fn (Employee $employee) => $employee->status !== 'on_leave' && $employee->activeAssignments->isEmpty());
         $missingWorkStatus = $employees->filter(fn (Employee $employee) => $employee->status !== 'on_leave' && $employee->workStatuses->isEmpty());
+        $finalSalaryPending = $this->terminatedEmployeesMissingFinalPayroll();
 
         return array_values(array_filter([
             $this->alertIf($upcoming->count(), 'employee.upcoming_salary', 'Employee', 'warning', $upcoming->count() . ' Upcoming Salaries', '/admin/payroll?status=upcoming', 'HR Team'),
             $this->alertIf($unpaid->count(), 'employee.unpaid_salary', 'Employee', 'critical', $unpaid->count() . ' Unpaid Salaries', '/admin/payroll?status=due', 'HR Team'),
             $this->alertIf($overdue->count(), 'employee.salary_overdue', 'Employee', 'critical', $overdue->count() . ' Salary Payments Overdue', '/admin/payroll?status=due', 'HR Team'),
+            $this->alertIf($finalSettlements->count(), 'employee.final_settlement_due', 'Employee', 'critical', $this->finalSettlementMessage($finalSettlements), '/admin/payroll?status=due&employee_scope=terminated', 'HR Team'),
+            $this->alertIf($finalSalaryPending->count(), 'employee.final_salary_pending', 'Employee', 'warning', $this->finalSalaryPendingMessage($finalSalaryPending), '/admin/payroll/create', 'HR Team'),
             $this->alertIf($missingBank->count(), 'employee.missing_bank', 'Employee', 'warning', $missingBank->count() . ' Employees Missing Bank Information', '/admin/employees', 'HR Team'),
             $this->alertIf($onLeave->count(), 'employee.on_leave', 'Employee', 'information', $onLeave->count() . ' Employees On Leave', '/admin/employees?status=on_leave', 'HR Team'),
             $this->alertIf($missingAssignment->count(), 'employee.missing_assignment', 'Employee', 'warning', $missingAssignment->count() . ' Employees Missing Assignment', '/admin/assignments', 'HR Team'),
@@ -259,7 +263,59 @@ class NotificationCenterService
     private function upcomingSalaryCount(): int
     {
         return EmployeePayroll::with('employee')->get()
-            ->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('upcoming'))
+            ->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('upcoming') && $payroll->employee?->status !== 'terminated')
             ->count();
+    }
+
+    private function finalSettlementMessage(Collection $payrolls): string
+    {
+        $first = $payrolls->first();
+
+        if (! $first) {
+            return 'Final Settlement Due';
+        }
+
+        return $payrolls->count() . ' Final Settlements Due. '
+            . $first->snapshotEmployeeName()
+            . ' | Client: ' . ($first->client?->company_name ?: '-')
+            . ' | Last Working Date: ' . ($first->employee?->last_working_date?->toDateString() ?: '-')
+            . ' | Working Days: ' . number_format((float) $first->working_days, 2)
+            . ' | Non Working Days: ' . number_format((float) $first->non_working_days, 2)
+            . ' | Payable: BDT ' . number_format((float) $first->payable_salary, 2)
+            . ' | Period: ' . $first->salary_period
+            . ' | ' . $first->overdueLabel();
+    }
+
+    private function terminatedEmployeesMissingFinalPayroll(): Collection
+    {
+        return Employee::with('payrolls')
+            ->where('status', 'terminated')
+            ->whereNotNull('last_working_date')
+            ->get()
+            ->filter(function (Employee $employee) {
+                $lastWorkingDate = $employee->last_working_date;
+
+                return ! $employee->payrolls->contains(function (EmployeePayroll $payroll) use ($lastWorkingDate) {
+                    return $payroll->salary_month?->copy()->startOfMonth()->toDateString() === $lastWorkingDate->copy()->startOfMonth()->toDateString()
+                        || ($payroll->salary_period_from
+                            && $payroll->salary_period_to
+                            && $lastWorkingDate->betweenIncluded($payroll->salary_period_from, $payroll->salary_period_to));
+                });
+            })
+            ->values();
+    }
+
+    private function finalSalaryPendingMessage(Collection $employees): string
+    {
+        $first = $employees->first();
+
+        if (! $first) {
+            return 'Final Salary Pending';
+        }
+
+        return $employees->count() . ' Final Salaries Pending. '
+            . $first->name
+            . ' | Last Working Date: ' . ($first->last_working_date?->toDateString() ?: '-')
+            . ' | Final salary not generated yet.';
     }
 }
