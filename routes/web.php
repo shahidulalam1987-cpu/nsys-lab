@@ -180,6 +180,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/payroll', [EmployeePayrollController::class, 'index']);
     Route::get('/admin/payroll/export/csv', [EmployeePayrollController::class, 'exportCsv']);
     Route::get('/admin/payroll/export/excel', [EmployeePayrollController::class, 'exportExcel']);
+    Route::get('/admin/payroll/payment-report', [EmployeePayrollController::class, 'paymentReport']);
+    Route::get('/admin/payroll/payment-report/export/csv', [EmployeePayrollController::class, 'paymentReportCsv']);
+    Route::get('/admin/payroll/payment-report/export/excel', [EmployeePayrollController::class, 'paymentReportExcel']);
     Route::get('/admin/payroll/create', [EmployeePayrollController::class, 'create']);
     Route::post('/admin/payroll', [EmployeePayrollController::class, 'store']);
     Route::redirect('/admin/payroll/upcoming', '/admin/payroll?status=upcoming');
@@ -189,6 +192,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/payroll/{id}/update', [EmployeePayrollController::class, 'update']);
     Route::post('/admin/payroll/{payroll}/approve', [EmployeePayrollController::class, 'approve']);
     Route::post('/admin/payroll/{payroll}/mark-paid', [EmployeePayrollController::class, 'markPaid']);
+    Route::post('/admin/payroll/{payroll}/confirm-payment', [EmployeePayrollController::class, 'confirmPayment']);
+    Route::post('/admin/payroll/{payroll}/reverse-payment', [EmployeePayrollController::class, 'reversePayment']);
     Route::post('/admin/payroll/{payroll}/delete', [EmployeePayrollController::class, 'destroy']);
 
     Route::get('/admin/clients', [ClientController::class, 'index']);

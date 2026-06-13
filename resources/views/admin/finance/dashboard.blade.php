@@ -16,6 +16,10 @@
         <div class="stat-card"><p>Medical Expense</p><h2>BDT {{ number_format($summary['medical_expense'], 2) }}</h2></div>
         <div class="stat-card"><p>Emergency Expense</p><h2>BDT {{ number_format($summary['emergency_expense'], 2) }}</h2></div>
         <div class="stat-card"><p>Top Person Expense</p><h2>BDT {{ number_format($summary['top_person_expense_amount'], 2) }}</h2><p>{{ $summary['top_person_expense_name'] }}</p></div>
+        <div class="stat-card"><p>Total Salary Paid This Month</p><h2>BDT {{ number_format($summary['salary_paid_this_month'], 2) }}</h2></div>
+        <div class="stat-card"><p>Upcoming Salary Liability</p><h2>BDT {{ number_format($summary['upcoming_salary_liability'], 2) }}</h2></div>
+        <div class="stat-card"><p>Salary Paid Today</p><h2>BDT {{ number_format($summary['salary_paid_today'], 2) }}</h2></div>
+        <div class="stat-card"><p>Largest Salary Payment</p><h2>BDT {{ number_format($summary['largest_salary_payment'], 2) }}</h2></div>
     </div>
 
     <div class="card">
@@ -24,6 +28,7 @@
         <a class="btn" href="/admin/finance/loans">Loan Management</a>
         <a class="btn" href="/admin/finance/reports/balance-sheet">Balance Sheet</a>
         <a class="btn" href="/admin/finance/reports/loan-report">Loan Report</a>
+        <a class="btn" href="/admin/payroll/payment-report">Salary Payment Report</a>
         <a class="btn" href="/admin/finance/reports/family-expenses">Family Expense Report</a>
     </div>
 

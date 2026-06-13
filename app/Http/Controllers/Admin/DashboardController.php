@@ -59,6 +59,7 @@ class DashboardController extends Controller
         ];
         $clientFundDashboard = $clientFundDashboardService->dashboard();
         $clientFundSummary = $clientFundDashboard['summary'];
+        $netAvailableFund = (float) ($clientFundSummary['available_balance'] ?? 0) - (float) ($clientFundSummary['upcoming_salary'] ?? 0);
         $clientFundRows = $clientFundDashboard['rows'];
         $employeeSalaryDue = (float) EmployeePayroll::query()
             ->whereColumn('paid_amount', '<', 'payable_salary')
@@ -132,6 +133,7 @@ class DashboardController extends Controller
             'usdProfitSummary',
             'clientFundSummary',
             'clientFundRows',
+            'netAvailableFund',
             'employeeSalaryDue',
             'facebookBillingAlerts',
             'employeeAlerts',

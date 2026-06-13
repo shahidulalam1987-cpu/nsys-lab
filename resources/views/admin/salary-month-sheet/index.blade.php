@@ -92,6 +92,7 @@
                                     <strong>Account Name:</strong> {{ $payroll->snapshotAccountName() }}<br>
                                     <strong>Account Number:</strong> {{ $payroll->snapshotAccountNumber() }}<br>
                                     <strong>Branch:</strong> {{ $payroll->snapshotBranchName() }}<br>
+                                    <strong>Finance Account:</strong> {{ $payroll->finance_account_name ?: ($payroll->financeAccount?->account_name ?: '-') }}<br>
                                     <strong>Reference:</strong> {{ $payroll->transaction_id ?: '-' }}
                                 </p>
                             </details>

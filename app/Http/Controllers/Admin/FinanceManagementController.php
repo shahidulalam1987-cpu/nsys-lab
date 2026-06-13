@@ -7,6 +7,7 @@ use App\Models\FamilyExpense;
 use App\Models\FinanceAccount;
 use App\Models\FinanceLoan;
 use App\Models\FinanceLoanRepayment;
+use App\Models\EmployeePayroll;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -287,6 +288,18 @@ class FinanceManagementController extends Controller
             'total_loan_given' => (float) $loans->where('loan_type', 'given')->sum('amount'),
             'total_remaining_payable' => (float) $loans->where('loan_type', 'taken')->sum('remaining_balance'),
             'total_remaining_receivable' => (float) $loans->where('loan_type', 'given')->sum('remaining_balance'),
+            'salary_paid_this_month' => (float) EmployeePayroll::where('payroll_status', 'paid')
+                ->whereMonth('payment_date', now()->month)
+                ->whereYear('payment_date', now()->year)
+                ->sum('paid_amount'),
+            'salary_paid_today' => (float) EmployeePayroll::where('payroll_status', 'paid')
+                ->whereDate('payment_date', now()->toDateString())
+                ->sum('paid_amount'),
+            'upcoming_salary_liability' => (float) EmployeePayroll::with('employee')
+                ->get()
+                ->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('upcoming'))
+                ->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
+            'largest_salary_payment' => (float) (EmployeePayroll::where('payroll_status', 'paid')->max('paid_amount') ?? 0),
         ];
     }
 

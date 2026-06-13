@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Client;
 use App\Models\Employee;
+use App\Models\FinanceAccount;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -47,11 +48,20 @@ class EmployeePayrollProductionWorkflowTest extends TestCase
         ]);
     }
 
-    public function test_payroll_can_be_approved_and_marked_paid_with_audit_log(): void
+    public function test_payroll_can_be_approved_and_confirmed_paid_with_finance_ledger(): void
     {
         $admin = $this->user('admin');
         $client = $this->client();
         $employee = $this->employee();
+        $financeAccount = FinanceAccount::create([
+            'account_type' => 'bank',
+            'account_name' => 'NSYS Salary Bank',
+            'provider_name' => 'Test Bank',
+            'account_number' => '123456789',
+            'currency' => 'BDT',
+            'current_balance' => 50000,
+            'status' => 'active',
+        ]);
 
         $this->actingAs($admin)->post('/admin/payroll', $this->salaryPayload($employee, $client));
         $payroll = $employee->payrolls()->first();
@@ -66,19 +76,20 @@ class EmployeePayrollProductionWorkflowTest extends TestCase
         $approve->assertRedirect('/admin/payroll/' . $payroll->id);
         $this->assertSame('approved', $payroll->fresh()->payroll_status);
 
-        $this->actingAs($admin)->post('/admin/payroll/' . $payroll->id . '/update', [
-            'paid_amount' => 10000,
-            'payment_method' => 'Bank Transfer',
+        $paid = $this->actingAs($admin)->post('/admin/payroll/' . $payroll->id . '/confirm-payment', [
             'payment_date' => '2026-06-30',
+            'finance_account_id' => $financeAccount->id,
             'transaction_id' => 'SAL-PAID-1',
+            'payment_note' => 'Salary transfer completed.',
         ]);
-
-        $paid = $this->actingAs($admin)->post('/admin/payroll/' . $payroll->id . '/mark-paid');
         $paid->assertRedirect('/admin/payroll/' . $payroll->id);
 
         $payroll->refresh();
         $this->assertSame('paid', $payroll->payroll_status);
         $this->assertSame('paid', $payroll->calculated_status);
+        $this->assertSame(10000.0, (float) $payroll->paid_amount);
+        $this->assertSame('NSYS Salary Bank', $payroll->finance_account_name);
+        $this->assertSame(40000.0, (float) $financeAccount->fresh()->current_balance);
         $this->assertNotNull($payroll->approved_at);
         $this->assertNotNull($payroll->paid_at);
         $this->assertDatabaseHas('employee_payroll_audits', [
@@ -89,11 +100,18 @@ class EmployeePayrollProductionWorkflowTest extends TestCase
             'employee_payroll_id' => $payroll->id,
             'action' => 'salary_paid',
         ]);
+        $this->assertDatabaseHas('finance_account_ledgers', [
+            'finance_account_id' => $financeAccount->id,
+            'employee_payroll_id' => $payroll->id,
+            'transaction_type' => 'salary_payment',
+            'reference' => 'SAL-PAID-1',
+        ]);
 
         $show = $this->actingAs($admin)->get('/admin/payroll/' . $payroll->id);
         $show->assertOk();
         $show->assertSee('Approval History');
         $show->assertSee('Payment History');
+        $show->assertSee('Finance Ledger');
         $show->assertSee('Audit Log');
         $show->assertSee('Salary Paid');
     }

@@ -87,6 +87,9 @@
                 <a class="stat-card" href="/admin/client-fund" style="text-decoration:none;"><p>Client Due</p><h2>BDT {{ number_format($clientFundSummary['unpaid_salary_due'], 2) }}</h2></a>
                 <a class="stat-card" href="/admin/payroll/upcoming" style="text-decoration:none;"><p>Upcoming Salary</p><h2>{{ number_format($employeeAlerts['upcoming_count']) }}</h2><p>BDT {{ number_format($employeeAlerts['upcoming_amount'], 2) }}</p></a>
                 <a class="stat-card" href="/admin/payroll/unpaid" style="text-decoration:none;"><p>Unpaid Salary</p><h2>{{ number_format($employeeAlerts['unpaid_count']) }}</h2><p>BDT {{ number_format($employeeAlerts['unpaid_amount'], 2) }}</p></a>
+                <a class="stat-card" href="/admin/client-fund" style="text-decoration:none;"><p>Client Fund Available</p><h2>BDT {{ number_format($clientFundSummary['available_balance'], 2) }}</h2></a>
+                <a class="stat-card" href="/admin/payroll/upcoming" style="text-decoration:none;"><p>Upcoming Salary Due</p><h2>BDT {{ number_format($clientFundSummary['upcoming_salary'], 2) }}</h2></a>
+                <div class="stat-card"><p>Net Available Fund</p><h2>BDT {{ number_format($netAvailableFund, 2) }}</h2><p>Client Fund - Upcoming Salary</p></div>
             </div>
         </div>
 

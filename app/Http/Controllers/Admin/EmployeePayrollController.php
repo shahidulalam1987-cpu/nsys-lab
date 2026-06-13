@@ -7,10 +7,12 @@ use App\Models\Client;
 use App\Models\Employee;
 use App\Models\EmployeePayroll;
 use App\Models\EmployeeWorkStatus;
+use App\Models\FinanceAccount;
 use App\Services\ActivityLogger;
 use App\Services\ClientFundDashboardService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
@@ -25,6 +27,7 @@ class EmployeePayrollController extends Controller
             'filters' => $filters,
             'payrolls' => $data['payrolls'],
             'employees' => $data['employees'],
+            'financeAccounts' => FinanceAccount::where('status', 'active')->orderBy('account_name')->get(),
             'cycleEmployees' => $data['cycleEmployees'],
             'summary' => $data['summary'],
         ]);
@@ -187,6 +190,9 @@ class EmployeePayrollController extends Controller
             'salary_day_adjustments' => $calculation['salary_day_adjustments'],
             'salary_month' => $calculation['salary_month']->toDateString(),
             'payable_salary' => $calculation['payable_salary'],
+            'payroll_employee_name' => $employee->name,
+            'payroll_employee_code' => $employee->employee_id,
+            'payroll_salary_amount' => $calculation['payable_salary'],
             'paid_amount' => $paidAmount,
             'payment_method' => $data['payment_method'] ?? null,
             'payment_date' => $data['payment_date'] ?? null,
@@ -272,6 +278,9 @@ class EmployeePayrollController extends Controller
                     'salary_day_adjustments' => $previewRow['adjustments'],
                     'salary_month' => $salaryMonth->toDateString(),
                     'payable_salary' => $previewRow['payable_salary'],
+                    'payroll_employee_name' => $previewRow['employee']->name,
+                    'payroll_employee_code' => $previewRow['employee']->employee_id,
+                    'payroll_salary_amount' => $previewRow['payable_salary'],
                     'paid_amount' => 0,
                     'payment_status' => EmployeePayroll::paymentStatusFor(null, $previewRow['payable_salary'], 0),
                     'status' => EmployeePayroll::statusFor($previewRow['payable_salary'], 0),
@@ -333,10 +342,11 @@ class EmployeePayrollController extends Controller
 
     public function show($id)
     {
-        $payroll = EmployeePayroll::with(['employee', 'client', 'audits.user', 'approver', 'payer'])->findOrFail($id);
+        $payroll = EmployeePayroll::with(['employee', 'client', 'audits.user', 'approver', 'payer', 'financeAccount', 'financeLedgers.account', 'financeLedgers.creator'])->findOrFail($id);
         $workStatusSummary = $this->workStatusSummary($payroll);
+        $financeAccounts = FinanceAccount::where('status', 'active')->orderBy('account_name')->get();
 
-        return view('admin.payroll.show', compact('payroll', 'workStatusSummary'));
+        return view('admin.payroll.show', compact('payroll', 'workStatusSummary', 'financeAccounts'));
     }
 
     public function edit($id, ClientFundDashboardService $clientFundDashboardService)
@@ -414,30 +424,202 @@ class EmployeePayrollController extends Controller
 
     public function markPaid(EmployeePayroll $payroll)
     {
+        return redirect('/admin/payroll/' . $payroll->id)
+            ->with('success', 'Use Confirm Payment to record finance account, reference, and ledger details.');
+    }
+
+    public function confirmPayment(Request $request, EmployeePayroll $payroll)
+    {
         if (! $payroll->canMarkPaid()) {
             return redirect('/admin/payroll/' . $payroll->id)
                 ->with('success', 'Approve payroll before marking it paid.');
         }
 
-        if ((float) $payroll->paid_amount < (float) $payroll->payable_salary) {
-            return redirect('/admin/payroll/' . $payroll->id . '/edit')
-                ->with('success', 'Enter full paid salary, payment method, and payment date before marking paid.');
-        }
-
-        $payroll->update([
-            'payroll_status' => 'paid',
-            'payment_status' => 'paid',
-            'status' => 'paid',
-            'paid_at' => now(),
-            'paid_by' => auth()->id(),
+        $data = $request->validate([
+            'payment_date' => ['required', 'date'],
+            'finance_account_id' => ['required', 'exists:finance_accounts,id'],
+            'transaction_id' => ['required', 'string', 'max:255'],
+            'payment_note' => ['required', 'string', 'max:1000'],
+            'salary_payment_attachment' => ['nullable', 'image', 'max:4096'],
         ]);
 
-        $payroll->markAudit('salary_paid', auth()->id());
+        DB::transaction(function () use ($payroll, $request, $data) {
+            $payroll->refresh();
+            $account = FinanceAccount::lockForUpdate()->findOrFail($data['finance_account_id']);
+            $paidAmount = (float) $payroll->payable_salary;
+            $previousBalance = (float) $account->current_balance;
+            $newBalance = $previousBalance - $paidAmount;
+            $attachment = $request->file('salary_payment_attachment')?->store('employee-salary-payments', 'public');
 
-        app(ActivityLogger::class)->log('Payroll', 'Salary Paid', 'Salary #' . $payroll->id . ' marked paid.', request());
+            $account->update(['current_balance' => $newBalance]);
+
+            $payroll->update([
+                'payroll_employee_name' => $payroll->employee?->name,
+                'payroll_employee_code' => $payroll->employee?->employee_id,
+                'payroll_salary_amount' => $paidAmount,
+                'paid_amount' => $paidAmount,
+                'payroll_status' => 'paid',
+                'payment_status' => 'paid',
+                'status' => 'paid',
+                'payment_date' => $data['payment_date'],
+                'payment_method' => $account->account_name,
+                'finance_account_id' => $account->id,
+                'finance_account_name' => $account->account_name,
+                'transaction_id' => $data['transaction_id'],
+                'payment_note' => $data['payment_note'],
+                'salary_payment_attachment' => $attachment,
+                'payment_confirmed_at' => now(),
+                'paid_at' => now(),
+                'paid_by' => auth()->id(),
+                'reversed_at' => null,
+                'reversed_by' => null,
+                'reversal_note' => null,
+            ]);
+
+            $account->ledgers()->create([
+                'employee_payroll_id' => $payroll->id,
+                'ledger_date' => $data['payment_date'],
+                'transaction_type' => 'salary_payment',
+                'amount' => $paidAmount,
+                'previous_balance' => $previousBalance,
+                'new_balance' => $newBalance,
+                'reference' => $data['transaction_id'],
+                'note' => 'Salary Payment - ' . $payroll->snapshotEmployeeName(),
+                'created_by' => auth()->id(),
+            ]);
+
+            $payroll->markAudit('salary_paid', auth()->id(), 'Paid from ' . $account->account_name . '.');
+        });
+
+        app(ActivityLogger::class)->log('Payroll', 'Salary Paid', 'Salary #' . $payroll->id . ' confirmed and deducted from finance account.', $request);
 
         return redirect('/admin/payroll/' . $payroll->id)
-            ->with('success', 'Payroll marked as paid successfully.');
+            ->with('success', 'Salary payment confirmed and finance account balance updated.');
+    }
+
+    public function reversePayment(Request $request, EmployeePayroll $payroll)
+    {
+        $data = $request->validate([
+            'reversal_note' => ['required', 'string', 'max:1000'],
+        ]);
+
+        if ($payroll->payroll_status !== 'paid' || ! $payroll->finance_account_id || $payroll->reversed_at) {
+            return redirect('/admin/payroll/' . $payroll->id)
+                ->with('success', 'This salary payment cannot be reversed.');
+        }
+
+        DB::transaction(function () use ($payroll, $data) {
+            $payroll->refresh();
+            $account = FinanceAccount::lockForUpdate()->findOrFail($payroll->finance_account_id);
+            $amount = (float) $payroll->paid_amount;
+            $previousBalance = (float) $account->current_balance;
+            $newBalance = $previousBalance + $amount;
+
+            $account->update(['current_balance' => $newBalance]);
+
+            $account->ledgers()->create([
+                'employee_payroll_id' => $payroll->id,
+                'ledger_date' => now()->toDateString(),
+                'transaction_type' => 'salary_payment_reversal',
+                'amount' => $amount,
+                'previous_balance' => $previousBalance,
+                'new_balance' => $newBalance,
+                'reference' => $payroll->transaction_id,
+                'note' => $data['reversal_note'],
+                'created_by' => auth()->id(),
+            ]);
+
+            $payroll->update([
+                'payroll_status' => 'approved',
+                'payment_status' => 'unpaid',
+                'status' => 'unpaid',
+                'paid_amount' => 0,
+                'paid_at' => null,
+                'paid_by' => null,
+                'reversed_at' => now(),
+                'reversed_by' => auth()->id(),
+                'reversal_note' => $data['reversal_note'],
+            ]);
+
+            $payroll->markAudit('salary_reversed', auth()->id(), $data['reversal_note']);
+        });
+
+        app(ActivityLogger::class)->log('Payroll', 'Salary Reversed', 'Salary #' . $payroll->id . ' payment reversed.', $request);
+
+        return redirect('/admin/payroll/' . $payroll->id)
+            ->with('success', 'Salary payment reversed and finance account balance restored.');
+    }
+
+    public function paymentReport(Request $request)
+    {
+        $filters = $request->validate([
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+            'employee_id' => ['nullable', 'exists:employees,id'],
+            'client_id' => ['nullable', 'exists:clients,id'],
+            'finance_account_id' => ['nullable', 'exists:finance_accounts,id'],
+            'month' => ['nullable', 'date_format:Y-m'],
+        ]);
+
+        return view('admin.payroll.payment-report', [
+            'payrolls' => $this->paymentReportQuery($filters)->get(),
+            'filters' => $filters,
+            'employees' => Employee::orderBy('name')->get(),
+            'clients' => Client::orderBy('company_name')->get(),
+            'financeAccounts' => FinanceAccount::orderBy('account_name')->get(),
+        ]);
+    }
+
+    public function paymentReportCsv(Request $request)
+    {
+        $filters = $request->validate([
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+            'employee_id' => ['nullable', 'exists:employees,id'],
+            'client_id' => ['nullable', 'exists:clients,id'],
+            'finance_account_id' => ['nullable', 'exists:finance_accounts,id'],
+            'month' => ['nullable', 'date_format:Y-m'],
+        ]);
+
+        $rows = $this->paymentReportQuery($filters)->get();
+
+        return response()->streamDownload(function () use ($rows) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Employee', 'Employee ID', 'Client', 'Month', 'Salary', 'Payment Date', 'Finance Account', 'Reference', 'Status']);
+            foreach ($rows as $payroll) {
+                fputcsv($handle, [
+                    $payroll->snapshotEmployeeName(),
+                    $payroll->snapshotEmployeeCode(),
+                    $payroll->client?->company_name ?: '-',
+                    $payroll->salary_month?->format('Y-m') ?: '-',
+                    number_format($payroll->snapshotSalaryAmount(), 2, '.', ''),
+                    $payroll->payment_date?->toDateString() ?: '-',
+                    $payroll->finance_account_name ?: ($payroll->financeAccount?->account_name ?: '-'),
+                    $payroll->transaction_id ?: '-',
+                    $payroll->payrollStatusLabel(),
+                ]);
+            }
+            fclose($handle);
+        }, 'salary-payment-report.csv', ['Content-Type' => 'text/csv']);
+    }
+
+    public function paymentReportExcel(Request $request)
+    {
+        $filters = $request->validate([
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+            'employee_id' => ['nullable', 'exists:employees,id'],
+            'client_id' => ['nullable', 'exists:clients,id'],
+            'finance_account_id' => ['nullable', 'exists:finance_accounts,id'],
+            'month' => ['nullable', 'date_format:Y-m'],
+        ]);
+
+        return response()->view('admin.payroll.payment-report-excel', [
+            'payrolls' => $this->paymentReportQuery($filters)->get(),
+        ], 200, [
+            'Content-Type' => 'application/vnd.ms-excel',
+            'Content-Disposition' => 'attachment; filename="salary-payment-report.xls"',
+        ]);
     }
 
     public function destroy(EmployeePayroll $payroll)
@@ -463,7 +645,7 @@ class EmployeePayrollController extends Controller
 
     private function filteredPayrollData(array $filters): array
     {
-        $query = EmployeePayroll::with(['employee', 'client'])
+        $query = EmployeePayroll::with(['employee', 'client', 'financeAccount'])
             ->when($filters['month'] ?? null, fn ($query, $month) => $query->whereDate('salary_month', $month . '-01'))
             ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
             ->when($filters['salary_source'] ?? null, fn ($query, $salarySource) => $query->where('salary_source', $salarySource));
@@ -505,6 +687,20 @@ class EmployeePayrollController extends Controller
                     ->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
             ],
         ];
+    }
+
+    private function paymentReportQuery(array $filters)
+    {
+        return EmployeePayroll::with(['employee', 'client', 'financeAccount'])
+            ->where('payroll_status', 'paid')
+            ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->whereDate('payment_date', '>=', $date))
+            ->when($filters['date_to'] ?? null, fn ($query, $date) => $query->whereDate('payment_date', '<=', $date))
+            ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
+            ->when($filters['client_id'] ?? null, fn ($query, $clientId) => $query->where('client_id', $clientId))
+            ->when($filters['finance_account_id'] ?? null, fn ($query, $accountId) => $query->where('finance_account_id', $accountId))
+            ->when($filters['month'] ?? null, fn ($query, $month) => $query->whereDate('salary_month', $month . '-01'))
+            ->latest('payment_date')
+            ->latest();
     }
 
     private function existingPayrollForPeriod(int $employeeId, ?int $clientId, Carbon $salaryMonth): ?EmployeePayroll

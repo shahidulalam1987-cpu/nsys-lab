@@ -15,6 +15,8 @@ class EmployeePayroll extends Model
 
     protected $fillable = [
         'employee_id',
+        'payroll_employee_name',
+        'payroll_employee_code',
         'client_id',
         'salary_source',
         'calculation_type',
@@ -29,12 +31,15 @@ class EmployeePayroll extends Model
         'salary_day_adjustments',
         'salary_month',
         'payable_salary',
+        'payroll_salary_amount',
         'paid_amount',
         'payroll_bank_name',
         'payroll_account_name',
         'payroll_account_number',
         'payroll_branch_name',
         'payment_method',
+        'finance_account_id',
+        'finance_account_name',
         'payment_date',
         'status',
         'payment_status',
@@ -47,6 +52,12 @@ class EmployeePayroll extends Model
         'paid_by',
         'payment_proof',
         'transaction_id',
+        'payment_note',
+        'salary_payment_attachment',
+        'payment_confirmed_at',
+        'reversed_at',
+        'reversed_by',
+        'reversal_note',
         'note',
     ];
 
@@ -64,10 +75,13 @@ class EmployeePayroll extends Model
             'daily_salary' => 'decimal:2',
             'salary_day_adjustments' => 'array',
             'payable_salary' => 'decimal:2',
+            'payroll_salary_amount' => 'decimal:2',
             'paid_amount' => 'decimal:2',
             'payment_date' => 'date',
             'approved_at' => 'datetime',
             'paid_at' => 'datetime',
+            'payment_confirmed_at' => 'datetime',
+            'reversed_at' => 'datetime',
         ];
     }
 
@@ -204,12 +218,28 @@ class EmployeePayroll extends Model
             'salary_regenerated' => 'Salary Regenerated',
             'salary_approved' => 'Salary Approved',
             'salary_paid' => 'Salary Paid',
+            'salary_reversed' => 'Salary Reversed',
         ][$action] ?? ucwords(str_replace('_', ' ', $action));
     }
 
     public function salarySourceLabel(): string
     {
         return Employee::SALARY_SOURCES[$this->salary_source ?: 'client_fund'] ?? 'Client Fund';
+    }
+
+    public function snapshotEmployeeName(): string
+    {
+        return $this->payroll_employee_name ?: ($this->employee?->name ?: '-');
+    }
+
+    public function snapshotEmployeeCode(): string
+    {
+        return $this->payroll_employee_code ?: ($this->employee?->employee_id ?: '-');
+    }
+
+    public function snapshotSalaryAmount(): float
+    {
+        return (float) ($this->payroll_salary_amount ?? $this->payable_salary ?? 0);
     }
 
     public function snapshotBankName(): string
@@ -390,5 +420,15 @@ class EmployeePayroll extends Model
     public function payer()
     {
         return $this->belongsTo(User::class, 'paid_by');
+    }
+
+    public function financeAccount()
+    {
+        return $this->belongsTo(FinanceAccount::class);
+    }
+
+    public function financeLedgers()
+    {
+        return $this->hasMany(FinanceAccountLedger::class, 'employee_payroll_id');
     }
 }

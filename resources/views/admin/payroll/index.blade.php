@@ -11,6 +11,7 @@
 
     <p>
         <a class="btn" href="/admin/payroll/create">Generate Salary</a>
+        <a class="btn" href="/admin/payroll/payment-report">Salary Payment Report</a>
         <a class="btn" href="/admin/payroll/export/csv?{{ $exportQuery }}">Export CSV</a>
         <a class="btn" href="/admin/payroll/export/excel?{{ $exportQuery }}">Export Excel</a>
     </p>
@@ -92,6 +93,13 @@
         </div>
     @endif
 
+    @if($activeStatus === 'paid')
+        <div class="card">
+            <h2>Paid Salary History</h2>
+            <p>Confirmed salary transfers with finance account and transaction reference.</p>
+        </div>
+    @endif
+
     <div class="card">
         <table>
             @if($activeStatus === 'upcoming')
@@ -107,13 +115,15 @@
             @elseif($activeStatus === 'paid')
                 <tr>
                     <th>Employee</th>
+                    <th>Month</th>
                     <th>Client</th>
-                    <th>Amount</th>
-                    <th>Paid Date</th>
+                    <th>Salary</th>
+                    <th>Payment Date</th>
                     <th>Bank Name</th>
                     <th>Account Number</th>
-                    <th>Method</th>
-                    <th>Reference</th>
+                    <th>Finance Account</th>
+                    <th>Transaction Reference</th>
+                    <th>Status</th>
                     <th>Proof</th>
                     <th>Action</th>
                 </tr>
@@ -160,15 +170,19 @@
                         <td>{{ $statusLabels[$payroll->calculated_status] ?? ucfirst($payroll->calculated_status) }}</td>
                     @elseif($activeStatus === 'paid')
                         <td><a href="/admin/employees/{{ $payroll->employee?->id }}">{{ $payroll->employee?->name ?: '-' }}</a></td>
+                        <td>{{ $payroll->salary_month?->format('Y-m') ?: '-' }}</td>
                         <td>{{ $payroll->client?->company_name ?: '-' }}</td>
                         <td>BDT {{ number_format($payroll->paid_amount, 2) }}</td>
                         <td>{{ $payroll->payment_date?->toDateString() ?: '-' }}</td>
                         <td>{{ $payroll->snapshotBankName() }}</td>
                         <td>{{ $payroll->snapshotAccountNumber() }}</td>
-                        <td>{{ $payroll->payment_method ?: '-' }}</td>
+                        <td>{{ $payroll->finance_account_name ?: ($payroll->financeAccount?->account_name ?: '-') }}</td>
                         <td>{{ $payroll->transaction_id ?: '-' }}</td>
+                        <td><span class="badge {{ $payroll->payrollStatusBadgeClass() }}">{{ $payroll->payrollStatusLabel() }}</span></td>
                         <td>
-                            @if($payroll->payment_proof)
+                            @if($payroll->salary_payment_attachment)
+                                <a href="/storage/{{ $payroll->salary_payment_attachment }}" target="_blank">View Proof</a>
+                            @elseif($payroll->payment_proof)
                                 <a href="/storage/{{ $payroll->payment_proof }}" target="_blank">View Proof</a>
                             @else
                                 -
@@ -179,7 +193,7 @@
                         <td>{{ $payroll->client?->company_name ?: '-' }}</td>
                         <td>BDT {{ number_format($remainingDue, 2) }}</td>
                         <td>{{ $salaryDate?->toDateString() ?: '-' }}</td>
-                        <td>{{ $salaryDate ? max(now()->startOfDay()->diffInDays($salaryDate, false) * -1, 0) : '-' }}</td>
+                        <td>{{ $salaryDate ? max(now()->startOfDay()->diffInDays($salaryDate, false) * -1, 0) . ' Days Due' : '-' }}</td>
                         <td>{{ $statusLabels[$payroll->calculated_status] ?? ucfirst($payroll->calculated_status) }}</td>
                     @else
                         <td>{{ $payroll->salary_period }}</td>
@@ -209,6 +223,10 @@
                         </td>
                     @endif
                     <td>
+                        @if($payroll->canMarkPaid() && $payroll->payroll_status !== 'paid')
+                            <button class="btn" type="button" onclick="document.getElementById('confirm-payment-{{ $payroll->id }}').style.display='flex';">Confirm Payment</button>
+                            |
+                        @endif
                         <a href="/admin/payroll/{{ $payroll->id }}">View</a>
                         |
                         <a href="/admin/payroll/{{ $payroll->id }}/edit">Edit</a>
@@ -219,6 +237,49 @@
                         </form>
                     </td>
                 </tr>
+                @if($payroll->canMarkPaid() && $payroll->payroll_status !== 'paid')
+                    <tr>
+                        <td colspan="14" style="padding:0;border:0;">
+                            <div id="confirm-payment-{{ $payroll->id }}" style="display:none;position:fixed;inset:0;background:rgba(2,6,23,.74);z-index:100;align-items:center;justify-content:center;padding:20px;">
+                                <div class="card" style="max-width:760px;width:100%;max-height:90vh;overflow:auto;">
+                                    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+                                        <div>
+                                            <h2>Confirm Payment</h2>
+                                            <p>{{ $payroll->snapshotEmployeeName() }} | {{ $payroll->snapshotEmployeeCode() }}</p>
+                                        </div>
+                                        <button type="button" class="btn" onclick="document.getElementById('confirm-payment-{{ $payroll->id }}').style.display='none';">Close</button>
+                                    </div>
+                                    <div class="stats-grid">
+                                        <div class="stat-card"><p>Salary Month</p><h2>{{ $payroll->salary_month?->format('Y-m') ?: '-' }}</h2></div>
+                                        <div class="stat-card"><p>Client</p><h2>{{ $payroll->client?->company_name ?: '-' }}</h2></div>
+                                        <div class="stat-card"><p>Payable</p><h2>BDT {{ number_format($payroll->payable_salary, 2) }}</h2></div>
+                                        <div class="stat-card"><p>Bank</p><h2>{{ $payroll->snapshotBankName() }}</h2><p>{{ $payroll->snapshotAccountNumber() }}</p></div>
+                                    </div>
+                                    <form method="POST" action="/admin/payroll/{{ $payroll->id }}/confirm-payment" enctype="multipart/form-data">
+                                        @csrf
+                                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+                                            <label>Payment Date<br><input type="date" name="payment_date" value="{{ now()->toDateString() }}" required></label>
+                                            <label>From Finance Account<br>
+                                                <select name="finance_account_id" required>
+                                                    <option value="">Select Account</option>
+                                                    @foreach($financeAccounts as $account)
+                                                        <option value="{{ $account->id }}">{{ $account->account_name }} - {{ $account->currency }} {{ number_format((float) $account->current_balance, 2) }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </label>
+                                            <label>Transaction Reference<br><input type="text" name="transaction_id" required></label>
+                                            <label>Attachment / Screenshot<br><input type="file" name="salary_payment_attachment" accept="image/*"></label>
+                                            <label style="grid-column:1 / -1;">Payment Note<br><textarea name="payment_note" required>Salary payment for {{ $payroll->salary_month?->format('F Y') }}</textarea></label>
+                                        </div>
+                                        <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+                                            <button class="btn" type="submit">Confirm Payment</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                @endif
             @empty
                 <tr><td colspan="14">No salary records found.</td></tr>
             @endforelse

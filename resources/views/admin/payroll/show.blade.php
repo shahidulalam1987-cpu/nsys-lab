@@ -56,11 +56,8 @@
             </form>
         @endif
 
-        @if($payroll->canMarkPaid())
-            <form method="POST" action="/admin/payroll/{{ $payroll->id }}/mark-paid">
-                @csrf
-                <button class="btn btn-success" type="submit" onclick="return confirm('Mark this salary as paid?');">Mark as Paid</button>
-            </form>
+        @if($payroll->canMarkPaid() && $payroll->payroll_status !== 'paid')
+            <button class="btn btn-success" type="button" onclick="document.getElementById('confirm-payment-panel').style.display='block';">Confirm Payment</button>
         @endif
     </div>
 
@@ -76,6 +73,46 @@
         <div class="stat-card"><p>Payable Salary</p><h2>BDT {{ number_format($payroll->payable_salary, 2) }}</h2></div>
         <div class="stat-card"><p>Remaining Due</p><h2>BDT {{ number_format($remainingDue, 2) }}</h2></div>
     </div>
+
+    @if($payroll->canMarkPaid() && $payroll->payroll_status !== 'paid')
+        <div class="card" id="confirm-payment-panel" style="display:none;border-color:#22c55e;">
+            <h2>Confirm Payment</h2>
+            <p>Record finance account, transaction reference, and salary transfer note before moving this salary to Paid Salary History.</p>
+            <div class="stats-grid">
+                <div class="stat-card"><p>Employee</p><h2>{{ $payroll->snapshotEmployeeName() }}</h2><p>{{ $payroll->snapshotEmployeeCode() }}</p></div>
+                <div class="stat-card"><p>Salary Month</p><h2>{{ $payroll->salary_month?->format('Y-m') ?: '-' }}</h2></div>
+                <div class="stat-card"><p>Client</p><h2>{{ $payroll->client?->company_name ?: '-' }}</h2></div>
+                <div class="stat-card"><p>Payable Amount</p><h2>BDT {{ number_format($payroll->payable_salary, 2) }}</h2></div>
+            </div>
+            <div class="card" style="background:rgba(255,255,255,.05);">
+                <h3>Bank Information Snapshot</h3>
+                <p><strong>Bank Name:</strong> {{ $payroll->snapshotBankName() }}</p>
+                <p><strong>Account Name:</strong> {{ $payroll->snapshotAccountName() }}</p>
+                <p><strong>Account Number:</strong> {{ $payroll->snapshotAccountNumber() }}</p>
+                <p><strong>Branch:</strong> {{ $payroll->snapshotBranchName() }}</p>
+            </div>
+            <form method="POST" action="/admin/payroll/{{ $payroll->id }}/confirm-payment" enctype="multipart/form-data">
+                @csrf
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+                    <label>Payment Date<br><input type="date" name="payment_date" value="{{ now()->toDateString() }}" required></label>
+                    <label>From Finance Account<br>
+                        <select name="finance_account_id" required>
+                            <option value="">Select Account</option>
+                            @foreach($financeAccounts as $account)
+                                <option value="{{ $account->id }}">{{ $account->account_name }} - {{ $account->currency }} {{ number_format((float) $account->current_balance, 2) }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    <label>Transaction Reference<br><input type="text" name="transaction_id" required></label>
+                    <label>Attachment / Screenshot<br><input type="file" name="salary_payment_attachment" accept="image/*"></label>
+                    <label style="grid-column:1 / -1;">Payment Note<br><textarea name="payment_note" required>Salary payment for {{ $payroll->salary_month?->format('F Y') }}</textarea></label>
+                </div>
+                <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+                    <button class="btn btn-success" type="submit">Confirm Payment</button>
+                </div>
+            </form>
+        </div>
+    @endif
 
     <div class="payroll-detail-grid">
         <div class="card" style="margin-top:0;">
@@ -150,9 +187,18 @@
                 <p><strong>Account Name:</strong> {{ $payroll->snapshotAccountName() }}</p>
                 <p><strong>Account Number:</strong> {{ $payroll->snapshotAccountNumber() }}</p>
                 <p><strong>Branch Name:</strong> {{ $payroll->snapshotBranchName() }}</p>
+                <p><strong>Finance Account:</strong> {{ $payroll->finance_account_name ?: ($payroll->financeAccount?->account_name ?: '-') }}</p>
                 <p><strong>Payment Method:</strong> {{ $payroll->payment_method ?: '-' }}</p>
                 <p><strong>Payment Date:</strong> {{ $payroll->payment_date?->toDateString() ?: '-' }}</p>
                 <p><strong>Transaction ID / Reference:</strong> {{ $payroll->transaction_id ?: '-' }}</p>
+                <p><strong>Payment Note:</strong> {{ $payroll->payment_note ?: '-' }}</p>
+                <p><strong>Payment Attachment:</strong>
+                    @if($payroll->salary_payment_attachment)
+                        <a href="/storage/{{ $payroll->salary_payment_attachment }}" target="_blank">View Attachment</a>
+                    @else
+                        -
+                    @endif
+                </p>
                 <p><strong>Payment Proof:</strong>
                     @if($payroll->payment_proof)
                         <a href="/storage/{{ $payroll->payment_proof }}" target="_blank">View Proof</a>
@@ -161,6 +207,48 @@
                     @endif
                 </p>
             </div>
+            @if($payroll->payroll_status === 'paid' && ! $payroll->reversed_at)
+                <form method="POST" action="/admin/payroll/{{ $payroll->id }}/reverse-payment" onsubmit="return confirm('Reverse this salary payment and restore finance account balance?');">
+                    @csrf
+                    <p><strong>Reverse Salary Payment</strong></p>
+                    <textarea name="reversal_note" placeholder="Reason for reversal" required></textarea>
+                    <br>
+                    <button class="btn btn-danger" type="submit">Reverse Payment</button>
+                </form>
+            @elseif($payroll->reversed_at)
+                <p><strong>Reversed At:</strong> {{ $payroll->reversed_at?->format('Y-m-d H:i') }}</p>
+                <p><strong>Reversal Note:</strong> {{ $payroll->reversal_note ?: '-' }}</p>
+            @endif
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Finance Ledger</h2>
+        <div class="table-wrap">
+            <table>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Account</th>
+                    <th>Amount</th>
+                    <th>Previous Balance</th>
+                    <th>New Balance</th>
+                    <th>Reference</th>
+                </tr>
+                @forelse($payroll->financeLedgers as $ledger)
+                    <tr>
+                        <td>{{ $ledger->ledger_date?->toDateString() }}</td>
+                        <td>{{ $ledger->typeLabel() }}</td>
+                        <td>{{ $ledger->account?->account_name ?: '-' }}</td>
+                        <td>BDT {{ number_format((float) $ledger->amount, 2) }}</td>
+                        <td>BDT {{ number_format((float) $ledger->previous_balance, 2) }}</td>
+                        <td>BDT {{ number_format((float) $ledger->new_balance, 2) }}</td>
+                        <td>{{ $ledger->reference ?: '-' }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="7">No finance ledger entries found.</td></tr>
+                @endforelse
+            </table>
         </div>
     </div>
 

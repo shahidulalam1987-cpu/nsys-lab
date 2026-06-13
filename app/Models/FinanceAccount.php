@@ -53,4 +53,9 @@ class FinanceAccount extends Model
     {
         return self::STATUSES[$this->status] ?? ucwords(str_replace('_', ' ', (string) $this->status));
     }
+
+    public function ledgers()
+    {
+        return $this->hasMany(FinanceAccountLedger::class);
+    }
 }
