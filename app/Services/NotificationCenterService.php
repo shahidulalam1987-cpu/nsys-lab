@@ -293,14 +293,7 @@ class NotificationCenterService
             ->whereNotNull('last_working_date')
             ->get()
             ->filter(function (Employee $employee) {
-                $lastWorkingDate = $employee->last_working_date;
-
-                return ! $employee->payrolls->contains(function (EmployeePayroll $payroll) use ($lastWorkingDate) {
-                    return $payroll->salary_month?->copy()->startOfMonth()->toDateString() === $lastWorkingDate->copy()->startOfMonth()->toDateString()
-                        || ($payroll->salary_period_from
-                            && $payroll->salary_period_to
-                            && $lastWorkingDate->betweenIncluded($payroll->salary_period_from, $payroll->salary_period_to));
-                });
+                return ! $employee->hasFinalSalaryPayroll();
             })
             ->values();
     }

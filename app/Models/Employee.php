@@ -309,6 +309,26 @@ class Employee extends Model
         return $month->startOfMonth()->addDays($day - 1);
     }
 
+    public function hasFinalSalaryPayroll(): bool
+    {
+        if ($this->status !== 'terminated' || ! $this->last_working_date) {
+            return false;
+        }
+
+        $lastWorkingDate = $this->last_working_date;
+        $payrolls = $this->relationLoaded('payrolls')
+            ? $this->payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->is_current)
+            : $this->payrolls()->current()->get();
+
+        return $payrolls->contains(function (EmployeePayroll $payroll) use ($lastWorkingDate) {
+            return $payroll->isFinalSettlement()
+                || $payroll->salary_month?->copy()->startOfMonth()->toDateString() === $lastWorkingDate->copy()->startOfMonth()->toDateString()
+                || ($payroll->salary_period_from
+                    && $payroll->salary_period_to
+                    && $lastWorkingDate->betweenIncluded($payroll->salary_period_from, $payroll->salary_period_to));
+        });
+    }
+
     private function payrollForSalaryMonth(?Carbon $month): ?EmployeePayroll
     {
         if (! $month) {

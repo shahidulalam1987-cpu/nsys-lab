@@ -1188,13 +1188,11 @@ class EmployeePayrollController extends Controller
                 }
 
                 $cycleMonth = $cycleDate->copy()->startOfMonth()->toDateString();
-                $hasGeneratedSalary = $employee->payrolls->contains(
-                    fn (EmployeePayroll $payroll) => $payroll->salary_month?->copy()->startOfMonth()->toDateString() === $cycleMonth
-                        || ($employee->status === 'terminated'
-                            && $payroll->salary_period_from
-                            && $payroll->salary_period_to
-                            && $cycleDate->betweenIncluded($payroll->salary_period_from, $payroll->salary_period_to))
-                );
+                $hasGeneratedSalary = $employee->status === 'terminated'
+                    ? $employee->hasFinalSalaryPayroll()
+                    : $employee->payrolls->contains(
+                        fn (EmployeePayroll $payroll) => $payroll->salary_month?->copy()->startOfMonth()->toDateString() === $cycleMonth
+                    );
 
                 if ($hasGeneratedSalary) {
                     return false;
