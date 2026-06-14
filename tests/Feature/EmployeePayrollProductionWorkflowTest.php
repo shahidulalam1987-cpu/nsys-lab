@@ -116,6 +116,117 @@ class EmployeePayrollProductionWorkflowTest extends TestCase
         $show->assertSee('Salary Paid');
     }
 
+    public function test_second_confirm_payment_post_does_not_deduct_again(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $employee = $this->employee();
+        $financeAccount = $this->financeAccount();
+        $payroll = $this->approvedPayroll($admin, $employee, $client);
+
+        $payload = [
+            'payment_date' => '2026-06-30',
+            'finance_account_id' => $financeAccount->id,
+            'transaction_id' => 'SAFE-PAY-1',
+            'payment_note' => 'Salary transfer completed.',
+        ];
+
+        $this->actingAs($admin)->post('/admin/payroll/' . $payroll->id . '/confirm-payment', $payload)
+            ->assertRedirect('/admin/payroll/' . $payroll->id);
+
+        $this->actingAs($admin)->post('/admin/payroll/' . $payroll->id . '/confirm-payment', $payload)
+            ->assertRedirect('/admin/payroll/' . $payroll->id)
+            ->assertSessionHas('success', 'This salary payment is already confirmed.');
+
+        $this->assertSame(40000.0, (float) $financeAccount->fresh()->current_balance);
+        $this->assertSame(1, $payroll->financeLedgers()->where('transaction_type', 'salary_payment')->count());
+        $this->assertDatabaseHas('activity_logs', [
+            'module' => 'Payroll',
+            'action' => 'Duplicate Payment Blocked',
+        ]);
+    }
+
+    public function test_already_paid_payroll_returns_safe_message_without_required_fields(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $employee = $this->employee();
+        $financeAccount = $this->financeAccount();
+        $payroll = $this->approvedPayroll($admin, $employee, $client);
+
+        $this->actingAs($admin)->post('/admin/payroll/' . $payroll->id . '/confirm-payment', [
+            'payment_date' => '2026-06-30',
+            'finance_account_id' => $financeAccount->id,
+            'transaction_id' => 'SAFE-PAY-2',
+            'payment_note' => 'Salary transfer completed.',
+        ])->assertRedirect('/admin/payroll/' . $payroll->id);
+
+        $this->actingAs($admin)->post('/admin/payroll/' . $payroll->id . '/confirm-payment', [])
+            ->assertRedirect('/admin/payroll/' . $payroll->id)
+            ->assertSessionHas('success', 'This salary payment is already confirmed.');
+
+        $this->assertSame(40000.0, (float) $financeAccount->fresh()->current_balance);
+        $this->assertSame(1, $payroll->financeLedgers()->where('transaction_type', 'salary_payment')->count());
+    }
+
+    public function test_insufficient_finance_account_balance_blocks_salary_payment(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $employee = $this->employee();
+        $financeAccount = $this->financeAccount(['current_balance' => 9999]);
+        $payroll = $this->approvedPayroll($admin, $employee, $client);
+
+        $this->actingAs($admin)->post('/admin/payroll/' . $payroll->id . '/confirm-payment', [
+            'payment_date' => '2026-06-30',
+            'finance_account_id' => $financeAccount->id,
+            'transaction_id' => 'LOW-BALANCE-1',
+            'payment_note' => 'Salary transfer completed.',
+        ])->assertRedirect('/admin/payroll/' . $payroll->id)
+            ->assertSessionHas('success', 'Insufficient finance account balance.');
+
+        $this->assertSame(9999.0, (float) $financeAccount->fresh()->current_balance);
+        $this->assertSame('approved', $payroll->fresh()->payroll_status);
+        $this->assertSame(0, $payroll->financeLedgers()->where('transaction_type', 'salary_payment')->count());
+    }
+
+    public function test_reverse_payment_restores_balance_once_only(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $employee = $this->employee();
+        $financeAccount = $this->financeAccount();
+        $payroll = $this->approvedPayroll($admin, $employee, $client);
+
+        $this->actingAs($admin)->post('/admin/payroll/' . $payroll->id . '/confirm-payment', [
+            'payment_date' => '2026-06-30',
+            'finance_account_id' => $financeAccount->id,
+            'transaction_id' => 'REV-PAY-1',
+            'payment_note' => 'Salary transfer completed.',
+        ])->assertRedirect('/admin/payroll/' . $payroll->id);
+
+        $this->assertSame(40000.0, (float) $financeAccount->fresh()->current_balance);
+
+        $this->actingAs($admin)->post('/admin/payroll/' . $payroll->id . '/reverse-payment', [
+            'reversal_note' => 'Wrong account selected.',
+        ])->assertRedirect('/admin/payroll/' . $payroll->id);
+
+        $this->assertSame(50000.0, (float) $financeAccount->fresh()->current_balance);
+        $this->assertSame(1, $payroll->financeLedgers()->where('transaction_type', 'salary_payment_reversal')->count());
+        $this->assertDatabaseHas('activity_logs', [
+            'module' => 'Payroll',
+            'action' => 'Salary Reversed',
+        ]);
+
+        $this->actingAs($admin)->post('/admin/payroll/' . $payroll->id . '/reverse-payment', [
+            'reversal_note' => 'Try duplicate reversal.',
+        ])->assertRedirect('/admin/payroll/' . $payroll->id)
+            ->assertSessionHas('success', 'This salary payment cannot be reversed.');
+
+        $this->assertSame(50000.0, (float) $financeAccount->fresh()->current_balance);
+        $this->assertSame(1, $payroll->financeLedgers()->where('transaction_type', 'salary_payment_reversal')->count());
+    }
+
     public function test_employee_profile_salary_ledger_and_exports_are_available(): void
     {
         $admin = $this->user('admin');
@@ -168,6 +279,28 @@ class EmployeePayrollProductionWorkflowTest extends TestCase
             'non_working_days' => 0,
             'paid_amount' => 0,
         ];
+    }
+
+    private function approvedPayroll(User $admin, Employee $employee, Client $client)
+    {
+        $this->actingAs($admin)->post('/admin/payroll', $this->salaryPayload($employee, $client));
+        $payroll = $employee->payrolls()->firstOrFail();
+        $this->actingAs($admin)->post('/admin/payroll/' . $payroll->id . '/approve');
+
+        return $payroll->fresh();
+    }
+
+    private function financeAccount(array $overrides = []): FinanceAccount
+    {
+        return FinanceAccount::create(array_merge([
+            'account_type' => 'bank',
+            'account_name' => 'NSYS Salary Bank',
+            'provider_name' => 'Test Bank',
+            'account_number' => '123456789',
+            'currency' => 'BDT',
+            'current_balance' => 50000,
+            'status' => 'active',
+        ], $overrides));
     }
 
     private function user(string $role): User

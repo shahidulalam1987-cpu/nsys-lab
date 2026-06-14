@@ -430,7 +430,16 @@ class EmployeePayrollController extends Controller
 
     public function confirmPayment(Request $request, EmployeePayroll $payroll)
     {
-        if (! $payroll->canMarkPaid()) {
+        $payroll->refresh();
+
+        if ($this->salaryPaymentAlreadyConfirmed($payroll)) {
+            app(ActivityLogger::class)->log('Payroll', 'Duplicate Payment Blocked', 'Duplicate payment confirmation blocked for salary #' . $payroll->id . '.', $request);
+
+            return redirect('/admin/payroll/' . $payroll->id)
+                ->with('success', 'This salary payment is already confirmed.');
+        }
+
+        if ($payroll->payroll_status !== 'approved') {
             return redirect('/admin/payroll/' . $payroll->id)
                 ->with('success', 'Approve payroll before marking it paid.');
         }
@@ -443,11 +452,34 @@ class EmployeePayrollController extends Controller
             'salary_payment_attachment' => ['nullable', 'image', 'max:4096'],
         ]);
 
-        DB::transaction(function () use ($payroll, $request, $data) {
-            $payroll->refresh();
+        $blockedMessage = null;
+
+        DB::transaction(function () use ($payroll, $request, $data, &$blockedMessage) {
+            $payroll = EmployeePayroll::whereKey($payroll->id)->lockForUpdate()->firstOrFail();
+
+            if ($this->salaryPaymentAlreadyConfirmed($payroll)) {
+                $blockedMessage = 'This salary payment is already confirmed.';
+                app(ActivityLogger::class)->log('Payroll', 'Duplicate Payment Blocked', 'Duplicate payment confirmation blocked for salary #' . $payroll->id . '.', $request);
+
+                return;
+            }
+
+            if ($payroll->payroll_status !== 'approved') {
+                $blockedMessage = 'Approve payroll before marking it paid.';
+
+                return;
+            }
+
             $account = FinanceAccount::lockForUpdate()->findOrFail($data['finance_account_id']);
             $paidAmount = (float) $payroll->payable_salary;
             $previousBalance = (float) $account->current_balance;
+
+            if ($previousBalance < $paidAmount) {
+                $blockedMessage = 'Insufficient finance account balance.';
+
+                return;
+            }
+
             $newBalance = $previousBalance - $paidAmount;
             $attachment = $request->file('salary_payment_attachment')?->store('employee-salary-payments', 'public');
 
@@ -491,6 +523,11 @@ class EmployeePayrollController extends Controller
             $payroll->markAudit('salary_paid', auth()->id(), 'Paid from ' . $account->account_name . '.');
         });
 
+        if ($blockedMessage) {
+            return redirect('/admin/payroll/' . $payroll->id)
+                ->with('success', $blockedMessage);
+        }
+
         app(ActivityLogger::class)->log('Payroll', 'Salary Paid', 'Salary #' . $payroll->id . ' confirmed and deducted from finance account.', $request);
 
         return redirect('/admin/payroll/' . $payroll->id)
@@ -503,13 +540,32 @@ class EmployeePayrollController extends Controller
             'reversal_note' => ['required', 'string', 'max:1000'],
         ]);
 
-        if ($payroll->payroll_status !== 'paid' || ! $payroll->finance_account_id || $payroll->reversed_at) {
+        $payroll->refresh();
+
+        if ($payroll->payroll_status !== 'paid'
+            || $payroll->payment_status !== 'paid'
+            || ! $payroll->finance_account_id
+            || $payroll->reversed_at
+            || $payroll->financeLedgers()->where('transaction_type', 'salary_payment_reversal')->exists()) {
             return redirect('/admin/payroll/' . $payroll->id)
                 ->with('success', 'This salary payment cannot be reversed.');
         }
 
-        DB::transaction(function () use ($payroll, $data) {
-            $payroll->refresh();
+        $blockedMessage = null;
+
+        DB::transaction(function () use ($payroll, $data, &$blockedMessage) {
+            $payroll = EmployeePayroll::whereKey($payroll->id)->lockForUpdate()->firstOrFail();
+
+            if ($payroll->payroll_status !== 'paid'
+                || $payroll->payment_status !== 'paid'
+                || ! $payroll->finance_account_id
+                || $payroll->reversed_at
+                || $payroll->financeLedgers()->where('transaction_type', 'salary_payment_reversal')->exists()) {
+                $blockedMessage = 'This salary payment cannot be reversed.';
+
+                return;
+            }
+
             $account = FinanceAccount::lockForUpdate()->findOrFail($payroll->finance_account_id);
             $amount = (float) $payroll->paid_amount;
             $previousBalance = (float) $account->current_balance;
@@ -544,10 +600,24 @@ class EmployeePayrollController extends Controller
             $payroll->markAudit('salary_reversed', auth()->id(), $data['reversal_note']);
         });
 
+        if ($blockedMessage) {
+            return redirect('/admin/payroll/' . $payroll->id)
+                ->with('success', $blockedMessage);
+        }
+
         app(ActivityLogger::class)->log('Payroll', 'Salary Reversed', 'Salary #' . $payroll->id . ' payment reversed.', $request);
 
         return redirect('/admin/payroll/' . $payroll->id)
             ->with('success', 'Salary payment reversed and finance account balance restored.');
+    }
+
+    private function salaryPaymentAlreadyConfirmed(EmployeePayroll $payroll): bool
+    {
+        return $payroll->payroll_status === 'paid'
+            || $payroll->payment_status === 'paid'
+            || $payroll->paid_at !== null
+            || $payroll->payment_date !== null
+            || $payroll->financeLedgers()->where('transaction_type', 'salary_payment')->exists();
     }
 
     public function paymentReport(Request $request)
