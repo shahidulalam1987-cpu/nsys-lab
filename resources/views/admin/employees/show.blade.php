@@ -282,6 +282,7 @@
                         <th>Generated Salary</th>
                         <th>Paid Amount</th>
                         <th>Due Amount</th>
+                        <th>Ledger Type</th>
                         <th>Status</th>
                         <th>Generated Date</th>
                         <th>Paid Date</th>
@@ -297,12 +298,20 @@
                             <td>BDT {{ number_format($row['generated_salary'], 2) }}</td>
                             <td>BDT {{ number_format($row['paid_amount'], 2) }}</td>
                             <td>BDT {{ number_format($row['due_amount'], 2) }}</td>
+                            <td>
+                                <span class="badge {{ $row['is_current'] ? 'badge-success' : 'badge-neutral' }}">{{ $row['history_status'] }}</span>
+                                @if($row['superseded_by_id'])
+                                    <br><span style="color:var(--muted);">Superseded by #{{ $row['superseded_by_id'] }}</span>
+                                @elseif($row['regenerated_from_id'])
+                                    <br><span style="color:var(--muted);">Regenerated from #{{ $row['regenerated_from_id'] }}</span>
+                                @endif
+                            </td>
                             <td>{{ $row['status'] }}</td>
                             <td>{{ $row['generated_date'] }}</td>
                             <td>{{ $row['paid_date'] }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="10">No salary ledger records found.</td></tr>
+                        <tr><td colspan="11">No salary ledger records found.</td></tr>
                     @endforelse
                 </table>
             </div>

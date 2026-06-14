@@ -17,14 +17,15 @@ class PortalController extends Controller
             ->with(['payrolls.client'])
             ->firstOrFail();
         $payrolls = $employee->payrolls->sortByDesc('salary_month');
+        $currentPayrolls = $payrolls->filter(fn ($payroll) => $payroll->is_current);
         $lastPayment = $payrolls
             ->filter(fn ($payroll) => (float) $payroll->paid_amount > 0)
             ->sortByDesc(fn ($payroll) => $payroll->payment_date ?: $payroll->paid_at ?: $payroll->created_at)
             ->first();
         $summary = [
-            'total_generated' => (float) $payrolls->sum('payable_salary'),
-            'total_paid' => (float) $payrolls->sum('paid_amount'),
-            'current_due' => $payrolls->sum(fn ($payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
+            'total_generated' => (float) $currentPayrolls->sum('payable_salary'),
+            'total_paid' => (float) $currentPayrolls->sum('paid_amount'),
+            'current_due' => $currentPayrolls->sum(fn ($payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
             'last_payment_date' => $lastPayment?->payment_date ?: $lastPayment?->paid_at,
         ];
 

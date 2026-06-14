@@ -202,9 +202,17 @@ class EmployeePayrollController extends Controller
             'status' => EmployeePayroll::statusFor($calculation['payable_salary'], $paidAmount),
             'payroll_status' => 'generated',
             'generation_status' => $existingPayroll ? 'regenerated' : 'generated',
+            'is_current' => true,
             'regenerated_from_id' => $existingPayroll?->id,
             'note' => $data['note'] ?? null,
         ], $paymentSnapshot));
+
+        if ($existingPayroll) {
+            $existingPayroll->update([
+                'is_current' => false,
+                'superseded_by_id' => $payroll->id,
+            ]);
+        }
 
         $payroll->markAudit(
             $existingPayroll ? 'salary_regenerated' : 'salary_generated',
@@ -286,9 +294,17 @@ class EmployeePayrollController extends Controller
                     'status' => EmployeePayroll::statusFor($previewRow['payable_salary'], 0),
                     'payroll_status' => 'generated',
                     'generation_status' => $existingPayroll ? 'regenerated' : 'generated',
+                    'is_current' => true,
                     'regenerated_from_id' => $existingPayroll?->id,
                     'note' => 'Generated from Work Status records.',
                 ], $this->employeePaymentSnapshot($previewRow['employee'])));
+
+                if ($existingPayroll) {
+                    $existingPayroll->update([
+                        'is_current' => false,
+                        'superseded_by_id' => $payroll->id,
+                    ]);
+                }
 
                 $payroll->markAudit(
                     $existingPayroll ? 'salary_regenerated' : 'salary_generated',
@@ -716,7 +732,8 @@ class EmployeePayrollController extends Controller
 
     private function filteredPayrollData(array $filters): array
     {
-        $query = EmployeePayroll::with(['employee', 'client', 'financeAccount'])
+        $query = EmployeePayroll::current()
+            ->with(['employee', 'client', 'financeAccount'])
             ->when($filters['month'] ?? null, fn ($query, $month) => $query->whereDate('salary_month', $month . '-01'))
             ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
             ->when($filters['salary_source'] ?? null, fn ($query, $salarySource) => $query->where('salary_source', $salarySource));
@@ -790,7 +807,8 @@ class EmployeePayrollController extends Controller
 
     private function paymentReportQuery(array $filters)
     {
-        return EmployeePayroll::with(['employee', 'client', 'financeAccount'])
+        return EmployeePayroll::current()
+            ->with(['employee', 'client', 'financeAccount'])
             ->where('payroll_status', 'paid')
             ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->whereDate('payment_date', '>=', $date))
             ->when($filters['date_to'] ?? null, fn ($query, $date) => $query->whereDate('payment_date', '<=', $date))
@@ -804,7 +822,8 @@ class EmployeePayrollController extends Controller
 
     private function existingPayrollForPeriod(int $employeeId, ?int $clientId, Carbon $salaryMonth): ?EmployeePayroll
     {
-        return EmployeePayroll::with(['employee', 'client'])
+        return EmployeePayroll::current()
+            ->with(['employee', 'client'])
             ->where('employee_id', $employeeId)
             ->when($clientId, fn ($query) => $query->where('client_id', $clientId), fn ($query) => $query->whereNull('client_id'))
             ->whereDate('salary_month', $salaryMonth->copy()->startOfMonth()->toDateString())
@@ -1150,7 +1169,7 @@ class EmployeePayrollController extends Controller
 
         $today = now()->startOfDay();
 
-        return Employee::with(['payrolls', 'activeAssignments.client'])
+        return Employee::with(['payrolls' => fn ($query) => $query->current(), 'activeAssignments.client'])
             ->orderBy('name')
             ->get()
             ->filter(function (Employee $employee) use ($status, $today) {

@@ -40,12 +40,56 @@ class EmployeePayrollProductionWorkflowTest extends TestCase
         $regenerate->assertRedirect('/admin/payroll/' . $latest->id);
         $this->assertSame(2, $employee->payrolls()->count());
         $this->assertSame('generated', $existing->fresh()->generation_status);
+        $this->assertFalse((bool) $existing->fresh()->is_current);
         $this->assertSame('regenerated', $latest->generation_status);
+        $this->assertTrue((bool) $latest->is_current);
         $this->assertSame($existing->id, $latest->regenerated_from_id);
+        $this->assertSame($latest->id, $existing->fresh()->superseded_by_id);
         $this->assertDatabaseHas('employee_payroll_audits', [
             'employee_payroll_id' => $latest->id,
             'action' => 'salary_regenerated',
         ]);
+    }
+
+    public function test_regenerated_payroll_excludes_old_record_from_due_totals_and_reports(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $employee = $this->employee();
+
+        $this->actingAs($admin)->post('/admin/payroll', $this->salaryPayload($employee, $client));
+        $oldPayroll = $employee->payrolls()->firstOrFail();
+
+        $this->actingAs($admin)->post('/admin/payroll', array_merge(
+            $this->salaryPayload($employee, $client),
+            [
+                'working_days' => 5,
+                'confirm_regenerate' => 1,
+            ]
+        ));
+
+        $newPayroll = $employee->payrolls()->orderByDesc('id')->firstOrFail();
+
+        $this->assertFalse((bool) $oldPayroll->fresh()->is_current);
+        $this->assertTrue((bool) $newPayroll->is_current);
+        $this->assertSame($newPayroll->id, $oldPayroll->fresh()->superseded_by_id);
+        $this->assertSame(5000.0, (float) $newPayroll->payable_salary);
+
+        $payrollPage = $this->actingAs($admin)->get('/admin/payroll?status=due');
+        $payrollPage->assertOk();
+        $payrollPage->assertSee('BDT 5,000.00');
+        $payrollPage->assertDontSee('BDT 15,000.00');
+
+        $sheet = app(\App\Services\SalaryMonthSheetService::class)->build(['month' => '2026-06']);
+        $this->assertSame(1, $sheet['summary']['total_salary_records']);
+        $this->assertSame(5000.0, (float) $sheet['summary']['total_remaining_due']);
+
+        $profile = $this->actingAs($admin)->get('/admin/employees/' . $employee->id);
+        $profile->assertOk();
+        $profile->assertSee('Current Payroll');
+        $profile->assertSee('Historical Payroll');
+        $profile->assertSee('Superseded by #' . $newPayroll->id);
+        $profile->assertSee('Regenerated from #' . $oldPayroll->id);
     }
 
     public function test_payroll_can_be_approved_and_confirmed_paid_with_finance_ledger(): void

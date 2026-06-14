@@ -45,6 +45,8 @@ class EmployeePayroll extends Model
         'payment_status',
         'payroll_status',
         'generation_status',
+        'is_current',
+        'superseded_by_id',
         'regenerated_from_id',
         'approved_at',
         'approved_by',
@@ -82,6 +84,7 @@ class EmployeePayroll extends Model
             'paid_at' => 'datetime',
             'payment_confirmed_at' => 'datetime',
             'reversed_at' => 'datetime',
+            'is_current' => 'boolean',
         ];
     }
 
@@ -95,6 +98,7 @@ class EmployeePayroll extends Model
             );
             $payroll->attributes['payroll_status'] = $payroll->attributes['payroll_status'] ?? 'generated';
             $payroll->attributes['generation_status'] = $payroll->attributes['generation_status'] ?? 'generated';
+            $payroll->attributes['is_current'] = $payroll->attributes['is_current'] ?? true;
             $payroll->attributes['status'] = self::statusFor(
                 (float) ($payroll->payable_salary ?? 0),
                 (float) ($payroll->paid_amount ?? 0)
@@ -321,6 +325,14 @@ class EmployeePayroll extends Model
         return $query;
     }
 
+    public function scopeCurrent($query)
+    {
+        return $query->where(function ($query) {
+            $query->where('is_current', true)
+                ->orWhereNull('is_current');
+        });
+    }
+
     public function matchesStatusFilter(?string $status): bool
     {
         if (! $status) {
@@ -481,5 +493,20 @@ class EmployeePayroll extends Model
     public function financeLedgers()
     {
         return $this->hasMany(FinanceAccountLedger::class, 'employee_payroll_id');
+    }
+
+    public function regeneratedFrom()
+    {
+        return $this->belongsTo(self::class, 'regenerated_from_id');
+    }
+
+    public function supersededBy()
+    {
+        return $this->belongsTo(self::class, 'superseded_by_id');
+    }
+
+    public function regenerations()
+    {
+        return $this->hasMany(self::class, 'regenerated_from_id');
     }
 }

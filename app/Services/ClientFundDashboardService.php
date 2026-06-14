@@ -14,7 +14,7 @@ class ClientFundDashboardService
 {
     public function dashboard(): array
     {
-        $clients = Client::with(['salaryPayments', 'employeePayrolls.employee'])
+        $clients = Client::with(['salaryPayments', 'employeePayrolls' => fn ($query) => $query->current(), 'employeePayrolls.employee'])
             ->orderBy('company_name')
             ->get();
         $rows = $clients->map(fn (Client $client) => $this->clientSummary($client));
@@ -39,7 +39,7 @@ class ClientFundDashboardService
 
     public function clientDetails(Client $client, array $filters = []): array
     {
-        $client->load(['salaryPayments', 'employeePayrolls.employee']);
+        $client->load(['salaryPayments', 'employeePayrolls' => fn ($query) => $query->current(), 'employeePayrolls.employee']);
 
         return [
             'row' => $this->clientSummary($client),
@@ -76,7 +76,8 @@ class ClientFundDashboardService
         $fundReceived = (float) SalaryPayment::where('client_id', $clientId)
             ->where('status', 'approved')
             ->sum('amount');
-        $salaryUsed = (float) EmployeePayroll::where('client_id', $clientId)
+        $salaryUsed = (float) EmployeePayroll::current()
+            ->where('client_id', $clientId)
             ->sum('paid_amount');
 
         return $fundReceived - $salaryUsed;
@@ -222,7 +223,7 @@ class ClientFundDashboardService
     {
         $today = now()->toDateString();
 
-        return EmployeeAssignment::with('employee.payrolls')
+        return EmployeeAssignment::with(['employee.payrolls' => fn ($query) => $query->current()])
             ->where('client_id', $client->id)
             ->where('status', 'active')
             ->whereDate('assigned_from', '<=', $today)

@@ -317,12 +317,13 @@ class Employee extends Model
 
         if ($this->relationLoaded('payrolls')) {
             return $this->payrolls
-                ->filter(fn (EmployeePayroll $payroll) => $payroll->salary_month?->toDateString() === $month->toDateString())
+                ->filter(fn (EmployeePayroll $payroll) => $payroll->is_current && $payroll->salary_month?->toDateString() === $month->toDateString())
                 ->sortByDesc('id')
                 ->first();
         }
 
         return $this->payrolls()
+            ->current()
             ->whereDate('salary_month', $month->toDateString())
             ->latest()
             ->first();

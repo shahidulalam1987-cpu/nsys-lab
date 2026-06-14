@@ -16,6 +16,7 @@ class EmployeeController extends Controller
         $assignments = $client->employeeAssignments()
             ->with(['employee.payrolls' => function ($query) use ($client) {
                 $query->where('client_id', $client->id)
+                    ->current()
                     ->latest('salary_month');
             }])
             ->latest('assigned_from')

@@ -114,9 +114,9 @@ class EmployeeController extends Controller
         $salarySummary = $this->salarySummary($employee);
         $salaryLedgerRows = $this->salaryLedgerRows($employee);
         $salaryLedgerSummary = [
-            'total_generated' => $salaryLedgerRows->sum('generated_salary'),
-            'total_paid' => $salaryLedgerRows->sum('paid_amount'),
-            'current_due' => $salaryLedgerRows->sum('due_amount'),
+            'total_generated' => $salaryLedgerRows->where('is_current', true)->sum('generated_salary'),
+            'total_paid' => $salaryLedgerRows->where('is_current', true)->sum('paid_amount'),
+            'current_due' => $salaryLedgerRows->where('is_current', true)->sum('due_amount'),
             'last_payment_date' => $employee->payrolls
                 ->filter(fn ($payroll) => (float) $payroll->paid_amount > 0)
                 ->sortByDesc(fn ($payroll) => $payroll->payment_date ?: $payroll->paid_at ?: $payroll->created_at)
@@ -286,7 +286,7 @@ class EmployeeController extends Controller
 
         return response()->streamDownload(function () use ($rows) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Month', 'Client', 'Working Days', 'Non Working Days', 'Generated Salary', 'Paid Amount', 'Due Amount', 'Status', 'Generated Date', 'Paid Date']);
+            fputcsv($handle, ['Month', 'Client', 'Working Days', 'Non Working Days', 'Generated Salary', 'Paid Amount', 'Due Amount', 'Ledger Type', 'Status', 'Generated Date', 'Paid Date']);
 
             foreach ($rows as $row) {
                 fputcsv($handle, [
@@ -297,6 +297,7 @@ class EmployeeController extends Controller
                     number_format($row['generated_salary'], 2, '.', ''),
                     number_format($row['paid_amount'], 2, '.', ''),
                     number_format($row['due_amount'], 2, '.', ''),
+                    $row['history_status'],
                     $row['status'],
                     $row['generated_date'],
                     $row['paid_date'],
@@ -423,7 +424,7 @@ class EmployeeController extends Controller
 
     private function salarySummary(Employee $employee): array
     {
-        $payrolls = $employee->payrolls;
+        $payrolls = $employee->payrolls->filter(fn ($payroll) => $payroll->is_current);
         $assignedClient = $employee->assignments
             ->where('status', 'active')
             ->sortByDesc('assigned_from')
@@ -478,6 +479,10 @@ class EmployeeController extends Controller
                 ][$payroll->calculated_status] ?? ucfirst($payroll->calculated_status)),
                 'generated_date' => $payroll->created_at?->toDateString() ?: '-',
                 'paid_date' => $payroll->payment_date?->toDateString() ?: $payroll->paid_at?->toDateString() ?: '-',
+                'is_current' => (bool) $payroll->is_current,
+                'history_status' => $payroll->is_current ? 'Current Payroll' : 'Historical Payroll',
+                'superseded_by_id' => $payroll->superseded_by_id,
+                'regenerated_from_id' => $payroll->regenerated_from_id,
                 'payroll' => $payroll,
             ])
             ->values();

@@ -106,7 +106,7 @@ class NotificationCenterService
 
     private function employeeAlerts(): array
     {
-        $payrolls = EmployeePayroll::with('employee')->get();
+        $payrolls = EmployeePayroll::current()->with('employee')->get();
         $upcoming = $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('upcoming') && $payroll->employee?->status !== 'terminated');
         $unpaid = $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('due') && $payroll->employee?->status !== 'terminated');
         $finalSettlements = $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlement());
@@ -262,7 +262,7 @@ class NotificationCenterService
 
     private function upcomingSalaryCount(): int
     {
-        return EmployeePayroll::with('employee')->get()
+        return EmployeePayroll::current()->with('employee')->get()
             ->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('upcoming') && $payroll->employee?->status !== 'terminated')
             ->count();
     }
@@ -288,7 +288,7 @@ class NotificationCenterService
 
     private function terminatedEmployeesMissingFinalPayroll(): Collection
     {
-        return Employee::with('payrolls')
+        return Employee::with(['payrolls' => fn ($query) => $query->current()])
             ->where('status', 'terminated')
             ->whereNotNull('last_working_date')
             ->get()

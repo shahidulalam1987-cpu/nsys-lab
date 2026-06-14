@@ -10,7 +10,8 @@ class SalaryMonthSheetService
     public function build(array $filters = []): array
     {
         $month = Carbon::createFromFormat('Y-m', $filters['month'] ?? now()->format('Y-m'))->startOfMonth();
-        $rows = EmployeePayroll::with(['employee', 'client'])
+        $rows = EmployeePayroll::current()
+            ->with(['employee', 'client'])
             ->whereDate('salary_month', $month->toDateString())
             ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
             ->latest('salary_month')

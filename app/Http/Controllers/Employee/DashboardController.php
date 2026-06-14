@@ -46,10 +46,11 @@ class DashboardController extends Controller
         $activeAssignments = $employee->assignments->where('status', 'active');
         $primaryAssignment = $activeAssignments->sortByDesc('assigned_from')->first();
         $payrolls = $employee->payrolls->sortByDesc('salary_month');
+        $currentPayrolls = $payrolls->filter(fn ($payroll) => $payroll->is_current);
         $salarySummary = [
-            'generated_salary' => (float) $payrolls->sum('payable_salary'),
-            'paid_salary' => (float) $payrolls->sum('paid_amount'),
-            'due_salary' => $payrolls->sum(fn ($payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
+            'generated_salary' => (float) $currentPayrolls->sum('payable_salary'),
+            'paid_salary' => (float) $currentPayrolls->sum('paid_amount'),
+            'due_salary' => $currentPayrolls->sum(fn ($payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
         ];
         $latestNotices = EmployeeNotice::latest('published_at')->latest()->take(5)->get();
         $unreadNoticeCount = EmployeeNotice::whereDoesntHave('reads', function ($query) use ($employee) {
