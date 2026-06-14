@@ -363,8 +363,10 @@ class EmployeePayroll extends Model
         }
 
         $lastWorkingDate = $employee->last_working_date;
+        $isCurrent = $this->is_current || $this->is_current === null;
 
-        return (float) $this->paid_amount < (float) $this->payable_salary
+        return $isCurrent
+            || (float) $this->paid_amount < (float) $this->payable_salary
             || $this->salary_month?->copy()->startOfMonth()->toDateString() === $lastWorkingDate->copy()->startOfMonth()->toDateString()
             || ($this->salary_period_from
                 && $this->salary_period_to

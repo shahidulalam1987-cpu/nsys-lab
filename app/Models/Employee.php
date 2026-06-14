@@ -317,7 +317,7 @@ class Employee extends Model
 
         $lastWorkingDate = $this->last_working_date;
         $payrolls = $this->relationLoaded('payrolls')
-            ? $this->payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->is_current)
+            ? $this->payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->is_current || $payroll->is_current === null)
             : $this->payrolls()->current()->get();
 
         return $payrolls->contains(function (EmployeePayroll $payroll) use ($lastWorkingDate) {

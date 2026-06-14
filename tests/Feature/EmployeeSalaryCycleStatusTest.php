@@ -578,6 +578,45 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $this->assertSame(PayrollCategoryService::FINAL_SETTLEMENT_PAID, $category['category']);
     }
 
+    public function test_paid_terminated_employee_does_not_show_as_final_salary_pending(): void
+    {
+        Carbon::setTestNow('2026-06-24');
+
+        $admin = $this->admin();
+        $client = $this->client();
+        $employee = $this->employee([
+            'name' => 'Mashfe Ahmed',
+            'status' => 'terminated',
+            'last_working_date' => '2026-06-20',
+            'salary_day' => 20,
+            'monthly_salary' => 30000,
+        ]);
+        $payroll = $this->payroll($employee, $client, [
+            'salary_month' => '2026-05-01',
+            'salary_period_from' => '2026-05-01',
+            'salary_period_to' => '2026-05-31',
+            'working_days' => 1,
+            'payable_salary' => 1000.02,
+            'paid_amount' => 1000.02,
+            'payment_status' => 'paid',
+            'payroll_status' => 'paid',
+        ]);
+        $payroll->update(['is_current' => null]);
+
+        $dueResponse = $this->actingAs($admin)->get('/admin/payroll?status=due&employee_scope=terminated');
+        $paidResponse = $this->actingAs($admin)->get('/admin/payroll?status=paid');
+
+        $this->assertTrue($employee->fresh()->load(['payrolls' => fn ($query) => $query->current()])->hasFinalSalaryPayroll());
+        $this->assertTrue($payroll->fresh()->isFinalSettlementPaid());
+        $dueResponse->assertOk();
+        $dueResponse->assertSee('No salary records found.');
+        $dueResponse->assertDontSee('Final salary not generated yet');
+        $dueResponse->assertDontSee('Generate Final Salary');
+        $paidResponse->assertOk();
+        $paidResponse->assertSee('Mashfe Ahmed');
+        $paidResponse->assertSee('BDT 1,000.02');
+    }
+
     public function test_superseded_payrolls_do_not_affect_current_category(): void
     {
         Carbon::setTestNow('2026-06-15');
