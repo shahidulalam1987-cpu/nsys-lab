@@ -330,6 +330,10 @@
                                 ? $cycleEmployee->currentSalaryDueDate()
                                 : $cycleEmployee->nextSalaryDate());
                         $cycleEstimate = $cycleEmployee->cycle_estimate ?? [];
+                        $estimatedAmount = (float) data_get($cycleEstimate, 'estimated_payable_salary', 0);
+                        $workStatusMissing = data_get($cycleEstimate, 'estimate_status') === 'work_status_missing';
+                        $canGenerateCycleSalary = ! ($estimatedAmount <= 0 && $workStatusMissing);
+                        $eligibilityLabel = data_get($cycleEstimate, 'eligibility_label', $workStatusMissing ? 'Pending Work Status' : 'Salary Ready');
                     @endphp
                     <tr>
                         <td>
@@ -344,17 +348,26 @@
                         <td>{{ $cycleEmployee->salaryCycleDay() ?: '-' }}</td>
                         <td>{{ $cycleSalaryDate?->toDateString() ?: '-' }}</td>
                         <td>
-                            BDT {{ number_format((float) data_get($cycleEstimate, 'estimated_payable_salary', 0), 2) }}
+                            BDT {{ number_format($estimatedAmount, 2) }}
                             <br><span style="color:var(--muted);">
                                 Working: {{ number_format((float) data_get($cycleEstimate, 'working_salary_count', 0), 2) }}
                                 | Non Working: {{ number_format((float) data_get($cycleEstimate, 'non_working_count', 0), 2) }}
                             </span>
                         </td>
                         <td>
-                            {{ data_get($cycleEstimate, 'estimate_status_label', 'Work Status Missing') }}
-                            <br><span style="color:var(--muted);">{{ $cycleEmployee->status === 'terminated' ? 'Final Salary Pending' : $cycleEmployee->salaryStatusLabel() }}</span>
+                            <span class="badge {{ $canGenerateCycleSalary ? 'badge-success' : 'badge-warning' }}">{{ $eligibilityLabel }}</span>
+                            <br><span style="color:var(--muted);">{{ $workStatusMissing ? 'Pending Work Status' : data_get($cycleEstimate, 'estimate_status_label', 'Based on Work Status') }}</span>
+                            @if($cycleEmployee->status === 'terminated')
+                                <br><span style="color:var(--muted);">Final Salary Pending</span>
+                            @endif
                         </td>
-                        <td><a class="btn" href="/admin/payroll/create">{{ $cycleEmployee->status === 'terminated' ? 'Generate Final Salary' : 'Generate Salary' }}</a></td>
+                        <td>
+                            @if($canGenerateCycleSalary)
+                                <a class="btn" href="/admin/payroll/create">{{ $cycleEmployee->status === 'terminated' ? 'Generate Final Salary' : 'Generate Salary' }}</a>
+                            @else
+                                <button class="btn" type="button" disabled style="opacity:.55;cursor:not-allowed;">Work Status Required</button>
+                            @endif
+                        </td>
                     </tr>
                 @endforeach
             </table>

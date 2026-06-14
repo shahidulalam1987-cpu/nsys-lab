@@ -138,7 +138,8 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertSee('Recently Joined Employee');
         $response->assertSee('Estimated Amount Due');
         $response->assertSee('BDT 0.00');
-        $response->assertSee('Work Status Missing');
+        $response->assertSee('Pending Work Status');
+        $response->assertSee('Work Status Required');
         $response->assertDontSee('BDT 7,000.00');
     }
 
@@ -297,7 +298,72 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertOk();
         $response->assertSee('Final Salary Pending Employee');
         $response->assertSee('Final salary not generated yet');
-        $response->assertSee('Generate Final Salary');
+        $response->assertSee('Work Status Required');
+        $response->assertDontSee('Generate Final Salary');
+    }
+
+    public function test_salary_generation_is_blocked_when_no_work_status_exists_for_zero_payable_salary(): void
+    {
+        Carbon::setTestNow('2026-06-15');
+
+        $admin = $this->admin();
+        $employee = $this->employee([
+            'name' => 'No Work Status Employee',
+            'employee_type' => 'agency_internal',
+            'joining_date' => '2026-06-12',
+            'salary_day' => 12,
+            'monthly_salary' => 7000,
+        ]);
+
+        $response = $this->actingAs($admin)->post('/admin/payroll', [
+            'generation_mode' => 'manual',
+            'employee_id' => $employee->id,
+            'calculation_type' => 'date_to_date',
+            'from_date' => '2026-06-12',
+            'to_date' => '2026-06-12',
+            'working_days' => 0,
+            'non_working_days' => 1,
+            'payment_status' => 'upcoming',
+            'paid_amount' => 0,
+        ]);
+
+        $response->assertSessionHasErrors(['work_status' => 'Work Status records are required before salary generation.']);
+        $this->assertSame(0, $employee->payrolls()->count());
+    }
+
+    public function test_terminated_final_settlement_can_generate_when_work_status_exists(): void
+    {
+        Carbon::setTestNow('2026-06-24');
+
+        $admin = $this->admin();
+        $employee = $this->employee([
+            'name' => 'Final Settlement Ready Employee',
+            'employee_type' => 'agency_internal',
+            'status' => 'terminated',
+            'joining_date' => '2026-06-01',
+            'last_working_date' => '2026-06-20',
+            'salary_day' => 20,
+            'monthly_salary' => 12000,
+        ]);
+        $this->workStatus($employee, null, '2026-06-18', 'working');
+
+        $response = $this->actingAs($admin)->post('/admin/payroll', [
+            'generation_mode' => 'manual',
+            'employee_id' => $employee->id,
+            'calculation_type' => 'date_to_date',
+            'from_date' => '2026-06-18',
+            'to_date' => '2026-06-20',
+            'use_work_status_records' => 1,
+            'payment_status' => 'upcoming',
+            'paid_amount' => 0,
+        ]);
+
+        $payroll = $employee->payrolls()->first();
+
+        $response->assertRedirect('/admin/payroll/' . $payroll?->id);
+        $this->assertNotNull($payroll);
+        $this->assertSame('1.00', $payroll->working_days);
+        $this->assertSame('400.00', $payroll->payable_salary);
     }
 
     public function test_terminated_employee_with_unpaid_current_payroll_is_not_also_final_salary_pending(): void

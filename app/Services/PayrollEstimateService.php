@@ -52,7 +52,19 @@ class PayrollEstimateService
             'estimate_status' => $records->isNotEmpty() ? 'based_on_work_status' : 'work_status_missing',
             'estimate_status_label' => $records->isNotEmpty() ? 'Based on Work Status' : 'Work Status Missing',
             'work_status_records' => $records->count(),
+            'eligibility_label' => $this->eligibilityLabel($periodEnd, $estimatedPayableSalary, $records->count()),
         ];
+    }
+
+    public function hasWorkStatusRecordsForPeriod(Employee $employee, Carbon $periodStart, Carbon $periodEnd, ?Client $client = null): bool
+    {
+        return EmployeeWorkStatus::query()
+            ->where('employee_id', $employee->id)
+            ->whereDate('work_date', '>=', $periodStart->toDateString())
+            ->whereDate('work_date', '<=', $periodEnd->toDateString())
+            ->when($client, fn ($query) => $query->where('client_id', $client->id))
+            ->when(! $client && $employee->isAgencyInternal(), fn ($query) => $query->whereNull('client_id'))
+            ->exists();
     }
 
     private function periodEnd(Employee $employee, ?Carbon $salaryDate): ?Carbon
@@ -78,6 +90,26 @@ class PayrollEstimateService
             'estimate_status' => 'work_status_missing',
             'estimate_status_label' => 'Work Status Missing',
             'work_status_records' => 0,
+            'eligibility_label' => 'Pending Work Status',
         ];
+    }
+
+    private function eligibilityLabel(?Carbon $salaryDate, float $estimatedPayableSalary, int $workStatusRecords): string
+    {
+        if ($estimatedPayableSalary > 0 && $workStatusRecords > 0) {
+            return 'Salary Ready';
+        }
+
+        if (! $salaryDate) {
+            return 'Pending Work Status';
+        }
+
+        $today = now()->startOfDay();
+
+        if ($salaryDate->copy()->startOfDay()->lte($today)) {
+            return 'Salary Day Reached';
+        }
+
+        return 'Upcoming Salary';
     }
 }

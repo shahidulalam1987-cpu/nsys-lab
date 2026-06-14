@@ -288,12 +288,8 @@ class EmployeeAttendancePhase3Test extends TestCase
             'paid_amount' => 0,
         ]);
 
-        $payroll = $employee->payrolls()->first();
-
-        $response->assertRedirect('/admin/payroll/' . $payroll->id);
-        $this->assertSame(0.0, (float) $payroll->working_days);
-        $this->assertSame(10.0, (float) $payroll->non_working_days);
-        $this->assertSame(0.0, (float) $payroll->payable_salary);
+        $response->assertSessionHasErrors(['work_status' => 'Work Status records are required before salary generation.']);
+        $this->assertSame(0, $employee->payrolls()->count());
     }
 
     private function user(string $role): User

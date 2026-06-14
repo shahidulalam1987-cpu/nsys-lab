@@ -159,6 +159,18 @@ class EmployeePayrollController extends Controller
         }
 
         $calculation = $this->calculatePayroll($employee, $data);
+        $client = isset($data['client_id']) ? Client::find($data['client_id']) : null;
+        if ((float) $calculation['payable_salary'] <= 0
+            && ! $this->payrollEstimator->hasWorkStatusRecordsForPeriod(
+                $employee,
+                $calculation['from_date'],
+                $calculation['to_date'],
+                $client
+            )) {
+            return back()
+                ->withInput()
+                ->withErrors(['work_status' => 'Work Status records are required before salary generation.']);
+        }
         $existingPayroll = $this->existingPayrollForPeriod(
             (int) $data['employee_id'],
             isset($data['client_id']) ? (int) $data['client_id'] : null,
@@ -252,6 +264,7 @@ class EmployeePayrollController extends Controller
             $created = 0;
             $regenerated = 0;
             $skipped = collect($data['rows'] ?? [])->where('action', 'skip')->count();
+            $blockedMissingWorkStatus = 0;
             $salaryMonth = Carbon::createFromFormat('Y-m', $data['salary_month'])->startOfMonth();
             $selectedRows = collect($data['rows'] ?? [])
                 ->filter(fn (array $row) => in_array($row['action'], ['generate', 'regenerate'], true));
@@ -271,6 +284,7 @@ class EmployeePayrollController extends Controller
                 ]))->first();
 
                 if (! $previewRow || $previewRow['working_count'] <= 0) {
+                    $blockedMissingWorkStatus++;
                     $skipped++;
                     continue;
                 }
@@ -325,6 +339,12 @@ class EmployeePayrollController extends Controller
                 );
 
                 $existingPayroll ? $regenerated++ : $created++;
+            }
+
+            if ($selectedRows->isNotEmpty() && ($created + $regenerated) === 0 && $blockedMissingWorkStatus > 0) {
+                return back()
+                    ->withInput()
+                    ->withErrors(['work_status' => 'Work Status records are required before salary generation.']);
             }
 
             return redirect('/admin/payroll')->with(
