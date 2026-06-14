@@ -27,6 +27,7 @@ use App\Http\Controllers\Admin\SalaryDayController;
 use App\Http\Controllers\Admin\SalaryPaymentController;
 use App\Http\Controllers\Admin\SalaryMonthSheetController;
 use App\Http\Controllers\Admin\EmployeePayrollController;
+use App\Http\Controllers\Admin\SalaryStatementController;
 use App\Http\Controllers\Admin\EmployeeAttendanceController;
 use App\Http\Controllers\Admin\EmployeeWorkStatusController;
 use App\Http\Controllers\Admin\ClientFundController;
@@ -190,6 +191,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/admin/payroll', [EmployeePayrollController::class, 'store']);
     Route::redirect('/admin/payroll/upcoming', '/admin/payroll?status=upcoming');
     Route::redirect('/admin/payroll/unpaid', '/admin/payroll?status=due');
+    Route::get('/admin/payroll/{payroll}/salary-statement', [SalaryStatementController::class, 'download']);
     Route::get('/admin/payroll/{id}', [EmployeePayrollController::class, 'show']);
     Route::get('/admin/payroll/{id}/edit', [EmployeePayrollController::class, 'edit']);
     Route::post('/admin/payroll/{id}/update', [EmployeePayrollController::class, 'update']);
@@ -323,6 +325,7 @@ Route::middleware(['auth', 'employee'])->group(function () {
     Route::post('/employee/attendance/check-out', [EmployeeAttendancePortalController::class, 'checkOut']);
     Route::get('/employee/salary', [EmployeePortalController::class, 'salary']);
     Route::get('/employee/salary/{payroll}/slip', [EmployeeSalarySlipController::class, 'download']);
+    Route::get('/employee/salary/{payroll}/statement', [EmployeeSalarySlipController::class, 'download']);
     Route::get('/employee/assignments', [EmployeePortalController::class, 'assignments']);
     Route::get('/employee/documents', [EmployeePortalController::class, 'documents']);
     Route::get('/employee/profile', [EmployeePortalController::class, 'profile']);

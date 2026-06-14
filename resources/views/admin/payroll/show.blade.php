@@ -48,6 +48,7 @@
     <div class="payroll-actions">
         <a class="btn" href="/admin/payroll">Back to Salary Generate</a>
         <a class="btn" href="/admin/payroll/{{ $payroll->id }}/edit">Edit Salary</a>
+        <a class="btn" href="/admin/payroll/{{ $payroll->id }}/salary-statement">Download Salary PDF</a>
 
         @if($payroll->canApprove())
             <form method="POST" action="/admin/payroll/{{ $payroll->id }}/approve">

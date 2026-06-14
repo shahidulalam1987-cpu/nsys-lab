@@ -87,7 +87,7 @@ class EmployeePortalPhase5Test extends TestCase
             ->get('/employee/salary')
             ->assertOk()
             ->assertSee('BDT 8,500.00')
-            ->assertSee('Download Salary Slip');
+            ->assertSee('Download Salary Statement');
 
         $this->actingAs($employeeUser)
             ->get('/employee/assignments')

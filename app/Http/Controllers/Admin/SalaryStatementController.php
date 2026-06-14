@@ -1,22 +1,16 @@
 <?php
 
-namespace App\Http\Controllers\Employee;
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\EmployeePayroll;
 use App\Services\SalaryStatementService;
 use Barryvdh\DomPDF\Facade\Pdf;
 
-class SalarySlipController extends Controller
+class SalaryStatementController extends Controller
 {
     public function download(EmployeePayroll $payroll, SalaryStatementService $salaryStatementService)
     {
-        $employee = auth()->user()
-            ->employee()
-            ->firstOrFail();
-
-        abort_unless($payroll->employee_id === $employee->id, 403);
-
         $data = $salaryStatementService->data($payroll);
 
         $pdf = Pdf::loadView('employee.pdf.salary-statement', $data)

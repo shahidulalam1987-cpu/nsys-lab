@@ -11,7 +11,7 @@
     </div>
 
     <div class="card">
-        <h2>Salary History</h2>
+        <h2>Salary Statements</h2>
         <div class="table-wrap">
             <table>
                 <tr>
@@ -24,7 +24,7 @@
                     <th>Due</th>
                     <th>Status</th>
                     <th>Payment Date</th>
-                    <th>Slip</th>
+                    <th>Statement</th>
                 </tr>
                 @forelse($payrolls as $payroll)
                     @php($due = max($payroll->payable_salary - $payroll->paid_amount, 0))
@@ -38,10 +38,10 @@
                         <td>BDT {{ number_format($due, 2) }}</td>
                         <td>{{ ['upcoming' => 'Upcoming', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'][$payroll->calculated_status] ?? ucfirst($payroll->calculated_status) }}</td>
                         <td>{{ $payroll->payment_date?->toDateString() ?: '-' }}</td>
-                        <td><a class="btn" href="/employee/salary/{{ $payroll->id }}/slip">Download Salary Slip</a></td>
+                        <td><a class="btn" href="/employee/salary/{{ $payroll->id }}/statement">Download Salary Statement</a></td>
                     </tr>
                 @empty
-                    <tr><td colspan="9">No salary history found.</td></tr>
+                    <tr><td colspan="10">No salary statements found.</td></tr>
                 @endforelse
             </table>
         </div>
