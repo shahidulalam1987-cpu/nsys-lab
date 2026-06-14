@@ -32,9 +32,7 @@ class SalaryStatementService
             'workingDays' => $workingDays,
             'finalSalaryFormula' => round($dailySalary * $workingDays, 2),
             'remainingDue' => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0),
-            'settlementStatus' => $payroll->isFinalSettlement()
-                ? 'Unpaid'
-                : $payroll->settlementStatusLabel(),
+            'settlementStatus' => $payroll->settlementStatusLabel(),
             'settlementDueDate' => $payroll->salaryDueDate(),
         ];
     }

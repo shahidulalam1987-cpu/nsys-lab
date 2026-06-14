@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\EmployeeAssignment;
 use App\Models\EmployeeWorkStatus;
 use App\Models\User;
+use App\Services\PayrollCategoryService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -445,6 +446,161 @@ class EmployeeSalaryCycleStatusTest extends TestCase
 
         $this->assertSame('paid', $paidPayroll->fresh()->calculated_status);
         $this->assertSame('partial', $partialPayroll->fresh()->calculated_status);
+    }
+
+    public function test_payroll_category_resolver_returns_pending_work_status_for_active_employee_without_work_status(): void
+    {
+        Carbon::setTestNow('2026-06-15');
+
+        $employee = $this->employee([
+            'salary_day' => 12,
+            'monthly_salary' => 7000,
+        ]);
+
+        $category = app(PayrollCategoryService::class)->resolveEmployee($employee);
+
+        $this->assertSame(PayrollCategoryService::PENDING_WORK_STATUS, $category['category']);
+        $this->assertSame('Pending Work Status', $category['label']);
+    }
+
+    public function test_payroll_category_resolver_returns_salary_ready_for_active_employee_with_work_status(): void
+    {
+        Carbon::setTestNow('2026-06-15');
+
+        $employee = $this->employee([
+            'salary_day' => 12,
+            'monthly_salary' => 7000,
+        ]);
+        $this->workStatus($employee, null, '2026-06-12', 'working');
+
+        $category = app(PayrollCategoryService::class)->resolveEmployee($employee);
+
+        $this->assertSame(PayrollCategoryService::SALARY_READY, $category['category']);
+    }
+
+    public function test_payroll_category_resolver_returns_unpaid_for_active_employee_with_unpaid_payroll(): void
+    {
+        Carbon::setTestNow('2026-06-15');
+
+        $client = $this->client();
+        $employee = $this->employee(['salary_day' => 12]);
+        $this->payroll($employee, $client, [
+            'payable_salary' => 30000,
+            'paid_amount' => 0,
+            'payment_status' => 'unpaid',
+        ]);
+
+        $category = app(PayrollCategoryService::class)->resolveEmployee($employee);
+
+        $this->assertSame(PayrollCategoryService::UNPAID, $category['category']);
+    }
+
+    public function test_payroll_category_resolver_returns_paid_for_active_employee_with_paid_payroll(): void
+    {
+        Carbon::setTestNow('2026-06-15');
+
+        $client = $this->client();
+        $employee = $this->employee(['salary_day' => 12]);
+        $this->payroll($employee, $client, [
+            'payable_salary' => 30000,
+            'paid_amount' => 30000,
+            'payment_status' => 'paid',
+        ]);
+
+        $category = app(PayrollCategoryService::class)->resolveEmployee($employee);
+
+        $this->assertSame(PayrollCategoryService::PAID, $category['category']);
+    }
+
+    public function test_payroll_category_resolver_returns_final_settlement_pending_without_final_payroll(): void
+    {
+        Carbon::setTestNow('2026-06-24');
+
+        $employee = $this->employee([
+            'status' => 'terminated',
+            'last_working_date' => '2026-06-20',
+            'salary_day' => 20,
+        ]);
+
+        $category = app(PayrollCategoryService::class)->resolveEmployee($employee);
+
+        $this->assertSame(PayrollCategoryService::FINAL_SETTLEMENT_PENDING, $category['category']);
+    }
+
+    public function test_payroll_category_resolver_returns_final_settlement_unpaid_for_unpaid_final_payroll(): void
+    {
+        Carbon::setTestNow('2026-06-24');
+
+        $client = $this->client();
+        $employee = $this->employee([
+            'status' => 'terminated',
+            'last_working_date' => '2026-06-20',
+            'salary_day' => 20,
+        ]);
+        $payroll = $this->payroll($employee, $client, [
+            'salary_period_from' => '2026-06-01',
+            'salary_period_to' => '2026-06-20',
+            'payable_salary' => 20000,
+            'paid_amount' => 0,
+            'payment_status' => 'unpaid',
+        ]);
+
+        $category = app(PayrollCategoryService::class)->resolveEmployee($employee);
+
+        $this->assertTrue($payroll->fresh()->isFinalSettlementPayroll());
+        $this->assertTrue($payroll->fresh()->isFinalSettlementDue());
+        $this->assertSame(PayrollCategoryService::FINAL_SETTLEMENT_UNPAID, $category['category']);
+    }
+
+    public function test_payroll_category_resolver_returns_final_settlement_paid_for_paid_final_payroll(): void
+    {
+        Carbon::setTestNow('2026-06-24');
+
+        $client = $this->client();
+        $employee = $this->employee([
+            'status' => 'terminated',
+            'last_working_date' => '2026-06-20',
+            'salary_day' => 20,
+        ]);
+        $payroll = $this->payroll($employee, $client, [
+            'salary_period_from' => '2026-06-01',
+            'salary_period_to' => '2026-06-20',
+            'payable_salary' => 20000,
+            'paid_amount' => 20000,
+            'payment_status' => 'paid',
+        ]);
+
+        $category = app(PayrollCategoryService::class)->resolveEmployee($employee);
+
+        $this->assertTrue($payroll->fresh()->isFinalSettlementPayroll());
+        $this->assertTrue($payroll->fresh()->isFinalSettlementPaid());
+        $this->assertSame('Final Settlement Paid', $payroll->fresh()->settlementStatusLabel());
+        $this->assertSame(PayrollCategoryService::FINAL_SETTLEMENT_PAID, $category['category']);
+    }
+
+    public function test_superseded_payrolls_do_not_affect_current_category(): void
+    {
+        Carbon::setTestNow('2026-06-15');
+
+        $client = $this->client();
+        $employee = $this->employee(['salary_day' => 12]);
+        $old = $this->payroll($employee, $client, [
+            'payable_salary' => 30000,
+            'paid_amount' => 0,
+            'payment_status' => 'unpaid',
+            'is_current' => false,
+        ]);
+        $current = $this->payroll($employee, $client, [
+            'payable_salary' => 30000,
+            'paid_amount' => 30000,
+            'payment_status' => 'paid',
+            'regenerated_from_id' => $old->id,
+        ]);
+        $old->update(['superseded_by_id' => $current->id]);
+
+        $category = app(PayrollCategoryService::class)->resolveEmployee($employee);
+
+        $this->assertSame(PayrollCategoryService::PAID, $category['category']);
     }
 
     public function test_salary_status_modules_can_export_csv_and_excel(): void

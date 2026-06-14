@@ -321,7 +321,7 @@ class Employee extends Model
             : $this->payrolls()->current()->get();
 
         return $payrolls->contains(function (EmployeePayroll $payroll) use ($lastWorkingDate) {
-            return $payroll->isFinalSettlement()
+            return $payroll->isFinalSettlementPayroll()
                 || $payroll->salary_month?->copy()->startOfMonth()->toDateString() === $lastWorkingDate->copy()->startOfMonth()->toDateString()
                 || ($payroll->salary_period_from
                     && $payroll->salary_period_to

@@ -204,7 +204,7 @@
                     @elseif($activeStatus === 'due')
                         <td>
                             <a href="/admin/employees/{{ $payroll->employee?->id }}">{{ $payroll->employee?->name ?: '-' }}</a>
-                            @if($payroll->isFinalSettlement())
+                            @if($payroll->isFinalSettlementPayroll())
                                 <br><span style="color:var(--muted);">Last Working: {{ $payroll->employee?->last_working_date?->toDateString() ?: '-' }}</span>
                                 <br><span style="color:var(--muted);">Period: {{ $payroll->salary_period }}</span>
                                 <br><span style="color:var(--muted);">Working: {{ number_format((float) $payroll->working_days, 2) }} | Non Working: {{ number_format((float) $payroll->non_working_days, 2) }}</span>

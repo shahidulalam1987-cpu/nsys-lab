@@ -352,26 +352,54 @@ class EmployeePayroll extends Model
         return $this->calculated_status === $status;
     }
 
-    public function isFinalSettlement(): bool
+    public function isFinalSettlementPayroll(): bool
     {
         $employee = $this->relationLoaded('employee')
             ? $this->employee
             : $this->employee()->first();
 
-        return $employee?->status === 'terminated'
+        if ($employee?->status !== 'terminated' || ! $employee->last_working_date) {
+            return false;
+        }
+
+        $lastWorkingDate = $employee->last_working_date;
+
+        return (float) $this->paid_amount < (float) $this->payable_salary
+            || $this->salary_month?->copy()->startOfMonth()->toDateString() === $lastWorkingDate->copy()->startOfMonth()->toDateString()
+            || ($this->salary_period_from
+                && $this->salary_period_to
+                && $lastWorkingDate->betweenIncluded($this->salary_period_from, $this->salary_period_to));
+    }
+
+    public function isFinalSettlementDue(): bool
+    {
+        return $this->isFinalSettlementPayroll()
             && (float) $this->paid_amount < (float) $this->payable_salary;
+    }
+
+    public function isFinalSettlementPaid(): bool
+    {
+        return $this->isFinalSettlementPayroll()
+            && (float) $this->paid_amount >= (float) $this->payable_salary;
+    }
+
+    public function isFinalSettlement(): bool
+    {
+        return $this->isFinalSettlementDue();
     }
 
     public function settlementStatusLabel(): string
     {
-        return $this->isFinalSettlement()
+        return $this->isFinalSettlementDue()
             ? 'Final Settlement Unpaid'
+            : ($this->isFinalSettlementPaid()
+                ? 'Final Settlement Paid'
             : ([
                 'upcoming' => 'Upcoming',
                 'unpaid' => 'Unpaid',
                 'partial' => 'Partially Paid',
                 'paid' => 'Paid',
-            ][$this->calculated_status] ?? ucfirst($this->calculated_status));
+            ][$this->calculated_status] ?? ucfirst($this->calculated_status)));
     }
 
     public function salaryDueDate(): ?\Carbon\Carbon
@@ -385,7 +413,7 @@ class EmployeePayroll extends Model
             ?: now()->startOfMonth();
 
         return $employee?->salaryDateForMonth($salaryMonth)
-            ?: ($this->isFinalSettlement() ? $employee?->last_working_date : null);
+            ?: ($this->isFinalSettlementPayroll() ? $employee?->last_working_date : null);
     }
 
     public function overdueLabel(): string
@@ -398,7 +426,7 @@ class EmployeePayroll extends Model
 
         $days = max(now()->startOfDay()->diffInDays($dueDate, false) * -1, 0);
 
-        return $this->isFinalSettlement()
+        return $this->isFinalSettlementPayroll()
             ? 'Final Settlement Overdue: ' . $days . ' Days'
             : $days . ' Days Overdue';
     }

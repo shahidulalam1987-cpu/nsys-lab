@@ -10,6 +10,7 @@ use App\Models\EmployeeWorkStatus;
 use App\Models\FinanceAccount;
 use App\Services\ActivityLogger;
 use App\Services\ClientFundDashboardService;
+use App\Services\PayrollCategoryService;
 use App\Services\PayrollEstimateService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -19,7 +20,10 @@ use Illuminate\Validation\Rule;
 
 class EmployeePayrollController extends Controller
 {
-    public function __construct(private PayrollEstimateService $payrollEstimator)
+    public function __construct(
+        private PayrollEstimateService $payrollEstimator,
+        private PayrollCategoryService $payrollCategory
+    )
     {
     }
 
@@ -766,7 +770,7 @@ class EmployeePayrollController extends Controller
         $payrolls = $query->latest('salary_month')
             ->latest()
             ->get()
-            ->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter($filters['status'] ?? null))
+            ->filter(fn (EmployeePayroll $payroll) => $this->payrollMatchesStatus($payroll, $filters['status'] ?? null))
             ->filter(function (EmployeePayroll $payroll) use ($filters) {
                 if (($filters['status'] ?? null) !== 'due') {
                     return true;
@@ -811,9 +815,9 @@ class EmployeePayrollController extends Controller
                     + (($filters['status'] ?? null) === 'upcoming' ? $cycleEmployees->where('status', '!=', 'terminated')->count() : 0),
                 'overdue_count' => $payrolls->filter(fn (EmployeePayroll $payroll) => in_array($payroll->calculated_status, ['unpaid', 'partial'], true) && $payroll->employee?->status !== 'terminated')->count()
                     + (($filters['status'] ?? null) === 'due' ? $cycleEmployees->where('status', '!=', 'terminated')->count() : 0),
-                'final_settlement_count' => $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlement())->count()
+                'final_settlement_count' => $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue())->count()
                     + (($filters['status'] ?? null) === 'due' ? $cycleEmployees->where('status', 'terminated')->count() : 0),
-                'final_settlement_amount' => $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlement())
+                'final_settlement_amount' => $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue())
                     ->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0))
                     + (($filters['status'] ?? null) === 'due'
                         ? $cycleEmployees->where('status', 'terminated')->sum(fn (Employee $employee) => (float) data_get($employee->cycle_estimate, 'estimated_payable_salary', 0))
@@ -844,6 +848,29 @@ class EmployeePayrollController extends Controller
             ->when($filters['month'] ?? null, fn ($query, $month) => $query->whereDate('salary_month', $month . '-01'))
             ->latest('payment_date')
             ->latest();
+    }
+
+    private function payrollMatchesStatus(EmployeePayroll $payroll, ?string $status): bool
+    {
+        if (! $status) {
+            return true;
+        }
+
+        if (! $payroll->employee) {
+            return $payroll->matchesStatusFilter($status);
+        }
+
+        $category = $this->payrollCategory->resolveEmployee(
+            $payroll->employee,
+            $payroll->salaryDueDate() ?: $payroll->salary_month
+        )['category'] ?? null;
+
+        return match ($status) {
+            'paid' => in_array($category, [PayrollCategoryService::PAID, PayrollCategoryService::FINAL_SETTLEMENT_PAID], true),
+            'due' => in_array($category, [PayrollCategoryService::UNPAID, PayrollCategoryService::FINAL_SETTLEMENT_UNPAID], true),
+            'upcoming' => $payroll->matchesStatusFilter('upcoming') && $category !== PayrollCategoryService::FINAL_SETTLEMENT_PENDING,
+            default => $payroll->matchesStatusFilter($status),
+        };
     }
 
     private function existingPayrollForPeriod(int $employeeId, ?int $clientId, Carbon $salaryMonth): ?EmployeePayroll

@@ -72,7 +72,7 @@ class DashboardController extends Controller
         $unpaidPayrolls = $employeePayrolls
             ->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('due') && $payroll->employee?->status !== 'terminated');
         $finalSettlementPayrolls = $employeePayrolls
-            ->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlement());
+            ->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue());
         $adAccounts = AdAccount::all();
         $facebookBillingAlerts = $adAccounts
             ->filter(fn (AdAccount $account) => in_array($account->billingStatus(), ['upcoming', 'overdue'], true))
@@ -278,8 +278,8 @@ class DashboardController extends Controller
         $employeeDashboardAlerts = [
             'upcoming_count' => $employeePayrolls->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('upcoming') && $payroll->employee?->status !== 'terminated')->count(),
             'unpaid_count' => $employeePayrolls->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('due') && $payroll->employee?->status !== 'terminated')->count(),
-            'final_settlement_count' => $employeePayrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlement())->count(),
-            'final_settlement_amount' => (float) $employeePayrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlement())
+            'final_settlement_count' => $employeePayrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue())->count(),
+            'final_settlement_amount' => (float) $employeePayrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue())
                 ->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
         ];
 
