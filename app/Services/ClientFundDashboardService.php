@@ -12,6 +12,10 @@ use Illuminate\Support\Collection;
 
 class ClientFundDashboardService
 {
+    public function __construct(private PayrollEstimateService $payrollEstimator)
+    {
+    }
+
     public function dashboard(): array
     {
         $clients = Client::with(['salaryPayments', 'employeePayrolls' => fn ($query) => $query->current(), 'employeePayrolls.employee'])
@@ -165,7 +169,8 @@ class ClientFundDashboardService
 
             if (! $hasPayrollForCycle) {
                 $employeeIds->push($employee->id);
-                $amount += (float) $employee->monthly_salary;
+                $amount += (float) $this->payrollEstimator
+                    ->estimateCycle($employee, $dueDate, $client)['estimated_payable_salary'];
             }
         }
 
@@ -204,7 +209,8 @@ class ClientFundDashboardService
             $employeeIds->push($employee->id);
             $amount += $payroll
                 ? max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)
-                : (float) $employee->monthly_salary;
+                : (float) $this->payrollEstimator
+                    ->estimateCycle($employee, $dueDate, $client)['estimated_payable_salary'];
             $nearestDueDate = $nearestDueDate && $nearestDueDate->lte($dueDate)
                 ? $nearestDueDate
                 : $dueDate->copy();

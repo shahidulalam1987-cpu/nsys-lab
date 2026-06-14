@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Client;
 use App\Models\Employee;
+use App\Models\EmployeeAssignment;
+use App\Models\EmployeeWorkStatus;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -115,6 +117,133 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertSee('Past Due Employee');
         $response->assertSee('Past Due Without Payroll');
         $response->assertSee('Unpaid');
+    }
+
+    public function test_recently_joined_employee_without_work_status_shows_zero_estimate(): void
+    {
+        Carbon::setTestNow('2026-06-15');
+
+        $admin = $this->admin();
+        $this->employee([
+            'employee_id' => 'NSYS-EM-017',
+            'name' => 'Recently Joined Employee',
+            'joining_date' => '2026-06-12',
+            'salary_day' => 12,
+            'monthly_salary' => 7000,
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/payroll?status=due');
+
+        $response->assertOk();
+        $response->assertSee('Recently Joined Employee');
+        $response->assertSee('Estimated Amount Due');
+        $response->assertSee('BDT 0.00');
+        $response->assertSee('Work Status Missing');
+        $response->assertDontSee('BDT 7,000.00');
+    }
+
+    public function test_cycle_employee_estimate_uses_work_status_salary_count(): void
+    {
+        Carbon::setTestNow('2026-06-15');
+
+        $admin = $this->admin();
+        $employee = $this->employee([
+            'name' => 'Three Day Employee',
+            'joining_date' => '2026-06-01',
+            'salary_day' => 12,
+            'monthly_salary' => 7000,
+        ]);
+
+        foreach (['2026-06-10', '2026-06-11', '2026-06-12'] as $date) {
+            $this->workStatus($employee, null, $date, 'working');
+        }
+
+        $response = $this->actingAs($admin)->get('/admin/payroll?status=due');
+
+        $response->assertOk();
+        $response->assertSee('Three Day Employee');
+        $response->assertSee('BDT 700.00');
+        $response->assertSee('Based on Work Status');
+        $response->assertSee('Working: 3.00');
+    }
+
+    public function test_agency_internal_employee_estimate_includes_null_client_work_status(): void
+    {
+        Carbon::setTestNow('2026-06-15');
+
+        $admin = $this->admin();
+        $employee = $this->employee([
+            'name' => 'Internal Employee',
+            'employee_type' => 'agency_internal',
+            'joining_date' => '2026-06-01',
+            'salary_day' => 12,
+            'monthly_salary' => 9000,
+        ]);
+
+        $this->workStatus($employee, null, '2026-06-11', 'working');
+        $this->workStatus($employee, null, '2026-06-12', 'half_day');
+
+        $response = $this->actingAs($admin)->get('/admin/payroll?status=due');
+
+        $response->assertOk();
+        $response->assertSee('Internal Employee');
+        $response->assertSee('BDT 450.00');
+        $response->assertSee('Working: 1.50');
+    }
+
+    public function test_client_assigned_employee_estimate_uses_client_specific_work_status(): void
+    {
+        Carbon::setTestNow('2026-06-15');
+
+        $admin = $this->admin();
+        $client = $this->client();
+        $otherClient = $this->client();
+        $employee = $this->employee([
+            'name' => 'Client Specific Employee',
+            'joining_date' => '2026-06-01',
+            'salary_day' => 12,
+            'monthly_salary' => 6000,
+        ]);
+        $this->assignment($employee, $client);
+
+        $this->workStatus($employee, $client, '2026-06-11', 'working');
+        $this->workStatus($employee, $client, '2026-06-12', 'working');
+        $this->workStatus($employee, $otherClient, '2026-06-10', 'working');
+
+        $response = $this->actingAs($admin)->get('/admin/payroll?status=due');
+
+        $response->assertOk();
+        $response->assertSee('Client Specific Employee');
+        $response->assertSee('BDT 400.00');
+        $response->assertSee('Working: 2.00');
+    }
+
+    public function test_terminated_final_salary_pending_uses_work_status_estimate(): void
+    {
+        Carbon::setTestNow('2026-06-24');
+
+        $admin = $this->admin();
+        $employee = $this->employee([
+            'name' => 'Final Estimate Employee',
+            'status' => 'terminated',
+            'joining_date' => '2026-06-01',
+            'last_working_date' => '2026-06-20',
+            'salary_day' => 20,
+            'monthly_salary' => 12000,
+        ]);
+
+        $this->workStatus($employee, null, '2026-06-18', 'working');
+        $this->workStatus($employee, null, '2026-06-19', 'working');
+        $this->workStatus($employee, null, '2026-06-20', 'on_leave');
+
+        $response = $this->actingAs($admin)->get('/admin/payroll?status=due&employee_scope=terminated');
+
+        $response->assertOk();
+        $response->assertSee('Final Estimate Employee');
+        $response->assertSee('BDT 800.00');
+        $response->assertSee('Working: 2.00');
+        $response->assertSee('Non Working: 1.00');
+        $response->assertDontSee('BDT 12,000.00');
     }
 
     public function test_unpaid_salary_page_shows_terminated_final_settlement_records(): void
@@ -342,5 +471,26 @@ class EmployeeSalaryCycleStatusTest extends TestCase
             'paid_amount' => 0,
             'status' => 'unpaid',
         ], $overrides));
+    }
+
+    private function assignment(Employee $employee, Client $client): EmployeeAssignment
+    {
+        return EmployeeAssignment::create([
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'assigned_from' => '2026-06-01',
+            'status' => 'active',
+        ]);
+    }
+
+    private function workStatus(Employee $employee, ?Client $client, string $date, string $status): EmployeeWorkStatus
+    {
+        return EmployeeWorkStatus::create([
+            'employee_id' => $employee->id,
+            'client_id' => $client?->id,
+            'work_date' => $date,
+            'status' => $status,
+            'salary_count_value' => EmployeeWorkStatus::salaryCountFor($status),
+        ]);
     }
 }

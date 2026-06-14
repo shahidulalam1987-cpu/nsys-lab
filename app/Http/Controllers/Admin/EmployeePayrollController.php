@@ -10,6 +10,7 @@ use App\Models\EmployeeWorkStatus;
 use App\Models\FinanceAccount;
 use App\Services\ActivityLogger;
 use App\Services\ClientFundDashboardService;
+use App\Services\PayrollEstimateService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,10 @@ use Illuminate\Validation\Rule;
 
 class EmployeePayrollController extends Controller
 {
+    public function __construct(private PayrollEstimateService $payrollEstimator)
+    {
+    }
+
     public function index(Request $request)
     {
         $filters = $this->validatedFilters($request);
@@ -770,16 +775,17 @@ class EmployeePayrollController extends Controller
                 ->filter(fn (Employee $employee) => ($employee->salary_source ?: $employee->defaultSalarySource()) === $filters['salary_source'])
                 ->values();
         }
+        $cycleEmployees = $this->attachCycleEstimates($cycleEmployees, $filters['status'] ?? null);
 
         return [
             'payrolls' => $payrolls,
             'employees' => Employee::orderBy('name')->get(),
             'cycleEmployees' => $cycleEmployees,
             'summary' => [
-                'total_payable' => $payrolls->sum('payable_salary') + $cycleEmployees->sum(fn (Employee $employee) => (float) $employee->monthly_salary),
+                'total_payable' => $payrolls->sum('payable_salary') + $cycleEmployees->sum(fn (Employee $employee) => (float) data_get($employee->cycle_estimate, 'estimated_payable_salary', 0)),
                 'total_paid' => $payrolls->sum('paid_amount'),
                 'total_due' => $payrolls->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0))
-                    + $cycleEmployees->sum(fn (Employee $employee) => (float) $employee->monthly_salary),
+                    + $cycleEmployees->sum(fn (Employee $employee) => (float) data_get($employee->cycle_estimate, 'estimated_payable_salary', 0)),
                 'record_count' => $payrolls->count() + $cycleEmployees->count(),
                 'upcoming_count' => $payrolls->where('calculated_status', 'upcoming')->filter(fn (EmployeePayroll $payroll) => $payroll->employee?->status !== 'terminated')->count()
                     + (($filters['status'] ?? null) === 'upcoming' ? $cycleEmployees->where('status', '!=', 'terminated')->count() : 0),
@@ -790,7 +796,7 @@ class EmployeePayrollController extends Controller
                 'final_settlement_amount' => $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlement())
                     ->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0))
                     + (($filters['status'] ?? null) === 'due'
-                        ? $cycleEmployees->where('status', 'terminated')->sum(fn (Employee $employee) => (float) $employee->monthly_salary)
+                        ? $cycleEmployees->where('status', 'terminated')->sum(fn (Employee $employee) => (float) data_get($employee->cycle_estimate, 'estimated_payable_salary', 0))
                         : 0),
                 'current_month_payable' => $payrolls
                     ->filter(fn (EmployeePayroll $payroll) => $payroll->salary_month?->isSameMonth(now()))
@@ -906,6 +912,11 @@ class EmployeePayrollController extends Controller
                 $salaryDate = ($filters['status'] ?? null) === 'due'
                     ? $employee->currentSalaryDueDate()
                     : $employee->nextSalaryDate();
+                $estimate = $employee->cycle_estimate ?? $this->payrollEstimator->estimateCycle(
+                    $employee,
+                    $salaryDate,
+                    $this->estimateClientFor($employee)
+                );
 
                 return [
                     'employee' => trim(($employee->employee_id ?: '-') . ' ' . $employee->name),
@@ -913,17 +924,47 @@ class EmployeePayrollController extends Controller
                     'salary_source' => $employee->salarySourceLabel(),
                     'salary_period' => $salaryDate?->format('Y-m') ?: '-',
                     'salary_date' => $salaryDate?->toDateString() ?: '-',
-                    'working_days' => EmployeePayroll::FIXED_SALARY_MONTH_DAYS,
-                    'payable_salary' => (float) $employee->monthly_salary,
+                    'working_days' => (float) data_get($estimate, 'working_salary_count', 0),
+                    'payable_salary' => (float) data_get($estimate, 'estimated_payable_salary', 0),
                     'paid_salary' => 0,
-                    'remaining_due' => (float) $employee->monthly_salary,
-                    'status' => $employee->salaryStatusLabel(),
+                    'remaining_due' => (float) data_get($estimate, 'estimated_payable_salary', 0),
+                    'status' => data_get($estimate, 'estimate_status_label') ?: $employee->salaryStatusLabel(),
                     'payment_date' => '-',
                     'method' => '-',
                     'reference' => '-',
                 ];
             }))
             ->values();
+    }
+
+    private function attachCycleEstimates($cycleEmployees, ?string $status)
+    {
+        return $cycleEmployees
+            ->map(function (Employee $employee) use ($status) {
+                $salaryDate = $employee->status === 'terminated'
+                    ? $employee->last_working_date
+                    : (($status ?? null) === 'upcoming'
+                        ? $employee->nextSalaryDate()
+                        : $employee->currentSalaryDueDate());
+
+                $employee->setAttribute('cycle_estimate', $this->payrollEstimator->estimateCycle(
+                    $employee,
+                    $salaryDate,
+                    $this->estimateClientFor($employee)
+                ));
+
+                return $employee;
+            })
+            ->values();
+    }
+
+    private function estimateClientFor(Employee $employee): ?Client
+    {
+        if ($employee->isAgencyInternal()) {
+            return null;
+        }
+
+        return $employee->activeAssignments->first()?->client;
     }
 
     private function workStatusPreviewRows(array $filters): array

@@ -318,15 +318,18 @@
                     <th>Client</th>
                     <th>Salary Day</th>
                         <th>Salary Date</th>
-                        <th>Amount Due</th>
-                        <th>Current Salary Status</th>
+                        <th>Estimated Amount Due</th>
+                        <th>Estimate Status</th>
                     <th>Action</th>
                 </tr>
                 @foreach($cycleEmployees as $cycleEmployee)
                     @php
-                        $cycleSalaryDate = request('status') === 'due'
-                            ? $cycleEmployee->currentSalaryDueDate()
-                            : $cycleEmployee->nextSalaryDate();
+                        $cycleSalaryDate = $cycleEmployee->status === 'terminated'
+                            ? $cycleEmployee->last_working_date
+                            : (request('status') === 'due'
+                                ? $cycleEmployee->currentSalaryDueDate()
+                                : $cycleEmployee->nextSalaryDate());
+                        $cycleEstimate = $cycleEmployee->cycle_estimate ?? [];
                     @endphp
                     <tr>
                         <td>
@@ -340,8 +343,17 @@
                         <td>{{ $cycleEmployee->activeAssignments->first()?->client?->company_name ?: '-' }}</td>
                         <td>{{ $cycleEmployee->salaryCycleDay() ?: '-' }}</td>
                         <td>{{ $cycleSalaryDate?->toDateString() ?: '-' }}</td>
-                        <td>BDT {{ number_format($cycleEmployee->monthly_salary, 2) }}</td>
-                        <td>{{ $cycleEmployee->status === 'terminated' ? 'Final Salary Pending' : $cycleEmployee->salaryStatusLabel() }}</td>
+                        <td>
+                            BDT {{ number_format((float) data_get($cycleEstimate, 'estimated_payable_salary', 0), 2) }}
+                            <br><span style="color:var(--muted);">
+                                Working: {{ number_format((float) data_get($cycleEstimate, 'working_salary_count', 0), 2) }}
+                                | Non Working: {{ number_format((float) data_get($cycleEstimate, 'non_working_count', 0), 2) }}
+                            </span>
+                        </td>
+                        <td>
+                            {{ data_get($cycleEstimate, 'estimate_status_label', 'Work Status Missing') }}
+                            <br><span style="color:var(--muted);">{{ $cycleEmployee->status === 'terminated' ? 'Final Salary Pending' : $cycleEmployee->salaryStatusLabel() }}</span>
+                        </td>
                         <td><a class="btn" href="/admin/payroll/create">{{ $cycleEmployee->status === 'terminated' ? 'Generate Final Salary' : 'Generate Salary' }}</a></td>
                     </tr>
                 @endforeach
