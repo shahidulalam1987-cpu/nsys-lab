@@ -351,13 +351,12 @@
                         $eligibilityLabel = data_get($cycleEstimate, 'eligibility_label', $workStatusMissing ? 'Pending Work Status' : 'Salary Ready');
                         $activeAssignment = $cycleEmployee->activeAssignments->first();
                         $workStatusQuery = [
-                            'entry_mode' => 'range',
+                            'entry_mode' => 'monthly',
                             'employee_id' => $cycleEmployee->id,
-                            'from_date' => data_get($cycleEstimate, 'salary_period_start')?->toDateString(),
-                            'to_date' => data_get($cycleEstimate, 'salary_period_end')?->toDateString(),
+                            'salary_month' => data_get($cycleEstimate, 'salary_period_end')?->format('Y-m'),
                             'status' => 'working',
                             'note' => 'Salary cycle work status entry',
-                            'return_to' => request()->getRequestUri(),
+                            'return_to' => '/admin/payroll?status=due',
                         ];
                         if (! $cycleEmployee->isAgencyInternal() && $activeAssignment?->client_id) {
                             $workStatusQuery['client_id'] = $activeAssignment->client_id;
@@ -397,7 +396,7 @@
                             @if($canGenerateCycleSalary)
                                 <a class="btn" href="/admin/payroll/create">{{ $cycleEmployee->status === 'terminated' ? 'Generate Final Salary' : 'Generate Salary' }}</a>
                             @else
-                                <a class="btn" href="{{ $addWorkStatusUrl }}">Add Date Range Work Status</a>
+                                <a class="btn" href="{{ $addWorkStatusUrl }}">Add Work Status</a>
                             @endif
                         </td>
                     </tr>

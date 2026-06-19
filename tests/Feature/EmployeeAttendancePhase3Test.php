@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\Employee;
 use App\Models\EmployeeAttendance;
 use App\Models\EmployeeWorkStatus;
+use App\Models\Shift;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -153,6 +154,8 @@ class EmployeeAttendancePhase3Test extends TestCase
             ->assertOk()
             ->assertSee('Single Date')
             ->assertSee('Date Range')
+            ->assertSee('Monthly Cycle')
+            ->assertSee('Salary Cycle Date')
             ->assertSee('Use Date Range when adding multiple work status records at once.');
 
         $response = $this->actingAs($admin)->post('/admin/work-status', [
@@ -228,6 +231,165 @@ class EmployeeAttendancePhase3Test extends TestCase
         ])->assertSessionHas('success', 'Bulk work status saved. Created: 3, Updated: 0, Skipped: 0.');
 
         $this->assertSame(3, $employee->workStatuses()->count());
+    }
+
+    public function test_work_status_create_exposes_latest_active_assignment_defaults(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $employee = $this->employee(['confirmation_date' => '2026-05-01', 'salary_day' => 12]);
+        $shift = Shift::create(['name' => 'Morning Shift', 'start_time' => '09:00', 'end_time' => '17:00', 'status' => 'active']);
+        $page = $client->pages()->create(['page_name' => 'Latest Client Page', 'platform' => 'Facebook', 'status' => 'active']);
+        $employee->assignments()->create([
+            'client_id' => $client->id,
+            'assigned_from' => '2026-05-01',
+            'status' => 'active',
+        ]);
+        $employee->assignments()->create([
+            'client_id' => $client->id,
+            'client_page_id' => $page->id,
+            'shift_id' => $shift->id,
+            'assigned_from' => '2026-06-01',
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/work-status/create?employee_id=' . $employee->id . '&entry_mode=monthly&salary_month=2026-06');
+
+        $response->assertOk();
+        $response->assertSee('"has_assignment":true', false);
+        $response->assertSee('"client_id":' . $client->id, false);
+        $response->assertSee('"client_page_id":' . $page->id, false);
+        $response->assertSee('"shift_id":' . $shift->id, false);
+        $response->assertSee('Latest active assignment loaded.');
+    }
+
+    public function test_monthly_cycle_keeps_agency_internal_client_and_page_empty(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $page = $client->pages()->create(['page_name' => 'Ignored Page', 'platform' => 'Facebook', 'status' => 'active']);
+        $shift = Shift::create(['name' => 'Night Shift', 'start_time' => '17:00', 'end_time' => '01:00', 'status' => 'active']);
+        $employee = $this->employee([
+            'employee_type' => 'agency_internal',
+            'confirmation_date' => '2026-06-10',
+            'salary_day' => 12,
+            'shift_id' => $shift->id,
+        ]);
+
+        $response = $this->actingAs($admin)->post('/admin/work-status', [
+            'entry_mode' => 'monthly',
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'client_page_id' => $page->id,
+            'shift_id' => $shift->id,
+            'salary_month' => '2026-06',
+            'duplicate_action' => 'skip',
+            'status' => 'working',
+            'monthly_rows' => $this->monthlyRows('2026-06-10', '2026-06-12'),
+        ]);
+
+        $response->assertRedirect('/admin/payroll?status=due');
+        $this->assertSame(3, $employee->workStatuses()->count());
+        $this->assertSame(0, $employee->workStatuses()->whereNotNull('client_id')->count());
+        $this->assertSame(0, $employee->workStatuses()->whereNotNull('client_page_id')->count());
+        $this->assertSame(3, $employee->workStatuses()->where('shift_id', $shift->id)->count());
+    }
+
+    public function test_monthly_cycle_starts_at_confirmation_date(): void
+    {
+        $admin = $this->user('admin');
+        $employee = $this->employee(['confirmation_date' => '2026-06-10', 'salary_day' => 12]);
+
+        $this->actingAs($admin)->post('/admin/work-status', [
+            'entry_mode' => 'monthly',
+            'employee_id' => $employee->id,
+            'salary_month' => '2026-06',
+            'duplicate_action' => 'skip',
+            'status' => 'working',
+            'monthly_rows' => $this->monthlyRows('2026-06-09', '2026-06-12'),
+        ])->assertRedirect('/admin/payroll?status=due');
+
+        $this->assertDatabaseMissing('employee_work_statuses', ['employee_id' => $employee->id, 'work_date' => '2026-06-09']);
+        $this->assertDatabaseHas('employee_work_statuses', ['employee_id' => $employee->id, 'work_date' => '2026-06-10 00:00:00']);
+        $this->assertSame(3, $employee->workStatuses()->count());
+    }
+
+    public function test_monthly_cycle_stops_at_terminated_employee_last_working_date(): void
+    {
+        $admin = $this->user('admin');
+        $employee = $this->employee([
+            'confirmation_date' => '2026-06-01',
+            'salary_day' => 12,
+            'status' => 'terminated',
+            'last_working_date' => '2026-06-10',
+        ]);
+
+        $this->actingAs($admin)->post('/admin/work-status', [
+            'entry_mode' => 'monthly',
+            'employee_id' => $employee->id,
+            'salary_month' => '2026-06',
+            'duplicate_action' => 'skip',
+            'status' => 'working',
+            'monthly_rows' => $this->monthlyRows('2026-06-01', '2026-06-12'),
+        ])->assertRedirect('/admin/payroll?status=due');
+
+        $this->assertSame(10, $employee->workStatuses()->count());
+        $this->assertDatabaseMissing('employee_work_statuses', ['employee_id' => $employee->id, 'work_date' => '2026-06-11']);
+    }
+
+    public function test_monthly_cycle_skips_duplicate_dates_by_default(): void
+    {
+        $admin = $this->user('admin');
+        $employee = $this->employee(['confirmation_date' => '2026-06-10', 'salary_day' => 12]);
+        $employee->workStatuses()->create([
+            'work_date' => '2026-06-11',
+            'status' => 'half_day',
+            'salary_count_value' => 0.5,
+            'note' => 'Keep existing',
+        ]);
+
+        $response = $this->actingAs($admin)->post('/admin/work-status', [
+            'entry_mode' => 'monthly',
+            'employee_id' => $employee->id,
+            'salary_month' => '2026-06',
+            'status' => 'working',
+            'monthly_rows' => $this->monthlyRows('2026-06-10', '2026-06-12'),
+        ]);
+
+        $response->assertSessionHas('success', 'Monthly cycle work status saved. Created: 2, Updated: 0, Skipped: 1.');
+        $this->assertDatabaseHas('employee_work_statuses', [
+            'employee_id' => $employee->id,
+            'work_date' => '2026-06-11 00:00:00',
+            'status' => 'half_day',
+            'note' => 'Keep existing',
+        ]);
+    }
+
+    public function test_employee_becomes_salary_ready_after_monthly_work_status_creation(): void
+    {
+        Carbon::setTestNow('2026-06-15');
+        $admin = $this->user('admin');
+        $employee = $this->employee([
+            'name' => 'Monthly Cycle Ready Employee',
+            'employee_type' => 'agency_internal',
+            'confirmation_date' => '2026-06-10',
+            'salary_day' => 12,
+        ]);
+
+        $this->actingAs($admin)->post('/admin/work-status', [
+            'entry_mode' => 'monthly',
+            'employee_id' => $employee->id,
+            'salary_month' => '2026-06',
+            'status' => 'working',
+            'monthly_rows' => $this->monthlyRows('2026-06-10', '2026-06-12'),
+            'return_to' => '/admin/payroll?status=due',
+        ])->assertRedirect('/admin/payroll?status=due');
+
+        $response = $this->actingAs($admin)->get('/admin/payroll?status=due');
+        $response->assertOk();
+        $response->assertSee('Monthly Cycle Ready Employee');
+        $response->assertSee('Salary Ready');
+        $response->assertSee('Generate Salary');
     }
 
     public function test_salary_generate_can_use_work_status_records_for_working_days(): void
@@ -344,5 +506,20 @@ class EmployeeAttendancePhase3Test extends TestCase
             'work_date' => $date,
             'status' => $status,
         ]);
+    }
+
+    private function monthlyRows(string $from, string $to, string $status = 'working'): array
+    {
+        $rows = [];
+
+        for ($date = Carbon::parse($from); $date->lte(Carbon::parse($to)); $date->addDay()) {
+            $rows[] = [
+                'date' => $date->toDateString(),
+                'day_type' => $status === 'half_day' ? 'half_day' : ($status === 'working' ? 'working' : 'non_working'),
+                'status' => $status,
+            ];
+        }
+
+        return $rows;
     }
 }

@@ -10,7 +10,9 @@ use App\Models\Employee;
 use App\Models\EmployeeWorkStatus;
 use App\Models\Shift;
 use App\Services\ActivityLogger;
+use App\Services\WorkStatusCycleService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
@@ -45,11 +47,12 @@ class EmployeeWorkStatusController extends Controller
     public function create(Request $request)
     {
         $prefill = $request->validate([
-            'entry_mode' => ['nullable', Rule::in(['single', 'range'])],
+            'entry_mode' => ['nullable', Rule::in(['single', 'range', 'monthly'])],
             'employee_id' => ['nullable', 'exists:employees,id'],
             'client_id' => ['nullable', 'exists:clients,id'],
             'from_date' => ['nullable', 'date'],
             'to_date' => ['nullable', 'date', 'after_or_equal:from_date'],
+            'salary_month' => ['nullable', 'date_format:Y-m'],
             'status' => ['nullable', Rule::in(array_keys(EmployeeWorkStatus::STATUSES))],
             'note' => ['nullable', 'string', 'max:500'],
             'return_to' => ['nullable', 'string', 'max:2048'],
@@ -65,10 +68,15 @@ class EmployeeWorkStatusController extends Controller
 
                 return [$employee->id => [
                     'employee_id' => $employee->id,
+                    'has_assignment' => (bool) $assignment,
+                    'is_agency_internal' => $employee->isAgencyInternal(),
                     'client_id' => $assignment?->client_id,
                     'client_page_id' => $assignment?->client_page_id,
                     'campaign_id' => $assignment?->campaign_id,
                     'shift_id' => $assignment?->shift_id ?: $employee->shift_id,
+                    'confirmation_date' => $employee->confirmation_date?->toDateString(),
+                    'last_working_date' => $employee->last_working_date?->toDateString(),
+                    'salary_day' => $employee->salaryCycleDay(),
                 ]];
             })
             ->all();
@@ -80,6 +88,7 @@ class EmployeeWorkStatusController extends Controller
             'campaigns' => Campaign::orderBy('campaign_name')->get(),
             'shifts' => Shift::where('status', 'active')->orderBy('id')->get(),
             'statuses' => EmployeeWorkStatus::STATUSES,
+            'salaryCountValues' => EmployeeWorkStatus::SALARY_COUNT_VALUES,
             'assignmentDefaults' => $assignmentDefaults,
             'prefill' => $prefill,
         ]);
@@ -88,6 +97,10 @@ class EmployeeWorkStatusController extends Controller
     public function store(Request $request)
     {
         $data = $this->validatedData($request);
+
+        if (($data['entry_mode'] ?? 'single') === 'monthly') {
+            return $this->storeMonthlyCycle($data, $request);
+        }
 
         if (($data['entry_mode'] ?? 'single') === 'range') {
             return $this->storeDateRange($data, $request);
@@ -99,6 +112,57 @@ class EmployeeWorkStatusController extends Controller
 
         return redirect($this->safeReturnTo($data['return_to'] ?? null) ?: '/admin/work-status/' . $workStatus->id . '/edit')
             ->with('success', 'Work status saved successfully.');
+    }
+
+    private function storeMonthlyCycle(array $data, Request $request)
+    {
+        $employee = Employee::findOrFail($data['employee_id']);
+        $expectedDates = app(WorkStatusCycleService::class)->dates($employee, $data['salary_month']);
+        $submittedRows = collect($data['monthly_rows'] ?? [])->keyBy('date');
+        $duplicateAction = $data['duplicate_action'] ?? 'skip';
+
+        if ($employee->isAgencyInternal()) {
+            $data['client_id'] = null;
+            $data['client_page_id'] = null;
+            $data['campaign_id'] = null;
+        }
+
+        $created = 0;
+        $updated = 0;
+        $skipped = 0;
+
+        DB::transaction(function () use ($expectedDates, $submittedRows, $duplicateAction, $data, &$created, &$updated, &$skipped) {
+            foreach ($expectedDates as $date) {
+                $existing = EmployeeWorkStatus::where('employee_id', $data['employee_id'])
+                    ->whereDate('work_date', $date)
+                    ->first();
+
+                if ($existing && $duplicateAction === 'skip') {
+                    $skipped++;
+                    continue;
+                }
+
+                $row = $submittedRows->get($date, []);
+                $rowData = $data;
+                $rowData['status'] = $row['status'] ?? $data['status'];
+                $rowData['note'] = $row['note'] ?? $data['note'] ?? null;
+                $workStatus = $this->saveWorkStatusForDate($rowData, $date);
+
+                $workStatus->wasRecentlyCreated ? $created++ : $updated++;
+            }
+        });
+
+        app(ActivityLogger::class)->log(
+            'Work Status',
+            'Bulk Work Status Created',
+            "Monthly cycle work status saved. Created: {$created}, Updated: {$updated}, Skipped: {$skipped}.",
+            $request
+        );
+
+        return redirect($this->safeReturnTo($data['return_to'] ?? null) ?: '/admin/payroll?status=due')->with(
+            'success',
+            "Monthly cycle work status saved. Created: {$created}, Updated: {$updated}, Skipped: {$skipped}."
+        );
     }
 
     private function storeDateRange(array $data, Request $request)
@@ -282,7 +346,7 @@ class EmployeeWorkStatusController extends Controller
     private function validatedData(Request $request): array
     {
         $data = $request->validate([
-            'entry_mode' => ['nullable', Rule::in(['single', 'range'])],
+            'entry_mode' => ['nullable', Rule::in(['single', 'range', 'monthly'])],
             'employee_id' => ['required', 'exists:employees,id'],
             'client_id' => ['nullable', 'exists:clients,id'],
             'client_page_id' => ['nullable', 'exists:client_pages,id'],
@@ -291,6 +355,13 @@ class EmployeeWorkStatusController extends Controller
             'work_date' => ['required_if:entry_mode,single', 'nullable', 'date'],
             'from_date' => ['required_if:entry_mode,range', 'nullable', 'date'],
             'to_date' => ['required_if:entry_mode,range', 'nullable', 'date', 'after_or_equal:from_date'],
+            'salary_month' => ['required_if:entry_mode,monthly', 'nullable', 'date_format:Y-m'],
+            'duplicate_action' => ['nullable', Rule::in(['skip', 'update'])],
+            'monthly_rows' => ['required_if:entry_mode,monthly', 'nullable', 'array', 'max:31'],
+            'monthly_rows.*.date' => ['required', 'date'],
+            'monthly_rows.*.day_type' => ['nullable', Rule::in(['working', 'half_day', 'non_working'])],
+            'monthly_rows.*.status' => ['required', Rule::in(array_keys(EmployeeWorkStatus::STATUSES))],
+            'monthly_rows.*.note' => ['nullable', 'string', 'max:500'],
             'status' => ['required', Rule::in(array_keys(EmployeeWorkStatus::STATUSES))],
             'note' => ['nullable', 'string', 'max:500'],
             'confirm_after_last_working_date' => ['nullable', 'boolean'],

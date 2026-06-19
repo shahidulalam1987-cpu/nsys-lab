@@ -134,11 +134,11 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertSee('Estimated Amount Due');
         $response->assertSee('BDT 0.00');
         $response->assertSee('Pending Work Status');
-        $response->assertSee('Add Date Range Work Status');
+        $response->assertSee('Add Work Status');
         $response->assertDontSee('BDT 7,000.00');
     }
 
-    public function test_pending_work_status_action_prefills_cycle_range_and_returns_to_salary_generate(): void
+    public function test_pending_work_status_action_prefills_monthly_cycle_and_returns_to_salary_generate(): void
     {
         Carbon::setTestNow('2026-06-15');
 
@@ -152,35 +152,41 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $payrollPage = $this->actingAs($admin)->get('/admin/payroll?status=due');
 
         $payrollPage->assertOk();
-        $payrollPage->assertSee('Add Date Range Work Status');
-        $payrollPage->assertSee('entry_mode=range');
+        $payrollPage->assertSee('Add Work Status');
+        $payrollPage->assertSee('entry_mode=monthly');
         $payrollPage->assertSee('employee_id=' . $employee->id);
-        $payrollPage->assertSee('from_date=2026-06-01');
-        $payrollPage->assertSee('to_date=2026-06-12');
+        $payrollPage->assertSee('salary_month=2026-06');
         $payrollPage->assertDontSee('client_id=', false);
 
         $createPage = $this->actingAs($admin)->get('/admin/work-status/create?' . http_build_query([
-            'entry_mode' => 'range',
+            'entry_mode' => 'monthly',
             'employee_id' => $employee->id,
-            'from_date' => '2026-06-01',
-            'to_date' => '2026-06-12',
+            'salary_month' => '2026-06',
             'status' => 'working',
             'note' => 'Salary cycle work status entry',
             'return_to' => '/admin/payroll?status=due',
         ]));
 
         $createPage->assertOk();
-        $createPage->assertSee('value="range" selected', false);
+        $createPage->assertSee('value="monthly" selected', false);
         $createPage->assertSee('value="' . $employee->id . '" selected', false);
-        $createPage->assertSee('value="2026-06-01"', false);
-        $createPage->assertSee('value="2026-06-12"', false);
+        $createPage->assertSee('value="2026-06"', false);
         $createPage->assertSee('Salary cycle work status entry');
 
+        $rows = collect(range(0, 11))->map(function (int $offset) {
+            return [
+                'date' => Carbon::parse('2026-06-01')->addDays($offset)->toDateString(),
+                'day_type' => 'working',
+                'status' => 'working',
+            ];
+        })->all();
+
         $save = $this->actingAs($admin)->post('/admin/work-status', [
-            'entry_mode' => 'range',
+            'entry_mode' => 'monthly',
             'employee_id' => $employee->id,
-            'from_date' => '2026-06-01',
-            'to_date' => '2026-06-12',
+            'salary_month' => '2026-06',
+            'duplicate_action' => 'skip',
+            'monthly_rows' => $rows,
             'status' => 'working',
             'note' => 'Salary cycle work status entry',
             'return_to' => '/admin/payroll?status=due',
@@ -213,7 +219,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertOk();
         $response->assertSee('employee_id=' . $employee->id);
         $response->assertSee('client_id=' . $client->id);
-        $response->assertSee('Add Date Range Work Status');
+        $response->assertSee('Add Work Status');
     }
 
     public function test_cycle_employee_estimate_uses_work_status_salary_count(): void
@@ -371,7 +377,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertOk();
         $response->assertSee('Final Salary Pending Employee');
         $response->assertSee('Final salary not generated yet');
-        $response->assertSee('Add Date Range Work Status');
+        $response->assertSee('Add Work Status');
         $response->assertDontSee('Generate Final Salary');
     }
 
