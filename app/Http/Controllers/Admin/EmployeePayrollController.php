@@ -830,7 +830,10 @@ class EmployeePayrollController extends Controller
                 'total_due' => $payrolls->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
                 'record_count' => $payrolls->count() + $cycleEmployees->count(),
                 'upcoming_count' => $stageRows->where('stage.category', PayrollCategoryService::UPCOMING)->count(),
-                'overdue_count' => $stageRows->where('stage.category', PayrollCategoryService::UNPAID)->count(),
+                'overdue_count' => $stageRows
+                    ->where('stage.category', PayrollCategoryService::UNPAID)
+                    ->filter(fn (array $row) => data_get($row, 'stage.payroll')?->isOverdue())
+                    ->count(),
                 'final_settlement_count' => $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue())->count(),
                 'final_settlement_amount' => $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue())
                     ->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
@@ -956,7 +959,7 @@ class EmployeePayrollController extends Controller
                 'client' => $payroll->client?->company_name ?: '-',
                 'salary_source' => $payroll->salarySourceLabel(),
                 'salary_period' => $payroll->salary_period,
-                'salary_date' => $payroll->employee?->salaryDateForMonth($payroll->salary_month?->copy() ?: now())?->toDateString() ?: '-',
+                'salary_date' => $payroll->salaryDueDate()?->toDateString() ?: '-',
                 'working_days' => $payroll->working_days ?? 0,
                 'payable_salary' => (float) $payroll->payable_salary,
                 'paid_salary' => (float) $payroll->paid_amount,

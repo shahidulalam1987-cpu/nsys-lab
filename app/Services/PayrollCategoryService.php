@@ -93,7 +93,7 @@ class PayrollCategoryService
             $dueDate = $payroll->salaryDueDate();
 
             return (float) $payroll->paid_amount < (float) $payroll->payable_salary
-                && (! $dueDate || $dueDate->copy()->startOfDay()->lt($today));
+                && (! $dueDate || $payroll->isOverdue($today));
         });
 
         if ($overduePayroll) {

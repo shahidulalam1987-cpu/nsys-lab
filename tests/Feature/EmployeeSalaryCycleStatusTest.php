@@ -1025,6 +1025,41 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertDontSee('Work Status Required');
     }
 
+    public function test_cross_month_payroll_overdue_uses_cycle_end_salary_date(): void
+    {
+        Carbon::setTestNow('2026-06-19');
+
+        $admin = $this->admin();
+        $client = $this->client();
+        $employee = $this->employee([
+            'name' => 'Farzana Overdue Regression',
+            'confirmation_date' => '2026-05-16',
+            'salary_day' => 16,
+        ]);
+        $payroll = $this->payroll($employee, $client, [
+            'salary_month' => '2026-05-01',
+            'salary_period_from' => '2026-05-16',
+            'salary_period_to' => '2026-06-16',
+            'from_date' => '2026-05-16',
+            'to_date' => '2026-06-16',
+            'paid_amount' => 0,
+            'payment_status' => 'unpaid',
+        ]);
+
+        $this->assertSame('2026-06-16', $payroll->salaryDueDate()?->toDateString());
+        $this->assertSame(3, $payroll->overdueDays());
+        $this->assertSame(-3, $payroll->daysUntilDue());
+        $this->assertSame('3 Days Overdue', $payroll->overdueLabel());
+
+        $response = $this->actingAs($admin)->get('/admin/payroll?status=due');
+
+        $response->assertOk();
+        $response->assertSee('Farzana Overdue Regression');
+        $response->assertSee('2026-06-16');
+        $response->assertSee('3 Days Overdue');
+        $response->assertDontSee('34 Days Overdue');
+    }
+
     public function test_terminated_final_estimate_starts_from_confirmation_date(): void
     {
         Carbon::setTestNow('2026-06-24');

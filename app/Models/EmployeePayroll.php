@@ -420,12 +420,38 @@ class EmployeePayroll extends Model
             ? $this->employee
             : $this->employee()->first();
 
-        $salaryMonth = $this->salary_month?->copy()->startOfMonth()
-            ?: $this->salary_period_to?->copy()->startOfMonth()
+        // Date-to-date payrolls may start in the previous month. The period end
+        // identifies the salary cycle; salary_month can reflect the period start.
+        $salaryMonth = $this->salary_period_to?->copy()->startOfMonth()
+            ?: $this->to_date?->copy()->startOfMonth()
+            ?: $this->salary_month?->copy()->startOfMonth()
             ?: now()->startOfMonth();
 
         return $employee?->salaryDateForMonth($salaryMonth)
             ?: ($this->isFinalSettlementPayroll() ? $employee?->last_working_date : null);
+    }
+
+    public function daysUntilDue(?\Carbon\Carbon $asOf = null): ?int
+    {
+        $dueDate = $this->salaryDueDate();
+
+        if (! $dueDate) {
+            return null;
+        }
+
+        $today = ($asOf ?: now())->copy()->startOfDay();
+
+        return (int) $today->diffInDays($dueDate->copy()->startOfDay(), false);
+    }
+
+    public function overdueDays(?\Carbon\Carbon $asOf = null): int
+    {
+        return max(-($this->daysUntilDue($asOf) ?? 0), 0);
+    }
+
+    public function isOverdue(?\Carbon\Carbon $asOf = null): bool
+    {
+        return $this->overdueDays($asOf) > 0;
     }
 
     public function overdueLabel(): string
@@ -436,7 +462,7 @@ class EmployeePayroll extends Model
             return '-';
         }
 
-        $days = max(now()->startOfDay()->diffInDays($dueDate, false) * -1, 0);
+        $days = $this->overdueDays();
 
         return $this->isFinalSettlementPayroll()
             ? 'Final Settlement Overdue: ' . $days . ' Days'
@@ -453,10 +479,7 @@ class EmployeePayroll extends Model
             return $fallbackStatus;
         }
 
-        $salaryMonth = $this->salary_month?->copy()->startOfMonth()
-            ?: $this->salary_period_to?->copy()->startOfMonth()
-            ?: now()->startOfMonth();
-        $dueDate = $employee->salaryDateForMonth($salaryMonth);
+        $dueDate = $this->salaryDueDate();
 
         if (! $dueDate) {
             return $fallbackStatus;
@@ -481,10 +504,7 @@ class EmployeePayroll extends Model
             return true;
         }
 
-        $salaryMonth = $this->salary_month?->copy()->startOfMonth()
-            ?: $this->salary_period_to?->copy()->startOfMonth()
-            ?: now()->startOfMonth();
-        $dueDate = $employee->salaryDateForMonth($salaryMonth);
+        $dueDate = $this->salaryDueDate();
 
         if (! $dueDate) {
             return true;

@@ -175,7 +175,7 @@
             @endif
             @forelse($payrolls as $payroll)
                 @php
-                    $salaryDate = $payroll->employee?->salaryDateForMonth($payroll->salary_month?->copy() ?: now());
+                    $salaryDate = $payroll->salaryDueDate();
                     $remainingDue = max($payroll->payable_salary - $payroll->paid_amount, 0);
                 @endphp
                 <tr>
@@ -184,7 +184,7 @@
                         <td>{{ $payroll->client?->company_name ?: '-' }}</td>
                         <td>BDT {{ number_format($remainingDue, 2) }}</td>
                         <td>{{ $salaryDate?->toDateString() ?: '-' }}</td>
-                        <td>{{ $salaryDate ? now()->startOfDay()->diffInDays($salaryDate, false) : '-' }}</td>
+                        <td>{{ $payroll->daysUntilDue() ?? '-' }}</td>
                         <td>{{ $statusLabels[$payroll->calculated_status] ?? ucfirst($payroll->calculated_status) }}</td>
                     @elseif($activeStatus === 'paid')
                         <td><a href="/admin/employees/{{ $payroll->employee?->id }}">{{ $payroll->employee?->name ?: '-' }}</a></td>

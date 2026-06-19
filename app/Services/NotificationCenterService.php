@@ -114,11 +114,7 @@ class NotificationCenterService
         $upcoming = $this->payrollCategory->upcomingCycles();
         $unpaid = $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('due') && $payroll->employee?->status !== 'terminated');
         $finalSettlements = $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue());
-        $overdue = $unpaid->filter(function (EmployeePayroll $payroll) {
-            $salaryDate = $payroll->employee?->salaryDateForMonth($payroll->salary_month?->copy() ?: now());
-
-            return $salaryDate && $salaryDate->lt(today());
-        });
+        $overdue = $unpaid->filter(fn (EmployeePayroll $payroll) => $payroll->isOverdue());
 
         $employees = Employee::with(['activeAssignments', 'workStatuses' => fn ($query) => $query->whereDate('work_date', today())])
             ->whereIn('status', ['active', 'probation', 'on_leave'])
