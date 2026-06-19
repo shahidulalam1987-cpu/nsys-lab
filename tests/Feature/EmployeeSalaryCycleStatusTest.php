@@ -563,6 +563,11 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $client = $this->client();
         $employee = $this->employee(['salary_day' => 12]);
         $this->payroll($employee, $client, [
+            'salary_month' => '2026-05-01',
+            'salary_period_from' => '2026-05-01',
+            'salary_period_to' => '2026-05-31',
+            'from_date' => '2026-05-01',
+            'to_date' => '2026-05-31',
             'payable_salary' => 30000,
             'paid_amount' => 0,
             'payment_status' => 'unpaid',
@@ -732,7 +737,15 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $this->workStatus($ready, null, '2026-06-01', 'working');
 
         $unpaid = $this->employee(['name' => 'Exclusive Unpaid', 'salary_day' => 1]);
-        $this->payroll($unpaid, $client, ['paid_amount' => 0, 'payment_status' => 'unpaid']);
+        $this->payroll($unpaid, $client, [
+            'salary_month' => '2026-05-01',
+            'salary_period_from' => '2026-05-01',
+            'salary_period_to' => '2026-05-31',
+            'from_date' => '2026-05-01',
+            'to_date' => '2026-05-31',
+            'paid_amount' => 0,
+            'payment_status' => 'unpaid',
+        ]);
 
         $paid = $this->employee(['name' => 'Exclusive Paid', 'salary_day' => 1]);
         $this->payroll($paid, $client, ['paid_amount' => 30000, 'payment_status' => 'paid']);
@@ -1012,6 +1025,11 @@ class EmployeeSalaryCycleStatusTest extends TestCase
             'salary_day' => 12,
         ]);
         $this->payroll($employee, $client, [
+            'salary_month' => '2026-05-01',
+            'salary_period_from' => '2026-05-01',
+            'salary_period_to' => '2026-05-31',
+            'from_date' => '2026-05-01',
+            'to_date' => '2026-05-31',
             'paid_amount' => 0,
             'payment_status' => 'unpaid',
         ]);
@@ -1058,6 +1076,47 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertSee('2026-06-16');
         $response->assertSee('3 Days Overdue');
         $response->assertDontSee('34 Days Overdue');
+    }
+
+    public function test_calendar_month_payroll_due_date_advances_past_completed_period(): void
+    {
+        Carbon::setTestNow('2026-06-19');
+
+        $employee = $this->employee([
+            'confirmation_date' => '2026-05-16',
+            'salary_day' => 16,
+        ]);
+        $payroll = $this->payroll($employee, $this->client(), [
+            'salary_month' => '2026-05-01',
+            'salary_period_from' => '2026-05-01',
+            'salary_period_to' => '2026-05-31',
+            'from_date' => '2026-05-01',
+            'to_date' => '2026-05-31',
+        ]);
+
+        $this->assertSame('2026-06-16', $payroll->salaryDueDate()?->toDateString());
+        $this->assertSame(3, $payroll->overdueDays());
+        $this->assertSame('3 Days Overdue', $payroll->overdueLabel());
+    }
+
+    public function test_payroll_period_ending_before_salary_day_uses_same_month_due_date(): void
+    {
+        Carbon::setTestNow('2026-06-19');
+
+        $employee = $this->employee([
+            'confirmation_date' => '2026-05-16',
+            'salary_day' => 16,
+        ]);
+        $payroll = $this->payroll($employee, $this->client(), [
+            'salary_month' => '2026-06-01',
+            'salary_period_from' => '2026-06-01',
+            'salary_period_to' => '2026-06-15',
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-15',
+        ]);
+
+        $this->assertSame('2026-06-16', $payroll->salaryDueDate()?->toDateString());
+        $this->assertSame(3, $payroll->overdueDays());
     }
 
     public function test_terminated_final_estimate_starts_from_confirmation_date(): void

@@ -420,15 +420,23 @@ class EmployeePayroll extends Model
             ? $this->employee
             : $this->employee()->first();
 
-        // Date-to-date payrolls may start in the previous month. The period end
-        // identifies the salary cycle; salary_month can reflect the period start.
-        $salaryMonth = $this->salary_period_to?->copy()->startOfMonth()
-            ?: $this->to_date?->copy()->startOfMonth()
-            ?: $this->salary_month?->copy()->startOfMonth()
-            ?: now()->startOfMonth();
+        if (! $employee) {
+            return null;
+        }
 
-        return $employee?->salaryDateForMonth($salaryMonth)
-            ?: ($this->isFinalSettlementPayroll() ? $employee?->last_working_date : null);
+        $periodEnd = $this->salary_period_to?->copy()->startOfDay()
+            ?: $this->to_date?->copy()->startOfDay()
+            ?: $this->salary_month?->copy()->endOfMonth()->startOfDay()
+            ?: now()->endOfMonth()->startOfDay();
+
+        $dueDate = $employee->salaryDateForMonth($periodEnd->copy());
+
+        if ($dueDate && $dueDate->lt($periodEnd)) {
+            $dueDate = $employee->salaryDateForMonth($periodEnd->copy()->addMonthNoOverflow());
+        }
+
+        return $dueDate
+            ?: ($this->isFinalSettlementPayroll() ? $employee->last_working_date : null);
     }
 
     public function daysUntilDue(?\Carbon\Carbon $asOf = null): ?int

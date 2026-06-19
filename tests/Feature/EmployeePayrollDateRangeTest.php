@@ -503,7 +503,7 @@ class EmployeePayrollDateRangeTest extends TestCase
         $payroll = $employee->payrolls()->first();
 
         $response->assertRedirect('/admin/payroll/' . $payroll->id);
-        $this->assertSame('unpaid', $payroll->calculated_status);
+        $this->assertSame('upcoming', $payroll->calculated_status);
         $this->assertSame(10000.0, (float) $payroll->payable_salary);
         $this->assertDatabaseHas('employee_payrolls', [
             'id' => $payroll->id,
@@ -606,7 +606,7 @@ class EmployeePayrollDateRangeTest extends TestCase
         $this->assertSame(30.0, (float) $payroll->working_days);
         $this->assertSame(0.0, (float) $payroll->non_working_days);
         $this->assertSame(30000.0, (float) $payroll->payable_salary);
-        $this->assertSame('unpaid', $payroll->calculated_status);
+        $this->assertSame('upcoming', $payroll->calculated_status);
     }
 
     public function test_salary_generate_pages_show_date_range_and_due_status(): void
