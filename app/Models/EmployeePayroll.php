@@ -8,6 +8,16 @@ class EmployeePayroll extends Model
 {
     public const FIXED_SALARY_MONTH_DAYS = 30;
 
+    public static function effectiveSalaryCount(float $actualSalaryCount): float
+    {
+        return min(max($actualSalaryCount, 0), self::FIXED_SALARY_MONTH_DAYS);
+    }
+
+    public static function salaryCountCapApplied(float $actualSalaryCount): bool
+    {
+        return $actualSalaryCount > self::FIXED_SALARY_MONTH_DAYS;
+    }
+
     protected $appends = [
         'calculated_status',
         'salary_period',

@@ -350,6 +350,7 @@
                                 <th>Employee</th>
                                 <th>Client</th>
                                 <th>Working Count</th>
+                                <th>Payable Count</th>
                                 <th>Non Working Count</th>
                                 <th>Monthly Salary</th>
                                 <th>Payable Salary</th>
@@ -368,6 +369,12 @@
                                         <input type="hidden" name="rows[{{ $index }}][client_id]" value="{{ $row['client']->id }}">
                                     </td>
                                     <td>{{ number_format($row['working_count'], 2) }}</td>
+                                    <td>
+                                        {{ number_format($row['effective_salary_count'], 2) }}
+                                        @if($row['cap_applied'])
+                                            <br><span class="badge badge-warning">Cap Applied</span>
+                                        @endif
+                                    </td>
                                     <td>{{ number_format($row['non_working_count']) }}</td>
                                     <td>BDT {{ number_format($row['monthly_salary'], 2) }}</td>
                                     <td>BDT {{ number_format($row['payable_salary'], 2) }}</td>
@@ -391,7 +398,7 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="8">No Work Status records found for this filter.</td></tr>
+                                <tr><td colspan="9">No Work Status records found for this filter.</td></tr>
                             @endforelse
                         </table>
                     </div>

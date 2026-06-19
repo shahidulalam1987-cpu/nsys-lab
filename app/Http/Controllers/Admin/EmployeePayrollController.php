@@ -1036,12 +1036,13 @@ class EmployeePayrollController extends Controller
                 }
                 $records = $records->filter(fn (EmployeeWorkStatus $workStatus) => $workStatus->work_date->gte($employee->salaryEligibilityDate()));
                 $workingCount = (float) $records->sum('salary_count_value');
+                $effectiveSalaryCount = EmployeePayroll::effectiveSalaryCount($workingCount);
                 $nonWorkingCount = $records->filter(fn (EmployeeWorkStatus $workStatus) => (float) $workStatus->salary_count_value <= 0)->count();
                 $monthlySalary = (float) ($employee?->monthly_salary ?? 0);
                 $dailySalary = round($monthlySalary / EmployeePayroll::FIXED_SALARY_MONTH_DAYS, 2);
-                $payableSalary = $workingCount >= EmployeePayroll::FIXED_SALARY_MONTH_DAYS
+                $payableSalary = $effectiveSalaryCount >= EmployeePayroll::FIXED_SALARY_MONTH_DAYS
                     ? round($monthlySalary, 2)
-                    : round($dailySalary * $workingCount, 2);
+                    : min(round($dailySalary * $effectiveSalaryCount, 2), round($monthlySalary, 2));
                 $existingPayroll = $employee && $client
                     ? $this->existingPayrollForPeriod($employee->id, $client->id, $salaryMonth)
                     : null;
@@ -1050,6 +1051,8 @@ class EmployeePayrollController extends Controller
                     'employee' => $employee,
                     'client' => $client,
                     'working_count' => $workingCount,
+                    'effective_salary_count' => $effectiveSalaryCount,
+                    'cap_applied' => EmployeePayroll::salaryCountCapApplied($workingCount),
                     'non_working_count' => $nonWorkingCount,
                     'monthly_salary' => $monthlySalary,
                     'daily_salary' => $dailySalary,
@@ -1119,15 +1122,18 @@ class EmployeePayrollController extends Controller
         $monthDays = EmployeePayroll::FIXED_SALARY_MONTH_DAYS;
         $monthlySalary = (float) $employee->monthly_salary;
         $dailySalary = round($monthlySalary / $monthDays, 2);
-        $payableSalary = (float) $workingDays >= $monthDays
+        $effectiveSalaryCount = EmployeePayroll::effectiveSalaryCount((float) $workingDays);
+        $payableSalary = $effectiveSalaryCount >= $monthDays
             ? round($monthlySalary, 2)
-            : round($dailySalary * $workingDays, 2);
+            : min(round($dailySalary * $effectiveSalaryCount, 2), round($monthlySalary, 2));
 
         return [
             'from_date' => $fromDate,
             'to_date' => $toDate,
             'salary_month' => $salaryMonth,
             'working_days' => $workingDays,
+            'effective_salary_count' => $effectiveSalaryCount,
+            'cap_applied' => EmployeePayroll::salaryCountCapApplied((float) $workingDays),
             'non_working_days' => $nonWorkingDays,
             'month_days' => $monthDays,
             'daily_salary' => $dailySalary,

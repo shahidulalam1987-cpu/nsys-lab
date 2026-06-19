@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\Employee;
 use App\Models\EmployeeWorkStatus;
 use App\Models\User;
+use App\Services\SalaryStatementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -118,6 +119,45 @@ class EmployeePayrollDateRangeTest extends TestCase
         $this->assertSame(166.67, (float) $payroll->daily_salary);
         $this->assertSame(2416.72, (float) $payroll->payable_salary);
         $this->assertCount(16, $payroll->salary_day_adjustments);
+    }
+
+    public function test_generated_salary_caps_thirty_two_work_status_days_and_pdf_shows_cap(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $employee = $this->employee([
+            'confirmation_date' => '2026-05-16',
+            'salary_day' => 16,
+            'monthly_salary' => 5000,
+        ]);
+
+        for ($date = \Carbon\Carbon::parse('2026-05-16'); $date->lte(\Carbon\Carbon::parse('2026-06-16')); $date->addDay()) {
+            $this->workStatus($employee, $client, $date->toDateString(), 'working');
+        }
+
+        $response = $this->actingAs($admin)->post('/admin/payroll', [
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'calculation_type' => 'date_to_date',
+            'from_date' => '2026-05-16',
+            'to_date' => '2026-06-16',
+            'use_work_status_records' => 1,
+            'paid_amount' => 0,
+        ]);
+
+        $payroll = $employee->payrolls()->first();
+        $response->assertRedirect('/admin/payroll/' . $payroll->id);
+        $this->assertSame(32.0, (float) $payroll->working_days);
+        $this->assertSame(5000.0, (float) $payroll->payable_salary);
+        $this->assertLessThanOrEqual((float) $employee->monthly_salary, (float) $payroll->payable_salary);
+
+        $pdfHtml = view('employee.pdf.salary-statement', app(SalaryStatementService::class)->data($payroll))->render();
+        $this->assertStringContainsString('Work Status Count:', $pdfHtml);
+        $this->assertStringContainsString('32.00', $pdfHtml);
+        $this->assertStringContainsString('Payable Count:', $pdfHtml);
+        $this->assertStringContainsString('30.00', $pdfHtml);
+        $this->assertStringContainsString('Cap Applied:', $pdfHtml);
+        $this->assertStringContainsString('Yes', $pdfHtml);
     }
 
     public function test_work_status_salary_preview_marks_existing_payroll_and_can_skip_or_regenerate(): void

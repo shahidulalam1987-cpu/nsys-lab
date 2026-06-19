@@ -212,8 +212,11 @@
         <div class="section-title">Salary Calculation Formula</div>
         <div class="formula">
             <p><strong>Salary Policy:</strong> Fixed 30 Days</p>
+            <p><strong>Work Status Count:</strong> {{ number_format($workStatusCount, 2) }}</p>
+            <p><strong>Payable Count:</strong> {{ number_format($payableCount, 2) }}</p>
+            <p><strong>Cap Applied:</strong> {{ $capApplied ? 'Yes' : 'No' }}</p>
             <p><strong>Daily Salary:</strong> Monthly Salary / 30 = BDT {{ number_format($monthlySalary, 2) }} / {{ $monthDays }} = BDT {{ number_format($dailySalary, 2) }}</p>
-            <p><strong>Payable Salary:</strong> Daily Salary x Working Day Value = BDT {{ number_format($dailySalary, 2) }} x {{ number_format($workingDays, 2) }} = BDT {{ number_format($finalSalaryFormula, 2) }}</p>
+            <p><strong>Payable Salary:</strong> Daily Salary x Payable Count = BDT {{ number_format($dailySalary, 2) }} x {{ number_format($payableCount, 2) }} = BDT {{ number_format($finalSalaryFormula, 2) }}</p>
             <p><strong>Final Payable Salary:</strong> BDT {{ number_format((float) $payroll->payable_salary, 2) }}</p>
         </div>
     </div>

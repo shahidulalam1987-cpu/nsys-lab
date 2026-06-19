@@ -772,6 +772,82 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $this->assertSame(450.0, $estimate['estimated_payable_salary']);
     }
 
+    public function test_payroll_estimate_caps_thirty_two_work_status_days_at_thirty(): void
+    {
+        Carbon::setTestNow('2026-06-19');
+
+        $admin = $this->admin();
+        $employee = $this->employee([
+            'name' => 'Thirty Two Day Employee',
+            'employee_type' => 'agency_internal',
+            'confirmation_date' => '2026-05-16',
+            'salary_day' => 16,
+            'monthly_salary' => 5000,
+        ]);
+
+        for ($date = Carbon::parse('2026-05-16'); $date->lte(Carbon::parse('2026-06-16')); $date->addDay()) {
+            $this->workStatus($employee, null, $date->toDateString(), 'working');
+        }
+
+        $estimate = app(PayrollEstimateService::class)->estimateCycle($employee, Carbon::parse('2026-06-16'));
+
+        $this->assertSame(32.0, $estimate['actual_work_status_count']);
+        $this->assertSame(32.0, $estimate['working_salary_count']);
+        $this->assertSame(30.0, $estimate['effective_salary_count']);
+        $this->assertTrue($estimate['cap_applied']);
+        $this->assertSame(5000.0, $estimate['estimated_payable_salary']);
+
+        $response = $this->actingAs($admin)->get('/admin/payroll?status=due');
+        $response->assertOk();
+        $response->assertSee('Working: 32.00');
+        $response->assertSee('Payable Count: 30.00');
+        $response->assertSee('BDT 5,000.00');
+    }
+
+    public function test_payroll_estimate_preserves_twenty_nine_and_half_salary_count(): void
+    {
+        $employee = $this->employee([
+            'employee_type' => 'agency_internal',
+            'confirmation_date' => '2026-06-01',
+            'salary_day' => 30,
+            'monthly_salary' => 6000,
+        ]);
+
+        foreach (range(1, 29) as $day) {
+            $this->workStatus($employee, null, '2026-06-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT), 'working');
+        }
+        $this->workStatus($employee, null, '2026-06-30', 'half_day');
+
+        $estimate = app(PayrollEstimateService::class)->estimateCycle($employee, Carbon::parse('2026-06-30'));
+
+        $this->assertSame(29.5, $estimate['actual_work_status_count']);
+        $this->assertSame(29.5, $estimate['effective_salary_count']);
+        $this->assertFalse($estimate['cap_applied']);
+        $this->assertSame(5900.0, $estimate['estimated_payable_salary']);
+    }
+
+    public function test_payroll_estimate_caps_thirty_and_half_salary_count_at_thirty(): void
+    {
+        $employee = $this->employee([
+            'employee_type' => 'agency_internal',
+            'confirmation_date' => '2026-05-31',
+            'salary_day' => 30,
+            'monthly_salary' => 6000,
+        ]);
+
+        for ($date = Carbon::parse('2026-05-31'); $date->lt(Carbon::parse('2026-06-30')); $date->addDay()) {
+            $this->workStatus($employee, null, $date->toDateString(), 'working');
+        }
+        $this->workStatus($employee, null, '2026-06-30', 'half_day');
+
+        $estimate = app(PayrollEstimateService::class)->estimateCycle($employee, Carbon::parse('2026-06-30'));
+
+        $this->assertSame(30.5, $estimate['actual_work_status_count']);
+        $this->assertSame(30.0, $estimate['effective_salary_count']);
+        $this->assertTrue($estimate['cap_applied']);
+        $this->assertSame(6000.0, $estimate['estimated_payable_salary']);
+    }
+
     public function test_work_status_salary_preview_counts_only_records_after_confirmation(): void
     {
         Carbon::setTestNow('2026-06-20');

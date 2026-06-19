@@ -39,10 +39,13 @@ class PayrollEstimateService
             ->get();
 
         $workingSalaryCount = (float) $records->sum('salary_count_value');
+        $effectiveSalaryCount = EmployeePayroll::effectiveSalaryCount($workingSalaryCount);
         $nonWorkingCount = $records
             ->filter(fn (EmployeeWorkStatus $workStatus) => (float) $workStatus->salary_count_value <= 0)
             ->count();
-        $estimatedPayableSalary = round($dailySalary * $workingSalaryCount, 2);
+        $estimatedPayableSalary = $effectiveSalaryCount >= $monthDays
+            ? round($monthlySalary, 2)
+            : min(round($dailySalary * $effectiveSalaryCount, 2), round($monthlySalary, 2));
 
         return [
             'salary_period_start' => $periodStart,
@@ -51,6 +54,9 @@ class PayrollEstimateService
             'month_days' => $monthDays,
             'daily_salary' => round($dailySalary, 2),
             'working_salary_count' => $workingSalaryCount,
+            'actual_work_status_count' => $workingSalaryCount,
+            'effective_salary_count' => $effectiveSalaryCount,
+            'cap_applied' => EmployeePayroll::salaryCountCapApplied($workingSalaryCount),
             'non_working_count' => $nonWorkingCount,
             'estimated_payable_salary' => $estimatedPayableSalary,
             'estimate_status' => $records->isNotEmpty() ? 'based_on_work_status' : 'work_status_missing',
@@ -98,6 +104,9 @@ class PayrollEstimateService
             'month_days' => $monthDays,
             'daily_salary' => round($dailySalary, 2),
             'working_salary_count' => 0.0,
+            'actual_work_status_count' => 0.0,
+            'effective_salary_count' => 0.0,
+            'cap_applied' => false,
             'non_working_count' => 0,
             'estimated_payable_salary' => 0.0,
             'estimate_status' => 'work_status_missing',

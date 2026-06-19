@@ -23,6 +23,9 @@
         <tr><th>Month</th><td>{{ $payroll->salary_month?->format('Y-m') ?: '-' }}</td></tr>
         <tr><th>Salary Policy</th><td>Fixed 30 Days</td></tr>
         <tr><th>Working Days</th><td>{{ $payroll->working_days ?? '-' }}</td></tr>
+        <tr><th>Work Status Count</th><td>{{ number_format((float) ($payroll->working_days ?? 0), 2) }}</td></tr>
+        <tr><th>Payable Count</th><td>{{ number_format(\App\Models\EmployeePayroll::effectiveSalaryCount((float) ($payroll->working_days ?? 0)), 2) }}</td></tr>
+        <tr><th>Cap Applied</th><td>{{ \App\Models\EmployeePayroll::salaryCountCapApplied((float) ($payroll->working_days ?? 0)) ? 'Yes' : 'No' }}</td></tr>
         <tr><th>Half Days</th><td>{{ $halfDays }}</td></tr>
         <tr><th>Generated Salary</th><td>BDT {{ number_format($payroll->payable_salary, 2) }}</td></tr>
         <tr><th>Paid Salary</th><td>BDT {{ number_format($payroll->paid_amount, 2) }}</td></tr>

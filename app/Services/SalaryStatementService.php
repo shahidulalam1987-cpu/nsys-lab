@@ -18,6 +18,8 @@ class SalaryStatementService
         $monthDays = (int) ($payroll->month_days ?: EmployeePayroll::FIXED_SALARY_MONTH_DAYS);
         $dailySalary = (float) ($payroll->daily_salary ?: ($monthDays > 0 ? round($monthlySalary / $monthDays, 2) : 0));
         $workingDays = (float) ($payroll->working_days ?? $summary['working_days']);
+        $payableCount = EmployeePayroll::effectiveSalaryCount($workingDays);
+        $capApplied = EmployeePayroll::salaryCountCapApplied($workingDays);
         $reference = $this->reference($payroll);
 
         return [
@@ -30,7 +32,12 @@ class SalaryStatementService
             'monthDays' => $monthDays,
             'dailySalary' => $dailySalary,
             'workingDays' => $workingDays,
-            'finalSalaryFormula' => round($dailySalary * $workingDays, 2),
+            'workStatusCount' => $workingDays,
+            'payableCount' => $payableCount,
+            'capApplied' => $capApplied,
+            'finalSalaryFormula' => $payableCount >= $monthDays
+                ? round($monthlySalary, 2)
+                : min(round($dailySalary * $payableCount, 2), round($monthlySalary, 2)),
             'remainingDue' => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0),
             'settlementStatus' => $payroll->settlementStatusLabel(),
             'settlementDueDate' => $payroll->salaryDueDate(),

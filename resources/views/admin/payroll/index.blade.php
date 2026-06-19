@@ -382,6 +382,7 @@
                             BDT {{ number_format($estimatedAmount, 2) }}
                             <br><span style="color:var(--muted);">
                                 Working: {{ number_format((float) data_get($cycleEstimate, 'working_salary_count', 0), 2) }}
+                                | Payable Count: {{ number_format((float) data_get($cycleEstimate, 'effective_salary_count', 0), 2) }}
                                 | Non Working: {{ number_format((float) data_get($cycleEstimate, 'non_working_count', 0), 2) }}
                             </span>
                         </td>
