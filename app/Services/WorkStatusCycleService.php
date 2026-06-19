@@ -21,8 +21,10 @@ class WorkStatusCycleService
         }
 
         $cycleDate = $this->cycleDate($month, $salaryDay);
-        $monthStart = $month->copy()->startOfMonth();
-        $periodStart = $confirmationDate->gt($monthStart) ? $confirmationDate->copy() : $monthStart;
+        $previousCycleDate = $this->cycleDate($month->copy()->subMonthNoOverflow(), $salaryDay);
+        $periodStart = $confirmationDate->gte($previousCycleDate)
+            ? $confirmationDate->copy()
+            : $previousCycleDate->copy()->addDay();
 
         $periodEnd = $cycleDate->copy();
         if ($employee->last_working_date && $employee->last_working_date->lt($periodEnd)) {

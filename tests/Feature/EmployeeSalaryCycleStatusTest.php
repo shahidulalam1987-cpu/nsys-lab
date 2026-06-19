@@ -173,9 +173,9 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $createPage->assertSee('value="2026-06"', false);
         $createPage->assertSee('Salary cycle work status entry');
 
-        $rows = collect(range(0, 11))->map(function (int $offset) {
+        $rows = collect(range(0, 30))->map(function (int $offset) {
             return [
-                'date' => Carbon::parse('2026-06-01')->addDays($offset)->toDateString(),
+                'date' => Carbon::parse('2026-05-13')->addDays($offset)->toDateString(),
                 'day_type' => 'working',
                 'status' => 'working',
             ];
@@ -193,7 +193,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         ]);
 
         $save->assertRedirect('/admin/payroll?status=due');
-        $this->assertDatabaseCount('employee_work_statuses', 12);
+        $this->assertDatabaseCount('employee_work_statuses', 31);
         $this->assertDatabaseMissing('employee_work_statuses', [
             'employee_id' => $employee->id,
             'client_id' => 1,

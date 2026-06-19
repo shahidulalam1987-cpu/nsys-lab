@@ -357,7 +357,7 @@ class EmployeeWorkStatusController extends Controller
             'to_date' => ['required_if:entry_mode,range', 'nullable', 'date', 'after_or_equal:from_date'],
             'salary_month' => ['required_if:entry_mode,monthly', 'nullable', 'date_format:Y-m'],
             'duplicate_action' => ['nullable', Rule::in(['skip', 'update'])],
-            'monthly_rows' => ['required_if:entry_mode,monthly', 'nullable', 'array', 'max:31'],
+            'monthly_rows' => ['required_if:entry_mode,monthly', 'nullable', 'array', 'max:32'],
             'monthly_rows.*.date' => ['required', 'date'],
             'monthly_rows.*.day_type' => ['nullable', Rule::in(['working', 'half_day', 'non_working'])],
             'monthly_rows.*.status' => ['required', Rule::in(array_keys(EmployeeWorkStatus::STATUSES))],

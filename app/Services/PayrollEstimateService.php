@@ -21,10 +21,14 @@ class PayrollEstimateService
             return $this->emptyEstimate($monthlySalary, $monthDays, $dailySalary);
         }
 
-        $periodStart = $periodEnd->copy()->startOfMonth();
-        if ($employee->confirmation_date && $employee->confirmation_date->gt($periodStart)) {
-            $periodStart = $employee->confirmation_date->copy();
+        $cycleMonth = $periodEnd->copy()->startOfMonth();
+        $cycleDate = $employee->salaryDateForMonth($cycleMonth);
+        if ($employee->status === 'terminated' && $cycleDate?->lt($periodEnd)) {
+            $cycleMonth->addMonthNoOverflow();
         }
+        $cyclePeriod = app(WorkStatusCycleService::class)->period($employee, $cycleMonth->format('Y-m'));
+        $periodStart = $cyclePeriod['period_start'];
+        $periodEnd = $cyclePeriod['period_end'];
 
         $records = EmployeeWorkStatus::query()
             ->where('employee_id', $employee->id)
