@@ -42,8 +42,20 @@ class EmployeeWorkStatusController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
+        $prefill = $request->validate([
+            'entry_mode' => ['nullable', Rule::in(['single', 'range'])],
+            'employee_id' => ['nullable', 'exists:employees,id'],
+            'client_id' => ['nullable', 'exists:clients,id'],
+            'from_date' => ['nullable', 'date'],
+            'to_date' => ['nullable', 'date', 'after_or_equal:from_date'],
+            'status' => ['nullable', Rule::in(array_keys(EmployeeWorkStatus::STATUSES))],
+            'note' => ['nullable', 'string', 'max:500'],
+            'return_to' => ['nullable', 'string', 'max:2048'],
+        ]);
+        $prefill['return_to'] = $this->safeReturnTo($prefill['return_to'] ?? null);
+
         $employees = Employee::with(['activeAssignments.page', 'activeAssignments.campaignRecord', 'activeAssignments.shift'])
             ->orderBy('name')
             ->get();
@@ -69,6 +81,7 @@ class EmployeeWorkStatusController extends Controller
             'shifts' => Shift::where('status', 'active')->orderBy('id')->get(),
             'statuses' => EmployeeWorkStatus::STATUSES,
             'assignmentDefaults' => $assignmentDefaults,
+            'prefill' => $prefill,
         ]);
     }
 
@@ -84,7 +97,7 @@ class EmployeeWorkStatusController extends Controller
 
         app(ActivityLogger::class)->log('Work Status', 'Work Status Created', 'Work status #' . $workStatus->id . ' saved for ' . $workStatus->work_date?->toDateString() . '.', $request);
 
-        return redirect('/admin/work-status/' . $workStatus->id . '/edit')
+        return redirect($this->safeReturnTo($data['return_to'] ?? null) ?: '/admin/work-status/' . $workStatus->id . '/edit')
             ->with('success', 'Work status saved successfully.');
     }
 
@@ -128,7 +141,7 @@ class EmployeeWorkStatusController extends Controller
             $request
         );
 
-        return redirect('/admin/work-status')->with(
+        return redirect($this->safeReturnTo($data['return_to'] ?? null) ?: '/admin/work-status')->with(
             'success',
             "Bulk work status saved. Created: {$created}, Updated: {$updated}, Skipped: {$skipped}."
         );
@@ -281,6 +294,7 @@ class EmployeeWorkStatusController extends Controller
             'status' => ['required', Rule::in(array_keys(EmployeeWorkStatus::STATUSES))],
             'note' => ['nullable', 'string', 'max:500'],
             'confirm_after_last_working_date' => ['nullable', 'boolean'],
+            'return_to' => ['nullable', 'string', 'max:2048'],
         ]);
 
         $data['entry_mode'] = $data['entry_mode'] ?? 'single';
@@ -296,5 +310,14 @@ class EmployeeWorkStatusController extends Controller
         }
 
         return $data;
+    }
+
+    private function safeReturnTo(?string $returnTo): ?string
+    {
+        if (! $returnTo || ! str_starts_with($returnTo, '/admin/payroll')) {
+            return null;
+        }
+
+        return $returnTo;
     }
 }

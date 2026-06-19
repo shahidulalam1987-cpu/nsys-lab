@@ -349,6 +349,23 @@
                         $workStatusMissing = data_get($cycleEstimate, 'estimate_status') === 'work_status_missing';
                         $canGenerateCycleSalary = ! ($estimatedAmount <= 0 && $workStatusMissing);
                         $eligibilityLabel = data_get($cycleEstimate, 'eligibility_label', $workStatusMissing ? 'Pending Work Status' : 'Salary Ready');
+                        $activeAssignment = $cycleEmployee->activeAssignments->first();
+                        $workStatusQuery = [
+                            'entry_mode' => 'range',
+                            'employee_id' => $cycleEmployee->id,
+                            'from_date' => data_get($cycleEstimate, 'salary_period_start')?->toDateString(),
+                            'to_date' => data_get($cycleEstimate, 'salary_period_end')?->toDateString(),
+                            'status' => 'working',
+                            'note' => 'Salary cycle work status entry',
+                            'return_to' => request()->getRequestUri(),
+                        ];
+                        if (! $cycleEmployee->isAgencyInternal() && $activeAssignment?->client_id) {
+                            $workStatusQuery['client_id'] = $activeAssignment->client_id;
+                        }
+                        $addWorkStatusUrl = '/admin/work-status/create?' . http_build_query(array_filter(
+                            $workStatusQuery,
+                            fn ($value) => $value !== null && $value !== ''
+                        ));
                     @endphp
                     <tr>
                         <td>
@@ -380,7 +397,7 @@
                             @if($canGenerateCycleSalary)
                                 <a class="btn" href="/admin/payroll/create">{{ $cycleEmployee->status === 'terminated' ? 'Generate Final Salary' : 'Generate Salary' }}</a>
                             @else
-                                <button class="btn" type="button" disabled style="opacity:.55;cursor:not-allowed;">Work Status Required</button>
+                                <a class="btn" href="{{ $addWorkStatusUrl }}">Add Date Range Work Status</a>
                             @endif
                         </td>
                     </tr>

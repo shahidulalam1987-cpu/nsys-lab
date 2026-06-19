@@ -134,8 +134,86 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertSee('Estimated Amount Due');
         $response->assertSee('BDT 0.00');
         $response->assertSee('Pending Work Status');
-        $response->assertSee('Work Status Required');
+        $response->assertSee('Add Date Range Work Status');
         $response->assertDontSee('BDT 7,000.00');
+    }
+
+    public function test_pending_work_status_action_prefills_cycle_range_and_returns_to_salary_generate(): void
+    {
+        Carbon::setTestNow('2026-06-15');
+
+        $admin = $this->admin();
+        $employee = $this->employee([
+            'name' => 'Work Status Shortcut Employee',
+            'employee_type' => 'agency_internal',
+            'salary_day' => 12,
+        ]);
+
+        $payrollPage = $this->actingAs($admin)->get('/admin/payroll?status=due');
+
+        $payrollPage->assertOk();
+        $payrollPage->assertSee('Add Date Range Work Status');
+        $payrollPage->assertSee('entry_mode=range');
+        $payrollPage->assertSee('employee_id=' . $employee->id);
+        $payrollPage->assertSee('from_date=2026-06-01');
+        $payrollPage->assertSee('to_date=2026-06-12');
+        $payrollPage->assertDontSee('client_id=', false);
+
+        $createPage = $this->actingAs($admin)->get('/admin/work-status/create?' . http_build_query([
+            'entry_mode' => 'range',
+            'employee_id' => $employee->id,
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-12',
+            'status' => 'working',
+            'note' => 'Salary cycle work status entry',
+            'return_to' => '/admin/payroll?status=due',
+        ]));
+
+        $createPage->assertOk();
+        $createPage->assertSee('value="range" selected', false);
+        $createPage->assertSee('value="' . $employee->id . '" selected', false);
+        $createPage->assertSee('value="2026-06-01"', false);
+        $createPage->assertSee('value="2026-06-12"', false);
+        $createPage->assertSee('Salary cycle work status entry');
+
+        $save = $this->actingAs($admin)->post('/admin/work-status', [
+            'entry_mode' => 'range',
+            'employee_id' => $employee->id,
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-12',
+            'status' => 'working',
+            'note' => 'Salary cycle work status entry',
+            'return_to' => '/admin/payroll?status=due',
+        ]);
+
+        $save->assertRedirect('/admin/payroll?status=due');
+        $this->assertDatabaseCount('employee_work_statuses', 12);
+        $this->assertDatabaseMissing('employee_work_statuses', [
+            'employee_id' => $employee->id,
+            'client_id' => 1,
+        ]);
+        $this->assertDatabaseCount('employee_payrolls', 0);
+    }
+
+    public function test_pending_work_status_action_prefills_active_assignment_client(): void
+    {
+        Carbon::setTestNow('2026-06-15');
+
+        $admin = $this->admin();
+        $client = $this->client();
+        $employee = $this->employee([
+            'name' => 'Assigned Work Status Shortcut Employee',
+            'employee_type' => 'client_assigned',
+            'salary_day' => 12,
+        ]);
+        $this->assignment($employee, $client);
+
+        $response = $this->actingAs($admin)->get('/admin/payroll?status=due');
+
+        $response->assertOk();
+        $response->assertSee('employee_id=' . $employee->id);
+        $response->assertSee('client_id=' . $client->id);
+        $response->assertSee('Add Date Range Work Status');
     }
 
     public function test_cycle_employee_estimate_uses_work_status_salary_count(): void
@@ -293,7 +371,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertOk();
         $response->assertSee('Final Salary Pending Employee');
         $response->assertSee('Final salary not generated yet');
-        $response->assertSee('Work Status Required');
+        $response->assertSee('Add Date Range Work Status');
         $response->assertDontSee('Generate Final Salary');
     }
 

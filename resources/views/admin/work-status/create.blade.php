@@ -7,7 +7,8 @@
     <div class="card" style="margin-top:20px;">
         <form method="POST" action="/admin/work-status">
             @csrf
-            @php($entryMode = old('entry_mode', 'single'))
+            <input type="hidden" name="return_to" value="{{ old('return_to', $prefill['return_to'] ?? '') }}">
+            @php($entryMode = old('entry_mode', $prefill['entry_mode'] ?? 'single'))
             <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:end;">
                 <p>Entry Mode<br>
                     <select name="entry_mode" id="work-status-entry-mode" required>
@@ -24,7 +25,7 @@
                 <select name="employee_id" id="work-status-employee" required>
                     <option value="">Select Employee</option>
                     @foreach($employees as $employee)
-                        <option value="{{ $employee->id }}" {{ old('employee_id') == $employee->id ? 'selected' : '' }}>
+                        <option value="{{ $employee->id }}" {{ old('employee_id', $prefill['employee_id'] ?? null) == $employee->id ? 'selected' : '' }}>
                             {{ $employee->name }} ({{ $employee->employee_id }})
                         </option>
                     @endforeach
@@ -34,7 +35,7 @@
                 <select name="client_id" class="js-client-select" data-page-target="work-status-page-create">
                     <option value="">No Client</option>
                     @foreach($clients as $client)
-                        <option value="{{ $client->id }}" {{ old('client_id') == $client->id ? 'selected' : '' }}>{{ $client->company_name }}</option>
+                        <option value="{{ $client->id }}" {{ old('client_id', $prefill['client_id'] ?? null) == $client->id ? 'selected' : '' }}>{{ $client->company_name }}</option>
                     @endforeach
                 </select>
             </p>
@@ -71,8 +72,8 @@
             </div>
             <div id="date-range-fields" style="display:none;">
                 <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;">
-                    <p>From Date<br><input type="date" name="from_date" value="{{ old('from_date') }}"></p>
-                    <p>To Date<br><input type="date" name="to_date" value="{{ old('to_date') }}"></p>
+                    <p>From Date<br><input type="date" name="from_date" value="{{ old('from_date', $prefill['from_date'] ?? '') }}"></p>
+                    <p>To Date<br><input type="date" name="to_date" value="{{ old('to_date', $prefill['to_date'] ?? '') }}"></p>
                 </div>
                 <label style="display:flex;align-items:center;gap:8px;color:var(--muted);margin:4px 0 16px;">
                     <input type="checkbox" name="confirm_after_last_working_date" value="1" {{ old('confirm_after_last_working_date') ? 'checked' : '' }}>
@@ -82,11 +83,11 @@
             <p>Status<br>
                 <select name="status" required>
                     @foreach($statuses as $value => $label)
-                        <option value="{{ $value }}" {{ old('status', 'working') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                        <option value="{{ $value }}" {{ old('status', $prefill['status'] ?? 'working') === $value ? 'selected' : '' }}>{{ $label }}</option>
                     @endforeach
                 </select>
             </p>
-            <p>Note<br><textarea name="note">{{ old('note') }}</textarea></p>
+            <p>Note<br><textarea name="note">{{ old('note', $prefill['note'] ?? '') }}</textarea></p>
             <button class="btn" type="submit">Save Work Status</button>
         </form>
     </div>
