@@ -225,7 +225,7 @@ class Employee extends Model
 
     public function nextSalaryDate(): ?Carbon
     {
-        if (! $this->salaryCycleDay()) {
+        if (! $this->isSalaryEligible() || ! $this->salaryCycleDay()) {
             return null;
         }
 
@@ -241,15 +241,40 @@ class Employee extends Model
 
     public function currentSalaryDueDate(?Carbon $today = null): ?Carbon
     {
-        if (! $this->salaryCycleDay()) {
+        $today = ($today ?: now())->copy()->startOfDay();
+
+        if (! $this->isSalaryEligible($today) || ! $this->salaryCycleDay()) {
             return null;
         }
 
-        return $this->salaryDateForMonth(($today ?: now())->copy());
+        return $this->salaryDateForMonth($today);
+    }
+
+    public function salaryEligibilityDate(): ?Carbon
+    {
+        return $this->confirmation_date?->copy()->startOfDay();
+    }
+
+    public function isSalaryEligible(?Carbon $date = null): bool
+    {
+        $eligibilityDate = $this->salaryEligibilityDate();
+        $selectedDate = ($date ?: now())->copy()->startOfDay();
+
+        if (! $eligibilityDate || $eligibilityDate->gt($selectedDate)) {
+            return false;
+        }
+
+        return ! ($this->status === 'terminated'
+            && $this->last_working_date
+            && $this->last_working_date->lt($eligibilityDate));
     }
 
     public function salaryCycleDay(): ?int
     {
+        if (! $this->confirmation_date) {
+            return null;
+        }
+
         if ($this->salary_day) {
             return (int) $this->salary_day;
         }
@@ -259,6 +284,10 @@ class Employee extends Model
 
     public function salaryCycleStatus(?Carbon $today = null): string
     {
+        if (! $this->isSalaryEligible($today)) {
+            return 'not_salary_eligible';
+        }
+
         if ($this->status === 'terminated') {
             return 'terminated';
         }
@@ -295,6 +324,7 @@ class Employee extends Model
             'partial' => 'Partially Paid',
             'paid' => 'Paid',
             'terminated' => 'Terminated',
+            'not_salary_eligible' => 'Not Salary Eligible',
         ][$this->salaryCycleStatus($today)] ?? 'Upcoming';
     }
 
@@ -304,9 +334,16 @@ class Employee extends Model
             return null;
         }
 
-        $day = min($this->salaryCycleDay(), $month->copy()->endOfMonth()->day);
+        $cycleMonth = $month->copy()->startOfMonth();
+        $eligibilityDate = $this->salaryEligibilityDate();
 
-        return $month->startOfMonth()->addDays($day - 1);
+        do {
+            $day = min($this->salaryCycleDay(), $cycleMonth->copy()->endOfMonth()->day);
+            $salaryDate = $cycleMonth->copy()->addDays($day - 1);
+            $cycleMonth->addMonthNoOverflow()->startOfMonth();
+        } while ($eligibilityDate && $salaryDate->lt($eligibilityDate));
+
+        return $salaryDate;
     }
 
     public function hasFinalSalaryPayroll(): bool

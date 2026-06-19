@@ -454,9 +454,11 @@ class EmployeeController extends Controller
             'final_settlement_paid' => (float) $finalSettlementPayrolls->sum('paid_amount'),
             'final_settlement_due' => $finalSettlementPayrolls->sum(fn ($payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
             'final_settlement_status' => $employee->status === 'terminated'
-                ? ($finalSettlementDuePayrolls->isNotEmpty()
-                    ? 'Final Settlement Unpaid'
-                    : ($finalSettlementPayrolls->isNotEmpty() ? 'Final Settlement Paid' : 'Final Salary Pending'))
+                ? (! $employee->isSalaryEligible($employee->last_working_date)
+                    ? 'Not Salary Eligible'
+                    : ($finalSettlementDuePayrolls->isNotEmpty()
+                        ? 'Final Settlement Unpaid'
+                        : ($finalSettlementPayrolls->isNotEmpty() ? 'Final Settlement Paid' : 'Final Salary Pending')))
                 : '-',
         ];
     }

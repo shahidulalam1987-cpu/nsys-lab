@@ -806,22 +806,17 @@ class EmployeePayrollController extends Controller
             'employees' => Employee::orderBy('name')->get(),
             'cycleEmployees' => $cycleEmployees,
             'summary' => [
-                'total_payable' => $payrolls->sum('payable_salary') + $cycleEmployees->sum(fn (Employee $employee) => (float) data_get($employee->cycle_estimate, 'estimated_payable_salary', 0)),
+                'total_payable' => $payrolls->sum('payable_salary'),
                 'total_paid' => $payrolls->sum('paid_amount'),
-                'total_due' => $payrolls->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0))
-                    + $cycleEmployees->sum(fn (Employee $employee) => (float) data_get($employee->cycle_estimate, 'estimated_payable_salary', 0)),
+                'total_due' => $payrolls->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
                 'record_count' => $payrolls->count() + $cycleEmployees->count(),
-                'upcoming_count' => $payrolls->where('calculated_status', 'upcoming')->filter(fn (EmployeePayroll $payroll) => $payroll->employee?->status !== 'terminated')->count()
-                    + (($filters['status'] ?? null) === 'upcoming' ? $cycleEmployees->where('status', '!=', 'terminated')->count() : 0),
-                'overdue_count' => $payrolls->filter(fn (EmployeePayroll $payroll) => in_array($payroll->calculated_status, ['unpaid', 'partial'], true) && $payroll->employee?->status !== 'terminated')->count()
-                    + (($filters['status'] ?? null) === 'due' ? $cycleEmployees->where('status', '!=', 'terminated')->count() : 0),
-                'final_settlement_count' => $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue())->count()
-                    + (($filters['status'] ?? null) === 'due' ? $cycleEmployees->where('status', 'terminated')->count() : 0),
+                'upcoming_count' => ($filters['status'] ?? null) === 'upcoming'
+                    ? $cycleEmployees->where('status', '!=', 'terminated')->count()
+                    : 0,
+                'overdue_count' => $payrolls->filter(fn (EmployeePayroll $payroll) => in_array($payroll->calculated_status, ['unpaid', 'partial'], true) && $payroll->employee?->status !== 'terminated')->count(),
+                'final_settlement_count' => $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue())->count(),
                 'final_settlement_amount' => $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue())
-                    ->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0))
-                    + (($filters['status'] ?? null) === 'due'
-                        ? $cycleEmployees->where('status', 'terminated')->sum(fn (Employee $employee) => (float) data_get($employee->cycle_estimate, 'estimated_payable_salary', 0))
-                        : 0),
+                    ->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
                 'current_month_payable' => $payrolls
                     ->filter(fn (EmployeePayroll $payroll) => $payroll->salary_month?->isSameMonth(now()))
                     ->sum('payable_salary'),
@@ -868,7 +863,7 @@ class EmployeePayrollController extends Controller
         return match ($status) {
             'paid' => in_array($category, [PayrollCategoryService::PAID, PayrollCategoryService::FINAL_SETTLEMENT_PAID], true),
             'due' => in_array($category, [PayrollCategoryService::UNPAID, PayrollCategoryService::FINAL_SETTLEMENT_UNPAID], true),
-            'upcoming' => $payroll->matchesStatusFilter('upcoming') && $category !== PayrollCategoryService::FINAL_SETTLEMENT_PENDING,
+            'upcoming' => false,
             default => $payroll->matchesStatusFilter($status),
         };
     }
@@ -999,6 +994,11 @@ class EmployeePayrollController extends Controller
                     $salaryDate,
                     $this->estimateClientFor($employee)
                 ));
+                $employee->setAttribute('cycle_category', ($status ?? null) === 'upcoming'
+                    ? 'upcoming_salary'
+                    : (data_get($employee->cycle_estimate, 'estimate_status') === 'work_status_missing'
+                        ? PayrollCategoryService::PENDING_WORK_STATUS
+                        : PayrollCategoryService::SALARY_READY));
 
                 return $employee;
             })
@@ -1031,6 +1031,10 @@ class EmployeePayrollController extends Controller
             ->map(function ($records) use ($salaryMonth) {
                 $employee = $records->first()->employee;
                 $client = $records->first()->client;
+                if (! $employee?->isSalaryEligible($salaryMonth->copy()->endOfMonth())) {
+                    return null;
+                }
+                $records = $records->filter(fn (EmployeeWorkStatus $workStatus) => $workStatus->work_date->gte($employee->salaryEligibilityDate()));
                 $workingCount = (float) $records->sum('salary_count_value');
                 $nonWorkingCount = $records->filter(fn (EmployeeWorkStatus $workStatus) => (float) $workStatus->salary_count_value <= 0)->count();
                 $monthlySalary = (float) ($employee?->monthly_salary ?? 0);
@@ -1060,7 +1064,7 @@ class EmployeePayrollController extends Controller
                     ])->values()->all(),
                 ];
             })
-            ->filter(fn (array $row) => $row['employee'] && $row['client'])
+            ->filter(fn (?array $row) => $row && $row['employee'] && $row['client'])
             ->sortBy(fn (array $row) => $row['employee']->name . ' ' . $row['client']->company_name)
             ->values()
             ->all();
@@ -1134,8 +1138,9 @@ class EmployeePayrollController extends Controller
 
     private function workStatusAdjustments(Employee $employee, int $clientId, Carbon $fromDate, Carbon $toDate): array
     {
+        $eligibleFrom = $employee->salaryEligibilityDate();
         $workStatusByDate = $employee->workStatuses()
-            ->whereDate('work_date', '>=', $fromDate->toDateString())
+            ->whereDate('work_date', '>=', ($eligibleFrom && $eligibleFrom->gt($fromDate) ? $eligibleFrom : $fromDate)->toDateString())
             ->whereDate('work_date', '<=', $toDate->toDateString())
             ->where(function ($query) use ($clientId) {
                 $query->whereNull('client_id')
@@ -1261,6 +1266,14 @@ class EmployeePayrollController extends Controller
             ->orderBy('name')
             ->get()
             ->filter(function (Employee $employee) use ($status, $today) {
+                $eligibilityDate = $employee->status === 'terminated'
+                    ? $employee->last_working_date
+                    : $today;
+
+                if (! $employee->isSalaryEligible($eligibilityDate)) {
+                    return false;
+                }
+
                 if ($employee->status === 'terminated' && $status !== 'due') {
                     return false;
                 }

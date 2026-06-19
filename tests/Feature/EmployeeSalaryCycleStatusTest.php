@@ -8,6 +8,7 @@ use App\Models\EmployeeAssignment;
 use App\Models\EmployeeWorkStatus;
 use App\Models\User;
 use App\Services\PayrollCategoryService;
+use App\Services\PayrollEstimateService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -62,7 +63,6 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         Carbon::setTestNow('2026-06-02');
 
         $admin = $this->admin();
-        $client = $this->client();
         $upcomingEmployee = $this->employee([
             'name' => 'Cycle Upcoming Employee',
             'salary_day' => 7,
@@ -72,12 +72,6 @@ class EmployeeSalaryCycleStatusTest extends TestCase
             'salary_day' => 20,
         ]);
 
-        $this->payroll($upcomingEmployee, $client, [
-            'payment_status' => 'upcoming',
-        ]);
-        $this->payroll($futureEmployee, $client, [
-            'payment_status' => 'upcoming',
-        ]);
         $this->employee([
             'name' => 'Cycle Upcoming Without Payroll',
             'salary_day' => 7,
@@ -88,7 +82,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertOk();
         $response->assertSee('Cycle Upcoming Employee');
         $response->assertSee('Cycle Upcoming Without Payroll');
-        $response->assertSee('Salary Cycle Employees');
+        $response->assertSee('Upcoming Salary');
         $response->assertDontSee('/admin/employees/' . $futureEmployee->id, false);
     }
 
@@ -642,6 +636,172 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $this->assertSame(PayrollCategoryService::PAID, $category['category']);
     }
 
+    public function test_employee_without_confirmation_is_excluded_from_salary_cycle_lists(): void
+    {
+        Carbon::setTestNow('2026-06-19');
+
+        $admin = $this->admin();
+        $this->employee([
+            'name' => 'Unconfirmed Employee',
+            'confirmation_date' => null,
+            'salary_day' => 12,
+        ]);
+
+        $upcoming = $this->actingAs($admin)->get('/admin/payroll?status=upcoming');
+        $due = $this->actingAs($admin)->get('/admin/payroll?status=due');
+
+        $upcoming->assertOk()->assertDontSee('Upcoming Salary This Week');
+        $due->assertOk()->assertDontSee('Pending Work Status');
+        $due->assertDontSee('Salary Ready / Pending Generation');
+    }
+
+    public function test_salary_day_before_confirmation_moves_first_cycle_to_next_month(): void
+    {
+        Carbon::setTestNow('2026-06-19');
+
+        $employee = $this->employee([
+            'confirmation_date' => '2026-06-18',
+            'salary_day' => 12,
+        ]);
+
+        $this->assertSame('2026-07-12', $employee->currentSalaryDueDate()?->toDateString());
+        $this->assertSame('2026-07-12', $employee->nextSalaryDate()?->toDateString());
+    }
+
+    public function test_work_status_before_confirmation_is_ignored_and_after_confirmation_is_counted(): void
+    {
+        Carbon::setTestNow('2026-06-20');
+
+        $employee = $this->employee([
+            'confirmation_date' => '2026-06-18',
+            'salary_day' => 20,
+            'monthly_salary' => 9000,
+        ]);
+        $this->workStatus($employee, null, '2026-06-17', 'working');
+        $this->workStatus($employee, null, '2026-06-18', 'working');
+        $this->workStatus($employee, null, '2026-06-19', 'half_day');
+
+        $estimate = app(PayrollEstimateService::class)->estimateCycle($employee, Carbon::parse('2026-06-20'));
+
+        $this->assertSame('2026-06-18', $estimate['salary_period_start']->toDateString());
+        $this->assertSame(1.5, $estimate['working_salary_count']);
+        $this->assertSame(450.0, $estimate['estimated_payable_salary']);
+    }
+
+    public function test_work_status_salary_preview_counts_only_records_after_confirmation(): void
+    {
+        Carbon::setTestNow('2026-06-20');
+
+        $admin = $this->admin();
+        $client = $this->client();
+        $employee = $this->employee([
+            'confirmation_date' => '2026-06-18',
+            'salary_day' => 20,
+            'monthly_salary' => 9000,
+        ]);
+        $this->workStatus($employee, $client, '2026-06-17', 'working');
+        $this->workStatus($employee, $client, '2026-06-18', 'working');
+        $this->workStatus($employee, $client, '2026-06-19', 'half_day');
+
+        $response = $this->actingAs($admin)->post('/admin/payroll', [
+            'generation_mode' => 'work_status',
+            'work_status_action' => 'preview',
+            'salary_month' => '2026-06',
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+        ]);
+
+        $response->assertOk();
+        $response->assertSee('1.50');
+        $response->assertSee('BDT 450.00');
+        $response->assertDontSee('BDT 600.00');
+    }
+
+    public function test_confirmed_employee_with_salary_date_in_next_five_days_appears_upcoming(): void
+    {
+        Carbon::setTestNow('2026-06-18');
+
+        $admin = $this->admin();
+        $this->employee([
+            'name' => 'Confirmed Upcoming Employee',
+            'confirmation_date' => '2026-06-01',
+            'salary_day' => 22,
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/payroll?status=upcoming');
+
+        $response->assertOk();
+        $response->assertSee('Upcoming Salary This Week');
+        $response->assertSee('Confirmed Upcoming Employee');
+    }
+
+    public function test_confirmed_past_due_employee_without_work_status_is_pending_not_unpaid(): void
+    {
+        Carbon::setTestNow('2026-06-19');
+
+        $admin = $this->admin();
+        $this->employee([
+            'name' => 'Confirmed Pending Work Status Employee',
+            'confirmation_date' => '2026-06-01',
+            'salary_day' => 12,
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/payroll?status=due');
+
+        $response->assertOk();
+        $response->assertSee('Pending Work Status');
+        $response->assertSee('Confirmed Pending Work Status Employee');
+        $response->assertDontSee('Unpaid Salary Due');
+    }
+
+    public function test_generated_unpaid_payroll_appears_only_in_unpaid_section(): void
+    {
+        Carbon::setTestNow('2026-06-19');
+
+        $admin = $this->admin();
+        $client = $this->client();
+        $employee = $this->employee([
+            'name' => 'Generated Unpaid Employee',
+            'confirmation_date' => '2026-06-01',
+            'salary_day' => 12,
+        ]);
+        $this->payroll($employee, $client, [
+            'paid_amount' => 0,
+            'payment_status' => 'unpaid',
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/payroll?status=due');
+
+        $response->assertOk();
+        $response->assertSee('Unpaid Salary Due');
+        $response->assertSee('Generated Unpaid Employee');
+        $response->assertDontSee('Salary Ready / Pending Generation');
+        $response->assertDontSee('Work Status Required');
+    }
+
+    public function test_terminated_final_estimate_starts_from_confirmation_date(): void
+    {
+        Carbon::setTestNow('2026-06-24');
+
+        $employee = $this->employee([
+            'status' => 'terminated',
+            'confirmation_date' => '2026-06-18',
+            'last_working_date' => '2026-06-20',
+            'salary_day' => 20,
+            'monthly_salary' => 12000,
+        ]);
+        $this->workStatus($employee, null, '2026-06-17', 'working');
+        $this->workStatus($employee, null, '2026-06-18', 'working');
+        $this->workStatus($employee, null, '2026-06-19', 'working');
+
+        $estimate = app(PayrollEstimateService::class)->estimateCycle($employee, $employee->last_working_date);
+
+        $this->assertSame('2026-06-18', $estimate['salary_period_start']->toDateString());
+        $this->assertSame('2026-06-20', $estimate['salary_period_end']->toDateString());
+        $this->assertSame(2.0, $estimate['working_salary_count']);
+        $this->assertSame(800.0, $estimate['estimated_payable_salary']);
+    }
+
     public function test_salary_status_modules_can_export_csv_and_excel(): void
     {
         Carbon::setTestNow('2026-06-08');
@@ -692,6 +852,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
             'department' => 'Moderator',
             'role' => 'Moderator',
             'joining_date' => '2026-05-01',
+            'confirmation_date' => '2026-05-01',
             'status' => 'active',
             'monthly_salary' => 30000,
         ], $overrides));

@@ -20,6 +20,10 @@ use Illuminate\Support\Collection;
 
 class NotificationCenterService
 {
+    public function __construct(private PayrollCategoryService $payrollCategory)
+    {
+    }
+
     public function sync(): Collection
     {
         $alerts = collect()
@@ -107,7 +111,7 @@ class NotificationCenterService
     private function employeeAlerts(): array
     {
         $payrolls = EmployeePayroll::current()->with('employee')->get();
-        $upcoming = $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('upcoming') && $payroll->employee?->status !== 'terminated');
+        $upcoming = $this->payrollCategory->upcomingCycles();
         $unpaid = $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('due') && $payroll->employee?->status !== 'terminated');
         $finalSettlements = $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue());
         $overdue = $unpaid->filter(function (EmployeePayroll $payroll) {
@@ -262,9 +266,7 @@ class NotificationCenterService
 
     private function upcomingSalaryCount(): int
     {
-        return EmployeePayroll::current()->with('employee')->get()
-            ->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('upcoming') && $payroll->employee?->status !== 'terminated')
-            ->count();
+        return $this->payrollCategory->upcomingCycles()->count();
     }
 
     private function finalSettlementMessage(Collection $payrolls): string

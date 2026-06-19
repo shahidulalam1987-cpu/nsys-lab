@@ -99,10 +99,15 @@
         </p>
     </div>
 
-    @if(($activeStatus === 'upcoming' || $activeStatus === 'due') && (($cycleEmployees ?? collect())->isNotEmpty() || $payrolls->isNotEmpty()))
-        <div class="card" style="border-color:{{ $activeStatus === 'due' ? '#ef4444' : '#f59e0b' }};">
-            <h2>{{ $activeStatus === 'due' ? 'Unpaid Salary Due' : 'Upcoming Salary This Week' }}</h2>
-            <p>{{ $activeStatus === 'due' ? 'Salary cycles past due or not fully paid.' : 'Salary cycles within the next 5 days.' }}</p>
+    @if($activeStatus === 'due' && $payrolls->isNotEmpty())
+        <div class="card" style="border-color:#ef4444;">
+            <h2>Unpaid Salary Due</h2>
+            <p>Generated salary records that are not fully paid.</p>
+        </div>
+    @elseif($activeStatus === 'upcoming' && ($cycleEmployees ?? collect())->isNotEmpty())
+        <div class="card" style="border-color:#f59e0b;">
+            <h2>Upcoming Salary This Week</h2>
+            <p>Confirmed employees whose salary date is within the next 5 days.</p>
         </div>
     @endif
 
@@ -307,10 +312,20 @@
         </table>
     </div>
 
-    @if(($cycleEmployees ?? collect())->isNotEmpty())
+    @php
+        $cycleGroups = $activeStatus === 'upcoming'
+            ? ['Upcoming Salary' => ($cycleEmployees ?? collect())]
+            : [
+                'Salary Ready / Pending Generation' => ($cycleEmployees ?? collect())->where('cycle_category', 'salary_ready'),
+                'Pending Work Status' => ($cycleEmployees ?? collect())->where('cycle_category', 'pending_work_status'),
+            ];
+    @endphp
+
+    @foreach($cycleGroups as $cycleGroupTitle => $cycleGroupEmployees)
+    @if($cycleGroupEmployees->isNotEmpty())
         <div class="card">
-            <h2>Salary Cycle Employees</h2>
-            <p>Employees shown here match the selected salary cycle status but do not have a generated salary record for this cycle yet.</p>
+            <h2>{{ $cycleGroupTitle }}</h2>
+            <p>Confirmed employees without a generated salary record for this cycle.</p>
 
             <table>
                 <tr>
@@ -322,7 +337,7 @@
                         <th>Estimate Status</th>
                     <th>Action</th>
                 </tr>
-                @foreach($cycleEmployees as $cycleEmployee)
+                @foreach($cycleGroupEmployees as $cycleEmployee)
                     @php
                         $cycleSalaryDate = $cycleEmployee->status === 'terminated'
                             ? $cycleEmployee->last_working_date
@@ -373,4 +388,5 @@
             </table>
         </div>
     @endif
+    @endforeach
 @endsection

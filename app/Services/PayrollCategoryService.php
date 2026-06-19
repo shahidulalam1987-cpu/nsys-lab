@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Employee;
 use App\Models\EmployeePayroll;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 class PayrollCategoryService
 {
@@ -16,6 +17,7 @@ class PayrollCategoryService
     public const FINAL_SETTLEMENT_PENDING = 'final_settlement_pending';
     public const FINAL_SETTLEMENT_UNPAID = 'final_settlement_unpaid';
     public const FINAL_SETTLEMENT_PAID = 'final_settlement_paid';
+    public const NOT_SALARY_ELIGIBLE = 'not_salary_eligible';
 
     public const LABELS = [
         self::PENDING_WORK_STATUS => 'Pending Work Status',
@@ -26,6 +28,7 @@ class PayrollCategoryService
         self::FINAL_SETTLEMENT_PENDING => 'Final Settlement Pending',
         self::FINAL_SETTLEMENT_UNPAID => 'Final Settlement Unpaid',
         self::FINAL_SETTLEMENT_PAID => 'Final Settlement Paid',
+        self::NOT_SALARY_ELIGIBLE => 'Not Salary Eligible',
     ];
 
     public function __construct(private PayrollEstimateService $payrollEstimator)
@@ -48,6 +51,10 @@ class PayrollCategoryService
                 return $this->category(self::FINAL_SETTLEMENT_PAID);
             }
 
+            if (! $employee->isSalaryEligible($employee->last_working_date)) {
+                return $this->category(self::NOT_SALARY_ELIGIBLE);
+            }
+
             return $this->category(self::FINAL_SETTLEMENT_PENDING);
         }
 
@@ -55,6 +62,10 @@ class PayrollCategoryService
 
         if ($payroll) {
             return $this->resolvePayroll($payroll);
+        }
+
+        if (! $employee->isSalaryEligible($salaryDate ?: now())) {
+            return $this->category(self::NOT_SALARY_ELIGIBLE);
         }
 
         $client = $employee->isAgencyInternal() ? null : $employee->activeAssignments->first()?->client;
@@ -96,9 +107,46 @@ class PayrollCategoryService
         return self::LABELS[$category] ?? ucwords(str_replace('_', ' ', $category));
     }
 
+    public function upcomingCycles(?Carbon $today = null): Collection
+    {
+        $today = ($today ?: now())->copy()->startOfDay();
+        $until = $today->copy()->addDays(5);
+
+        return Employee::with(['payrolls' => fn ($query) => $query->current(), 'activeAssignments.client'])
+            ->where('status', '!=', 'terminated')
+            ->get()
+            ->filter(fn (Employee $employee) => $employee->isSalaryEligible($today))
+            ->map(function (Employee $employee) use ($today, $until) {
+                $salaryDate = $employee->nextSalaryDate();
+
+                if (! $salaryDate || ! $salaryDate->betweenIncluded($today, $until)) {
+                    return null;
+                }
+
+                $cycleMonth = $salaryDate->copy()->startOfMonth()->toDateString();
+                $hasPayroll = $employee->payrolls->contains(
+                    fn (EmployeePayroll $payroll) => $payroll->salary_month?->copy()->startOfMonth()->toDateString() === $cycleMonth
+                );
+
+                if ($hasPayroll) {
+                    return null;
+                }
+
+                $client = $employee->isAgencyInternal() ? null : $employee->activeAssignments->first()?->client;
+
+                return [
+                    'employee' => $employee,
+                    'salary_date' => $salaryDate,
+                    'estimate' => $this->payrollEstimator->estimateCycle($employee, $salaryDate, $client),
+                ];
+            })
+            ->filter()
+            ->values();
+    }
+
     private function latestCurrentPayroll(Employee $employee, ?Carbon $salaryDate): ?EmployeePayroll
     {
-        $payrolls = $employee->payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->is_current);
+        $payrolls = $employee->payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->is_current || $payroll->is_current === null);
 
         if ($salaryDate) {
             $cycleMonth = $salaryDate->copy()->startOfMonth()->toDateString();

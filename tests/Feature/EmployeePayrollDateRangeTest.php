@@ -696,6 +696,7 @@ class EmployeePayrollDateRangeTest extends TestCase
             'department' => 'Moderator',
             'role' => 'Moderator',
             'joining_date' => '2026-06-01',
+            'confirmation_date' => '2026-06-01',
             'status' => 'active',
             'monthly_salary' => 30000,
         ], $overrides));

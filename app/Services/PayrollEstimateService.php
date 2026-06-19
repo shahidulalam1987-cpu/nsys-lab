@@ -17,13 +17,13 @@ class PayrollEstimateService
         $monthDays = EmployeePayroll::FIXED_SALARY_MONTH_DAYS;
         $dailySalary = $monthDays > 0 ? $monthlySalary / $monthDays : 0.0;
 
-        if (! $periodEnd) {
+        if (! $periodEnd || ! $employee->isSalaryEligible($periodEnd)) {
             return $this->emptyEstimate($monthlySalary, $monthDays, $dailySalary);
         }
 
         $periodStart = $periodEnd->copy()->startOfMonth();
-        if ($employee->joining_date && $employee->joining_date->gt($periodStart)) {
-            $periodStart = $employee->joining_date->copy();
+        if ($employee->confirmation_date && $employee->confirmation_date->gt($periodStart)) {
+            $periodStart = $employee->confirmation_date->copy();
         }
 
         $records = EmployeeWorkStatus::query()
@@ -58,6 +58,15 @@ class PayrollEstimateService
 
     public function hasWorkStatusRecordsForPeriod(Employee $employee, Carbon $periodStart, Carbon $periodEnd, ?Client $client = null): bool
     {
+        if (! $employee->isSalaryEligible($periodEnd)) {
+            return false;
+        }
+
+        $eligibilityDate = $employee->salaryEligibilityDate();
+        if ($eligibilityDate && $eligibilityDate->gt($periodStart)) {
+            $periodStart = $eligibilityDate;
+        }
+
         return EmployeeWorkStatus::query()
             ->where('employee_id', $employee->id)
             ->whereDate('work_date', '>=', $periodStart->toDateString())

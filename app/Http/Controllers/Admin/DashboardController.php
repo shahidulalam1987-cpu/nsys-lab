@@ -18,10 +18,11 @@ use App\Models\FundingBalance;
 use App\Models\SalaryPayment;
 use App\Services\ClientFundDashboardService;
 use App\Services\NotificationCenterService;
+use App\Services\PayrollCategoryService;
 
 class DashboardController extends Controller
 {
-    public function index(ClientFundDashboardService $clientFundDashboardService, NotificationCenterService $notificationCenterService)
+    public function index(ClientFundDashboardService $clientFundDashboardService, NotificationCenterService $notificationCenterService, PayrollCategoryService $payrollCategoryService)
     {
         $today = date('Y-m-d');
 
@@ -67,8 +68,7 @@ class DashboardController extends Controller
             ->get()
             ->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0));
         $employeePayrolls = EmployeePayroll::current()->with(['employee', 'client'])->get();
-        $upcomingPayrolls = $employeePayrolls
-            ->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('upcoming') && $payroll->employee?->status !== 'terminated');
+        $upcomingCycles = $payrollCategoryService->upcomingCycles();
         $unpaidPayrolls = $employeePayrolls
             ->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('due') && $payroll->employee?->status !== 'terminated');
         $finalSettlementPayrolls = $employeePayrolls
@@ -92,8 +92,8 @@ class DashboardController extends Controller
         $negativeBalanceCards = $cards->filter(fn (FacebookCard $card) => (float) $card->current_balance < 0)->count();
         $highFeeTransactions = CardTransaction::where('fee_usd', '>=', 5)->count();
         $employeeAlerts = [
-            'upcoming_count' => $upcomingPayrolls->count(),
-            'upcoming_amount' => (float) $upcomingPayrolls->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
+            'upcoming_count' => $upcomingCycles->count(),
+            'upcoming_amount' => (float) $upcomingCycles->sum(fn (array $cycle) => (float) data_get($cycle, 'estimate.estimated_payable_salary', 0)),
             'unpaid_count' => $unpaidPayrolls->count(),
             'unpaid_amount' => (float) $unpaidPayrolls->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
             'final_settlement_count' => $finalSettlementPayrolls->count(),
@@ -256,7 +256,7 @@ class DashboardController extends Controller
         return view('admin.tiktok.placeholder');
     }
 
-    public function employeeDepartment(ClientFundDashboardService $clientFundDashboardService)
+    public function employeeDepartment(ClientFundDashboardService $clientFundDashboardService, PayrollCategoryService $payrollCategoryService)
     {
         $clientFundDashboard = $clientFundDashboardService->dashboard();
         $clientFundSummary = $clientFundDashboard['summary'];
@@ -276,7 +276,7 @@ class DashboardController extends Controller
         $recentSalaryPayments = SalaryPayment::with('client')->latest()->take(5)->get();
         $employeePayrolls = EmployeePayroll::current()->with('employee')->get();
         $employeeDashboardAlerts = [
-            'upcoming_count' => $employeePayrolls->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('upcoming') && $payroll->employee?->status !== 'terminated')->count(),
+            'upcoming_count' => $payrollCategoryService->upcomingCycles()->count(),
             'unpaid_count' => $employeePayrolls->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('due') && $payroll->employee?->status !== 'terminated')->count(),
             'final_settlement_count' => $employeePayrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue())->count(),
             'final_settlement_amount' => (float) $employeePayrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue())
