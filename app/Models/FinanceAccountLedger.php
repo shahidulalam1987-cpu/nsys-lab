@@ -6,6 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class FinanceAccountLedger extends Model
 {
+    public const TRANSACTION_TYPES = [
+        'opening_balance' => 'Opening Balance',
+        'manual_adjustment' => 'Manual Adjustment',
+        'salary_payment' => 'Salary Payment',
+        'salary_payment_reversal' => 'Salary Payment Reversal',
+        'family_expense' => 'Family Expense',
+        'family_expense_reversal' => 'Family Expense Reversal',
+    ];
+
     protected $fillable = [
         'finance_account_id',
         'employee_payroll_id',
@@ -46,6 +55,7 @@ class FinanceAccountLedger extends Model
 
     public function typeLabel(): string
     {
-        return ucwords(str_replace('_', ' ', $this->transaction_type));
+        return self::TRANSACTION_TYPES[$this->transaction_type]
+            ?? ucwords(str_replace('_', ' ', $this->transaction_type));
     }
 }

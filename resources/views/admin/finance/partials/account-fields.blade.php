@@ -17,6 +17,9 @@
     </select>
 </label>
 <label>Current Balance<br><input type="number" step="0.01" name="current_balance" value="{{ old('current_balance', $account?->current_balance ?? 0) }}" required></label>
+@if($account)
+    <label>Balance Adjustment Reason<br><input type="text" name="adjustment_reason" value="{{ old('adjustment_reason') }}" placeholder="Required when balance changes"></label>
+@endif
 <label>Status<br>
     <select name="status" required>
         @foreach($statuses as $value => $label)

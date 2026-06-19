@@ -651,7 +651,7 @@ class EmployeePayrollDateRangeTest extends TestCase
         $showResponse->assertSee('BDT 5,000.00');
     }
 
-    public function test_admin_can_delete_salary_record_without_deleting_employee_or_client(): void
+    public function test_admin_cannot_delete_partially_paid_salary_record(): void
     {
         $admin = $this->user('admin');
         $client = $this->client();
@@ -677,9 +677,9 @@ class EmployeePayrollDateRangeTest extends TestCase
 
         $response = $this->actingAs($admin)->post('/admin/payroll/' . $payroll->id . '/delete');
 
-        $response->assertRedirect('/admin/payroll');
-        $response->assertSessionHas('success', 'Salary record deleted successfully.');
-        $this->assertDatabaseMissing('employee_payrolls', [
+        $response->assertRedirect('/admin/payroll/' . $payroll->id);
+        $response->assertSessionHasErrors(['payroll' => 'Paid payroll cannot be deleted. Use reverse payment or void payroll.']);
+        $this->assertDatabaseHas('employee_payrolls', [
             'id' => $payroll->id,
         ]);
         $this->assertDatabaseHas('employees', [

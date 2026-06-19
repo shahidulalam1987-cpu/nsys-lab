@@ -36,7 +36,7 @@ class EmployeePayrollController extends Controller
             'filters' => $filters,
             'payrolls' => $data['payrolls'],
             'employees' => $data['employees'],
-            'financeAccounts' => FinanceAccount::where('status', 'active')->orderBy('account_name')->get(),
+            'financeAccounts' => FinanceAccount::where('status', 'active')->where('currency', 'BDT')->orderBy('account_name')->get(),
             'cycleEmployees' => $data['cycleEmployees'],
             'summary' => $data['summary'],
         ]);
@@ -389,7 +389,7 @@ class EmployeePayrollController extends Controller
     {
         $payroll = EmployeePayroll::with(['employee', 'client', 'audits.user', 'approver', 'payer', 'financeAccount', 'financeLedgers.account', 'financeLedgers.creator'])->findOrFail($id);
         $workStatusSummary = $this->workStatusSummary($payroll);
-        $financeAccounts = FinanceAccount::where('status', 'active')->orderBy('account_name')->get();
+        $financeAccounts = FinanceAccount::where('status', 'active')->where('currency', 'BDT')->orderBy('account_name')->get();
 
         return view('admin.payroll.show', compact('payroll', 'workStatusSummary', 'financeAccounts'));
     }
@@ -516,6 +516,13 @@ class EmployeePayrollController extends Controller
             }
 
             $account = FinanceAccount::lockForUpdate()->findOrFail($data['finance_account_id']);
+
+            if ($account->currency !== 'BDT') {
+                $blockedMessage = 'Currency mismatch. This payment requires a BDT account.';
+
+                return;
+            }
+
             $paidAmount = (float) $payroll->payable_salary;
             $previousBalance = (float) $account->current_balance;
 
@@ -739,6 +746,23 @@ class EmployeePayrollController extends Controller
 
     public function destroy(EmployeePayroll $payroll)
     {
+        $hasFinanceHistory = $payroll->financeLedgers()->exists()
+            || $payroll->finance_account_id
+            || $payroll->payment_confirmed_at
+            || $payroll->paid_at
+            || $payroll->payment_date
+            || $payroll->transaction_id
+            || $payroll->payment_proof
+            || $payroll->salary_payment_attachment
+            || (float) $payroll->paid_amount > 0;
+        $isUnpaidDraft = in_array($payroll->payroll_status, ['draft', 'generated'], true)
+            && ! in_array($payroll->payment_status, ['paid', 'partial'], true);
+
+        if (! $isUnpaidDraft || $hasFinanceHistory) {
+            return redirect('/admin/payroll/' . $payroll->id)
+                ->withErrors(['payroll' => 'Paid payroll cannot be deleted. Use reverse payment or void payroll.']);
+        }
+
         $description = 'Salary #' . $payroll->id . ' deleted.';
         $payroll->delete();
 

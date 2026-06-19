@@ -9,7 +9,9 @@ use App\Models\FinanceLoan;
 use App\Models\FinanceLoanRepayment;
 use App\Models\EmployeePayroll;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class FinanceManagementController extends Controller
 {
@@ -35,7 +37,25 @@ class FinanceManagementController extends Controller
 
     public function storeAccount(Request $request)
     {
-        FinanceAccount::create($this->validatedAccount($request));
+        $data = $this->validatedAccount($request);
+
+        DB::transaction(function () use ($data, $request) {
+            $account = FinanceAccount::create($data);
+            $openingBalance = (float) $account->current_balance;
+
+            if ($openingBalance != 0.0) {
+                $account->ledgers()->create([
+                    'ledger_date' => now()->toDateString(),
+                    'transaction_type' => 'opening_balance',
+                    'amount' => abs($openingBalance),
+                    'previous_balance' => 0,
+                    'new_balance' => $openingBalance,
+                    'reference' => 'finance-account:' . $account->id,
+                    'note' => 'Opening balance.',
+                    'created_by' => $request->user()?->id,
+                ]);
+            }
+        });
 
         return redirect('/admin/finance/accounts')->with('success', 'Finance account saved successfully.');
     }
@@ -52,13 +72,55 @@ class FinanceManagementController extends Controller
 
     public function updateAccount(Request $request, FinanceAccount $account)
     {
-        $account->update($this->validatedAccount($request));
+        $data = $this->validatedAccount($request);
+        $newBalance = round((float) $data['current_balance'], 2);
+        $currentBalance = round((float) $account->current_balance, 2);
+
+        if ($newBalance !== $currentBalance) {
+            $request->validate([
+                'adjustment_reason' => ['required', 'string', 'max:1000'],
+            ]);
+        }
+
+        DB::transaction(function () use ($account, $data, $newBalance, $request) {
+            $lockedAccount = FinanceAccount::whereKey($account->id)->lockForUpdate()->firstOrFail();
+            $previousBalance = round((float) $lockedAccount->current_balance, 2);
+            $metadata = $data;
+            unset($metadata['current_balance']);
+
+            if ($newBalance !== $previousBalance && ! $request->filled('adjustment_reason')) {
+                throw ValidationException::withMessages([
+                    'adjustment_reason' => 'Balance adjustment reason is required.',
+                ]);
+            }
+
+            $lockedAccount->update($metadata);
+
+            if ($newBalance !== $previousBalance) {
+                $lockedAccount->update(['current_balance' => $newBalance]);
+                $lockedAccount->ledgers()->create([
+                    'ledger_date' => now()->toDateString(),
+                    'transaction_type' => 'manual_adjustment',
+                    'amount' => abs($newBalance - $previousBalance),
+                    'previous_balance' => $previousBalance,
+                    'new_balance' => $newBalance,
+                    'reference' => 'finance-account:' . $lockedAccount->id,
+                    'note' => $request->string('adjustment_reason')->toString(),
+                    'created_by' => $request->user()?->id,
+                ]);
+            }
+        });
 
         return redirect('/admin/finance/accounts')->with('success', 'Finance account updated successfully.');
     }
 
     public function destroyAccount(FinanceAccount $account)
     {
+        if ($account->ledgers()->exists()) {
+            return redirect('/admin/finance/accounts')
+                ->withErrors(['account' => 'This finance account has transaction history and cannot be deleted.']);
+        }
+
         $account->delete();
 
         return redirect('/admin/finance/accounts')->with('success', 'Finance account deleted successfully.');
@@ -154,7 +216,7 @@ class FinanceManagementController extends Controller
 
         return view('admin.finance.family-expenses', [
             'expenses' => $expenses,
-            'accounts' => FinanceAccount::orderBy('account_name')->get(),
+            'accounts' => FinanceAccount::where('currency', 'BDT')->orderBy('account_name')->get(),
             'categories' => FamilyExpense::CATEGORIES,
             'summary' => $this->familyExpenseSummary(),
             'filters' => $request->only(['date_from', 'date_to', 'person', 'category', 'payment_method']),
@@ -164,8 +226,11 @@ class FinanceManagementController extends Controller
     public function storeFamilyExpense(Request $request)
     {
         $data = $this->validatedFamilyExpense($request);
-        $expense = FamilyExpense::create($data);
-        $this->applyFamilyExpenseDeduction($expense);
+
+        DB::transaction(function () use ($data, $request) {
+            $expense = FamilyExpense::create($data);
+            $this->applyFamilyExpenseDeduction($expense, $request->user()?->id);
+        });
 
         return redirect('/admin/finance/family-expenses')->with('success', 'Family expense saved successfully.');
     }
@@ -174,24 +239,32 @@ class FinanceManagementController extends Controller
     {
         return view('admin.finance.family-expense-edit', [
             'expense' => $expense,
-            'accounts' => FinanceAccount::orderBy('account_name')->get(),
+            'accounts' => FinanceAccount::where('currency', 'BDT')->orderBy('account_name')->get(),
             'categories' => FamilyExpense::CATEGORIES,
         ]);
     }
 
     public function updateFamilyExpense(Request $request, FamilyExpense $expense)
     {
-        $this->restoreFamilyExpenseDeduction($expense);
-        $expense->update($this->validatedFamilyExpense($request));
-        $this->applyFamilyExpenseDeduction($expense);
+        $data = $this->validatedFamilyExpense($request);
+
+        DB::transaction(function () use ($expense, $data, $request) {
+            $lockedExpense = FamilyExpense::whereKey($expense->id)->lockForUpdate()->firstOrFail();
+            $this->restoreFamilyExpenseDeduction($lockedExpense, $request->user()?->id, 'Family expense updated.');
+            $lockedExpense->update($data);
+            $this->applyFamilyExpenseDeduction($lockedExpense, $request->user()?->id);
+        });
 
         return redirect('/admin/finance/family-expenses')->with('success', 'Family expense updated successfully.');
     }
 
     public function destroyFamilyExpense(FamilyExpense $expense)
     {
-        $this->restoreFamilyExpenseDeduction($expense);
-        $expense->delete();
+        DB::transaction(function () use ($expense) {
+            $lockedExpense = FamilyExpense::whereKey($expense->id)->lockForUpdate()->firstOrFail();
+            $this->restoreFamilyExpenseDeduction($lockedExpense, auth()->id(), 'Family expense deleted.');
+            $lockedExpense->delete();
+        });
 
         return redirect('/admin/finance/family-expenses')->with('success', 'Family expense deleted successfully.');
     }
@@ -261,17 +334,69 @@ class FinanceManagementController extends Controller
         ]);
     }
 
-    private function applyFamilyExpenseDeduction(FamilyExpense $expense): void
+    private function applyFamilyExpenseDeduction(FamilyExpense $expense, ?int $userId): void
     {
-        if ($expense->finance_account_id) {
-            $expense->account?->decrement('current_balance', (float) $expense->amount);
+        if (! $expense->finance_account_id) {
+            return;
         }
+
+        $account = FinanceAccount::whereKey($expense->finance_account_id)->lockForUpdate()->firstOrFail();
+        $this->requireBdtAccount($account);
+
+        $amount = round((float) $expense->amount, 2);
+        $previousBalance = round((float) $account->current_balance, 2);
+
+        if ($previousBalance < $amount) {
+            throw ValidationException::withMessages([
+                'finance_account_id' => 'Insufficient finance account balance.',
+            ]);
+        }
+
+        $newBalance = $previousBalance - $amount;
+        $account->update(['current_balance' => $newBalance]);
+        $account->ledgers()->create([
+            'ledger_date' => $expense->expense_date,
+            'transaction_type' => 'family_expense',
+            'amount' => $amount,
+            'previous_balance' => $previousBalance,
+            'new_balance' => $newBalance,
+            'reference' => 'family-expense:' . $expense->id,
+            'note' => $expense->note ?: 'Family expense payment.',
+            'created_by' => $userId,
+        ]);
     }
 
-    private function restoreFamilyExpenseDeduction(FamilyExpense $expense): void
+    private function restoreFamilyExpenseDeduction(FamilyExpense $expense, ?int $userId, string $note): void
     {
-        if ($expense->finance_account_id) {
-            $expense->account?->increment('current_balance', (float) $expense->amount);
+        if (! $expense->finance_account_id) {
+            return;
+        }
+
+        $account = FinanceAccount::whereKey($expense->finance_account_id)->lockForUpdate()->firstOrFail();
+        $this->requireBdtAccount($account);
+
+        $amount = round((float) $expense->amount, 2);
+        $previousBalance = round((float) $account->current_balance, 2);
+        $newBalance = $previousBalance + $amount;
+        $account->update(['current_balance' => $newBalance]);
+        $account->ledgers()->create([
+            'ledger_date' => now()->toDateString(),
+            'transaction_type' => 'family_expense_reversal',
+            'amount' => $amount,
+            'previous_balance' => $previousBalance,
+            'new_balance' => $newBalance,
+            'reference' => 'family-expense:' . $expense->id,
+            'note' => $note,
+            'created_by' => $userId,
+        ]);
+    }
+
+    private function requireBdtAccount(FinanceAccount $account): void
+    {
+        if ($account->currency !== 'BDT') {
+            throw ValidationException::withMessages([
+                'finance_account_id' => 'Currency mismatch. This payment requires a BDT account.',
+            ]);
         }
     }
 
