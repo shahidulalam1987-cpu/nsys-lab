@@ -9,6 +9,7 @@ use Illuminate\Support\Collection;
 
 class PayrollCategoryService
 {
+    public const UPCOMING = 'upcoming';
     public const PENDING_WORK_STATUS = 'pending_work_status';
     public const SALARY_READY = 'salary_ready';
     public const GENERATED = 'generated';
@@ -20,6 +21,7 @@ class PayrollCategoryService
     public const NOT_SALARY_ELIGIBLE = 'not_salary_eligible';
 
     public const LABELS = [
+        self::UPCOMING => 'Upcoming',
         self::PENDING_WORK_STATUS => 'Pending Work Status',
         self::SALARY_READY => 'Salary Ready',
         self::GENERATED => 'Generated',
@@ -29,6 +31,19 @@ class PayrollCategoryService
         self::FINAL_SETTLEMENT_UNPAID => 'Final Settlement Unpaid',
         self::FINAL_SETTLEMENT_PAID => 'Final Settlement Paid',
         self::NOT_SALARY_ELIGIBLE => 'Not Salary Eligible',
+    ];
+
+    public const PRIORITY = [
+        self::FINAL_SETTLEMENT_UNPAID => 10,
+        self::FINAL_SETTLEMENT_PAID => 20,
+        self::FINAL_SETTLEMENT_PENDING => 30,
+        self::UNPAID => 40,
+        self::GENERATED => 50,
+        self::UPCOMING => 60,
+        self::SALARY_READY => 70,
+        self::PENDING_WORK_STATUS => 80,
+        self::PAID => 90,
+        self::NOT_SALARY_ELIGIBLE => 100,
     ];
 
     public function __construct(private PayrollEstimateService $payrollEstimator)
@@ -44,38 +59,117 @@ class PayrollCategoryService
                 ->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementPayroll());
 
             if ($finalPayrolls->contains(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue())) {
-                return $this->category(self::FINAL_SETTLEMENT_UNPAID);
+                return $this->category(self::FINAL_SETTLEMENT_UNPAID, [
+                    'payroll' => $finalPayrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue())->sortByDesc('id')->first(),
+                ]);
             }
 
             if ($finalPayrolls->contains(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementPaid())) {
-                return $this->category(self::FINAL_SETTLEMENT_PAID);
+                return $this->category(self::FINAL_SETTLEMENT_PAID, [
+                    'payroll' => $finalPayrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementPaid())->sortByDesc('id')->first(),
+                ]);
             }
 
             if (! $employee->isSalaryEligible($employee->last_working_date)) {
                 return $this->category(self::NOT_SALARY_ELIGIBLE);
             }
 
-            return $this->category(self::FINAL_SETTLEMENT_PENDING);
+            return $this->category(self::FINAL_SETTLEMENT_PENDING, [
+                'salary_date' => $employee->last_working_date,
+                'estimate' => $this->payrollEstimator->estimateCycle(
+                    $employee,
+                    $employee->last_working_date,
+                    $employee->isAgencyInternal() ? null : $employee->activeAssignments->first()?->client
+                ),
+            ]);
         }
 
-        $payroll = $this->latestCurrentPayroll($employee, $salaryDate);
+        $today = ($salaryDate ?: now())->copy()->startOfDay();
+        $payrolls = $employee->payrolls
+            ->filter(fn (EmployeePayroll $payroll) => $payroll->is_current || $payroll->is_current === null)
+            ->sortByDesc('id');
 
-        if ($payroll) {
-            return $this->resolvePayroll($payroll);
+        $overduePayroll = $payrolls->first(function (EmployeePayroll $payroll) use ($today) {
+            $dueDate = $payroll->salaryDueDate();
+
+            return (float) $payroll->paid_amount < (float) $payroll->payable_salary
+                && (! $dueDate || $dueDate->copy()->startOfDay()->lt($today));
+        });
+
+        if ($overduePayroll) {
+            return $this->category(self::UNPAID, ['payroll' => $overduePayroll]);
         }
 
-        if (! $employee->isSalaryEligible($salaryDate ?: now())) {
+        if (! $employee->isSalaryEligible($today) && $payrolls->isNotEmpty()) {
+            $payroll = $payrolls->first();
+            $resolved = $this->resolvePayroll($payroll);
+            $resolved['payroll'] = $payroll;
+
+            return $resolved;
+        }
+
+        if (! $employee->isSalaryEligible($today)) {
             return $this->category(self::NOT_SALARY_ELIGIBLE);
         }
 
         $client = $employee->isAgencyInternal() ? null : $employee->activeAssignments->first()?->client;
-        $estimate = $this->payrollEstimator->estimateCycle($employee, $salaryDate ?: $employee->currentSalaryDueDate(), $client);
+        $currentSalaryDate = $employee->currentSalaryDueDate($today);
+        $currentPayroll = $this->payrollForCycle($payrolls, $currentSalaryDate);
+        $upcomingSalaryDate = $employee->nextSalaryDate();
+        $upcomingPayroll = $this->payrollForCycle($payrolls, $upcomingSalaryDate);
+        $isUpcomingWindow = $upcomingSalaryDate
+            && $upcomingSalaryDate->betweenIncluded($today, $today->copy()->addDays(5));
 
-        if ((float) $estimate['estimated_payable_salary'] <= 0 && (int) $estimate['work_status_records'] === 0) {
-            return $this->category(self::PENDING_WORK_STATUS, $estimate);
+        if ($isUpcomingWindow && (! $upcomingPayroll || (float) $upcomingPayroll->paid_amount < (float) $upcomingPayroll->payable_salary)) {
+            return $this->category(self::UPCOMING, [
+                'payroll' => $upcomingPayroll,
+                'salary_date' => $upcomingSalaryDate,
+                'estimate' => $upcomingPayroll ? null : $this->payrollEstimator->estimateCycle($employee, $upcomingSalaryDate, $client),
+            ]);
         }
 
-        return $this->category(self::SALARY_READY, $estimate);
+        if ($currentPayroll) {
+            $resolved = $this->resolvePayroll($currentPayroll);
+            $resolved['payroll'] = $currentPayroll;
+
+            return $resolved;
+        }
+
+        if ($currentSalaryDate && $currentSalaryDate->lt($today)) {
+            $estimate = $this->payrollEstimator->estimateCycle($employee, $currentSalaryDate, $client);
+
+            if ((float) $estimate['estimated_payable_salary'] <= 0 && (int) $estimate['work_status_records'] === 0) {
+                return $this->category(self::PENDING_WORK_STATUS, array_merge($estimate, [
+                    'estimate' => $estimate,
+                    'salary_date' => $currentSalaryDate,
+                ]));
+            }
+
+            return $this->category(self::SALARY_READY, array_merge($estimate, [
+                'estimate' => $estimate,
+                'salary_date' => $currentSalaryDate,
+            ]));
+        }
+
+        $latestPaidPayroll = $payrolls->first(fn (EmployeePayroll $payroll) => (float) $payroll->paid_amount >= (float) $payroll->payable_salary);
+        if ($latestPaidPayroll) {
+            return $this->category(self::PAID, ['payroll' => $latestPaidPayroll]);
+        }
+
+        $futureSalaryDate = $upcomingSalaryDate ?: $currentSalaryDate;
+        $estimate = $this->payrollEstimator->estimateCycle($employee, $futureSalaryDate, $client);
+
+        if ((float) $estimate['estimated_payable_salary'] <= 0 && (int) $estimate['work_status_records'] === 0) {
+            return $this->category(self::UPCOMING, [
+                'salary_date' => $futureSalaryDate,
+                'estimate' => $estimate,
+            ]);
+        }
+
+        return $this->category(self::UPCOMING, [
+            'salary_date' => $futureSalaryDate,
+            'estimate' => $estimate,
+        ]);
     }
 
     public function resolvePayroll(EmployeePayroll $payroll): array
@@ -115,52 +209,37 @@ class PayrollCategoryService
         return Employee::with(['payrolls' => fn ($query) => $query->current(), 'activeAssignments.client'])
             ->where('status', '!=', 'terminated')
             ->get()
-            ->filter(fn (Employee $employee) => $employee->isSalaryEligible($today))
             ->map(function (Employee $employee) use ($today, $until) {
-                $salaryDate = $employee->nextSalaryDate();
+                $stage = $this->resolveEmployee($employee, $today);
+                $salaryDate = data_get($stage, 'salary_date');
 
-                if (! $salaryDate || ! $salaryDate->betweenIncluded($today, $until)) {
+                if (($stage['category'] ?? null) !== self::UPCOMING
+                    || ! $salaryDate
+                    || ! $salaryDate->betweenIncluded($today, $until)) {
                     return null;
                 }
-
-                $cycleMonth = $salaryDate->copy()->startOfMonth()->toDateString();
-                $hasPayroll = $employee->payrolls->contains(
-                    fn (EmployeePayroll $payroll) => $payroll->salary_month?->copy()->startOfMonth()->toDateString() === $cycleMonth
-                );
-
-                if ($hasPayroll) {
-                    return null;
-                }
-
-                $client = $employee->isAgencyInternal() ? null : $employee->activeAssignments->first()?->client;
 
                 return [
                     'employee' => $employee,
                     'salary_date' => $salaryDate,
-                    'estimate' => $this->payrollEstimator->estimateCycle($employee, $salaryDate, $client),
+                    'estimate' => data_get($stage, 'estimate'),
+                    'payroll' => data_get($stage, 'payroll'),
                 ];
             })
             ->filter()
             ->values();
     }
 
-    private function latestCurrentPayroll(Employee $employee, ?Carbon $salaryDate): ?EmployeePayroll
+    private function payrollForCycle(Collection $payrolls, ?Carbon $salaryDate): ?EmployeePayroll
     {
-        $payrolls = $employee->payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->is_current || $payroll->is_current === null);
-
-        if ($salaryDate) {
-            $cycleMonth = $salaryDate->copy()->startOfMonth()->toDateString();
-            $cyclePayroll = $payrolls
-                ->filter(fn (EmployeePayroll $payroll) => $payroll->salary_month?->copy()->startOfMonth()->toDateString() === $cycleMonth)
-                ->sortByDesc('id')
-                ->first();
-
-            if ($cyclePayroll) {
-                return $cyclePayroll;
-            }
+        if (! $salaryDate) {
+            return null;
         }
 
-        return $payrolls->sortByDesc('id')->first();
+        $cycleMonth = $salaryDate->copy()->startOfMonth()->toDateString();
+
+        return $payrolls
+            ->first(fn (EmployeePayroll $payroll) => $payroll->salary_month?->copy()->startOfMonth()->toDateString() === $cycleMonth);
     }
 
     private function category(string $category, array $context = []): array
@@ -168,6 +247,7 @@ class PayrollCategoryService
         return array_merge($context, [
             'category' => $category,
             'label' => $this->label($category),
+            'priority' => self::PRIORITY[$category] ?? 999,
         ]);
     }
 }

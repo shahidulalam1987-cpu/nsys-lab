@@ -313,12 +313,22 @@
     </div>
 
     @php
-        $cycleGroups = $activeStatus === 'upcoming'
-            ? ['Upcoming Salary' => ($cycleEmployees ?? collect())]
-            : [
-                'Salary Ready / Pending Generation' => ($cycleEmployees ?? collect())->where('cycle_category', 'salary_ready'),
+        $cycleGroups = match($activeStatus) {
+            'upcoming' => [
+                'Upcoming Salary' => ($cycleEmployees ?? collect())->where('cycle_category', 'upcoming'),
+            ],
+            'due' => [
+                'Salary Ready' => ($cycleEmployees ?? collect())->where('cycle_category', 'salary_ready'),
                 'Pending Work Status' => ($cycleEmployees ?? collect())->where('cycle_category', 'pending_work_status'),
-            ];
+                'Final Settlement Pending' => ($cycleEmployees ?? collect())->where('cycle_category', 'final_settlement_pending'),
+            ],
+            default => [
+                'Upcoming Salary' => ($cycleEmployees ?? collect())->where('cycle_category', 'upcoming'),
+                'Salary Ready' => ($cycleEmployees ?? collect())->where('cycle_category', 'salary_ready'),
+                'Pending Work Status' => ($cycleEmployees ?? collect())->where('cycle_category', 'pending_work_status'),
+                'Final Settlement Pending' => ($cycleEmployees ?? collect())->where('cycle_category', 'final_settlement_pending'),
+            ],
+        };
     @endphp
 
     @foreach($cycleGroups as $cycleGroupTitle => $cycleGroupEmployees)
@@ -339,11 +349,12 @@
                 </tr>
                 @foreach($cycleGroupEmployees as $cycleEmployee)
                     @php
-                        $cycleSalaryDate = $cycleEmployee->status === 'terminated'
-                            ? $cycleEmployee->last_working_date
-                            : (request('status') === 'due'
-                                ? $cycleEmployee->currentSalaryDueDate()
-                                : $cycleEmployee->nextSalaryDate());
+                        $cycleSalaryDate = $cycleEmployee->cycle_salary_date
+                            ?: ($cycleEmployee->status === 'terminated'
+                                ? $cycleEmployee->last_working_date
+                                : (request('status') === 'due'
+                                    ? $cycleEmployee->currentSalaryDueDate()
+                                    : $cycleEmployee->nextSalaryDate()));
                         $cycleEstimate = $cycleEmployee->cycle_estimate ?? [];
                         $estimatedAmount = (float) data_get($cycleEstimate, 'estimated_payable_salary', 0);
                         $workStatusMissing = data_get($cycleEstimate, 'estimate_status') === 'work_status_missing';

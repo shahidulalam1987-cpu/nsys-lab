@@ -761,59 +761,76 @@ class EmployeePayrollController extends Controller
 
     private function filteredPayrollData(array $filters): array
     {
-        $query = EmployeePayroll::current()
-            ->with(['employee', 'client', 'financeAccount'])
-            ->when($filters['month'] ?? null, fn ($query, $month) => $query->whereDate('salary_month', $month . '-01'))
-            ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
-            ->when($filters['salary_source'] ?? null, fn ($query, $salarySource) => $query->where('salary_source', $salarySource));
-
-        $payrolls = $query->latest('salary_month')
-            ->latest()
+        $allEmployees = Employee::orderBy('name')->get();
+        $stageRows = Employee::with([
+            'payrolls' => fn ($query) => $query->current()->with(['client', 'financeAccount']),
+            'activeAssignments.client',
+        ])
+            ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->whereKey($employeeId))
+            ->orderBy('name')
             ->get()
-            ->filter(fn (EmployeePayroll $payroll) => $this->payrollMatchesStatus($payroll, $filters['status'] ?? null))
-            ->filter(function (EmployeePayroll $payroll) use ($filters) {
+            ->map(fn (Employee $employee) => [
+                'employee' => $employee,
+                'stage' => $this->payrollCategory->resolveEmployee($employee, now()),
+            ])
+            ->filter(fn (array $row) => ($row['stage']['category'] ?? null) !== PayrollCategoryService::NOT_SALARY_ELIGIBLE)
+            ->filter(fn (array $row) => empty($filters['salary_source'])
+                || ($row['employee']->salary_source ?: $row['employee']->defaultSalarySource()) === $filters['salary_source'])
+            ->filter(function (array $row) use ($filters) {
                 if (($filters['status'] ?? null) !== 'due') {
                     return true;
                 }
 
                 return match ($filters['employee_scope'] ?? 'all') {
-                    'active' => $payroll->employee?->status !== 'terminated',
-                    'terminated' => $payroll->employee?->status === 'terminated',
+                    'active' => $row['employee']->status !== 'terminated',
+                    'terminated' => $row['employee']->status === 'terminated',
                     default => true,
                 };
             })
+            ->filter(fn (array $row) => $this->stageMatchesStatus($row['stage'], $filters['status'] ?? null))
+            ->filter(function (array $row) use ($filters) {
+                if (empty($filters['month'])) {
+                    return true;
+                }
+
+                $stageMonth = data_get($row, 'stage.payroll.salary_month')
+                    ?: data_get($row, 'stage.salary_date');
+
+                return $stageMonth && Carbon::parse($stageMonth)->format('Y-m') === $filters['month'];
+            })
             ->values();
 
-        $cycleEmployees = $this->cycleEmployeesForStatus($filters['status'] ?? null);
-        if (($filters['status'] ?? null) === 'due') {
-            $cycleEmployees = $cycleEmployees->filter(function (Employee $employee) use ($filters) {
-                return match ($filters['employee_scope'] ?? 'all') {
-                    'active' => $employee->status !== 'terminated',
-                    'terminated' => $employee->status === 'terminated',
-                    default => true,
-                };
-            })->values();
-        }
-        if (! empty($filters['salary_source'])) {
-            $cycleEmployees = $cycleEmployees
-                ->filter(fn (Employee $employee) => ($employee->salary_source ?: $employee->defaultSalarySource()) === $filters['salary_source'])
-                ->values();
-        }
-        $cycleEmployees = $this->attachCycleEstimates($cycleEmployees, $filters['status'] ?? null);
+        $payrolls = $stageRows
+            ->map(fn (array $row) => data_get($row, 'stage.payroll'))
+            ->filter()
+            ->unique('employee_id')
+            ->values();
+
+        $cycleEmployees = $stageRows
+            ->filter(fn (array $row) => ! data_get($row, 'stage.payroll'))
+            ->map(function (array $row) {
+                $employee = $row['employee'];
+                $estimate = data_get($row, 'stage.estimate', []);
+                $employee->setAttribute('cycle_estimate', $estimate);
+                $employee->setAttribute('cycle_category', $row['stage']['category']);
+                $employee->setAttribute('cycle_salary_date', data_get($row, 'stage.salary_date'));
+
+                return $employee;
+            })
+            ->unique('id')
+            ->values();
 
         return [
             'payrolls' => $payrolls,
-            'employees' => Employee::orderBy('name')->get(),
+                'employees' => $allEmployees,
             'cycleEmployees' => $cycleEmployees,
             'summary' => [
                 'total_payable' => $payrolls->sum('payable_salary'),
                 'total_paid' => $payrolls->sum('paid_amount'),
                 'total_due' => $payrolls->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
                 'record_count' => $payrolls->count() + $cycleEmployees->count(),
-                'upcoming_count' => ($filters['status'] ?? null) === 'upcoming'
-                    ? $cycleEmployees->where('status', '!=', 'terminated')->count()
-                    : 0,
-                'overdue_count' => $payrolls->filter(fn (EmployeePayroll $payroll) => in_array($payroll->calculated_status, ['unpaid', 'partial'], true) && $payroll->employee?->status !== 'terminated')->count(),
+                'upcoming_count' => $stageRows->where('stage.category', PayrollCategoryService::UPCOMING)->count(),
+                'overdue_count' => $stageRows->where('stage.category', PayrollCategoryService::UNPAID)->count(),
                 'final_settlement_count' => $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue())->count(),
                 'final_settlement_amount' => $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue())
                     ->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
@@ -845,26 +862,28 @@ class EmployeePayrollController extends Controller
             ->latest();
     }
 
-    private function payrollMatchesStatus(EmployeePayroll $payroll, ?string $status): bool
+    private function stageMatchesStatus(array $stage, ?string $status): bool
     {
         if (! $status) {
             return true;
         }
 
-        if (! $payroll->employee) {
-            return $payroll->matchesStatusFilter($status);
-        }
-
-        $category = $this->payrollCategory->resolveEmployee(
-            $payroll->employee,
-            $payroll->salaryDueDate() ?: $payroll->salary_month
-        )['category'] ?? null;
+        $category = $stage['category'];
 
         return match ($status) {
+            'upcoming' => $category === PayrollCategoryService::UPCOMING
+                && data_get($stage, 'salary_date')
+                && data_get($stage, 'salary_date')->betweenIncluded(now()->startOfDay(), now()->startOfDay()->addDays(5)),
             'paid' => in_array($category, [PayrollCategoryService::PAID, PayrollCategoryService::FINAL_SETTLEMENT_PAID], true),
-            'due' => in_array($category, [PayrollCategoryService::UNPAID, PayrollCategoryService::FINAL_SETTLEMENT_UNPAID], true),
-            'upcoming' => false,
-            default => $payroll->matchesStatusFilter($status),
+            'unpaid', 'partial' => in_array($category, [PayrollCategoryService::UNPAID, PayrollCategoryService::FINAL_SETTLEMENT_UNPAID], true),
+            'due' => in_array($category, [
+                PayrollCategoryService::PENDING_WORK_STATUS,
+                PayrollCategoryService::SALARY_READY,
+                PayrollCategoryService::UNPAID,
+                PayrollCategoryService::FINAL_SETTLEMENT_PENDING,
+                PayrollCategoryService::FINAL_SETTLEMENT_UNPAID,
+            ], true),
+            default => false,
         };
     }
 
@@ -976,32 +995,6 @@ class EmployeePayrollController extends Controller
                     'reference' => '-',
                 ];
             }))
-            ->values();
-    }
-
-    private function attachCycleEstimates($cycleEmployees, ?string $status)
-    {
-        return $cycleEmployees
-            ->map(function (Employee $employee) use ($status) {
-                $salaryDate = $employee->status === 'terminated'
-                    ? $employee->last_working_date
-                    : (($status ?? null) === 'upcoming'
-                        ? $employee->nextSalaryDate()
-                        : $employee->currentSalaryDueDate());
-
-                $employee->setAttribute('cycle_estimate', $this->payrollEstimator->estimateCycle(
-                    $employee,
-                    $salaryDate,
-                    $this->estimateClientFor($employee)
-                ));
-                $employee->setAttribute('cycle_category', ($status ?? null) === 'upcoming'
-                    ? 'upcoming_salary'
-                    : (data_get($employee->cycle_estimate, 'estimate_status') === 'work_status_missing'
-                        ? PayrollCategoryService::PENDING_WORK_STATUS
-                        : PayrollCategoryService::SALARY_READY));
-
-                return $employee;
-            })
             ->values();
     }
 
@@ -1258,60 +1251,6 @@ class EmployeePayrollController extends Controller
             'payment_date' => ['required', 'date'],
         ]);
 
-    }
-
-    private function cycleEmployeesForStatus(?string $status)
-    {
-        if (! in_array($status, ['upcoming', 'due'], true)) {
-            return collect();
-        }
-
-        $today = now()->startOfDay();
-
-        return Employee::with(['payrolls' => fn ($query) => $query->current(), 'activeAssignments.client'])
-            ->orderBy('name')
-            ->get()
-            ->filter(function (Employee $employee) use ($status, $today) {
-                $eligibilityDate = $employee->status === 'terminated'
-                    ? $employee->last_working_date
-                    : $today;
-
-                if (! $employee->isSalaryEligible($eligibilityDate)) {
-                    return false;
-                }
-
-                if ($employee->status === 'terminated' && $status !== 'due') {
-                    return false;
-                }
-
-                $cycleDate = $employee->status === 'terminated'
-                    ? $employee->last_working_date
-                    : ($status === 'upcoming'
-                        ? $employee->nextSalaryDate()
-                        : $employee->currentSalaryDueDate($today));
-
-                if (! $cycleDate) {
-                    return false;
-                }
-
-                $cycleMonth = $cycleDate->copy()->startOfMonth()->toDateString();
-                $hasGeneratedSalary = $employee->status === 'terminated'
-                    ? $employee->hasFinalSalaryPayroll()
-                    : $employee->payrolls->contains(
-                        fn (EmployeePayroll $payroll) => $payroll->salary_month?->copy()->startOfMonth()->toDateString() === $cycleMonth
-                    );
-
-                if ($hasGeneratedSalary) {
-                    return false;
-                }
-
-                if ($status === 'upcoming') {
-                    return $cycleDate->betweenIncluded($today, $today->copy()->addDays(5));
-                }
-
-                return $employee->status === 'terminated' || $cycleDate->lt($today);
-            })
-            ->values();
     }
 
 }

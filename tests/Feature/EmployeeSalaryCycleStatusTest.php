@@ -720,6 +720,92 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $this->assertSame(PayrollCategoryService::PAID, $category['category']);
     }
 
+    public function test_each_employee_renders_in_exactly_one_priority_payroll_stage(): void
+    {
+        Carbon::setTestNow('2026-06-02');
+
+        $admin = $this->admin();
+        $client = $this->client();
+        $upcoming = $this->employee(['name' => 'Exclusive Upcoming', 'salary_day' => 7]);
+        $pending = $this->employee(['name' => 'Exclusive Pending', 'salary_day' => 1]);
+        $ready = $this->employee(['name' => 'Exclusive Ready', 'salary_day' => 1]);
+        $this->workStatus($ready, null, '2026-06-01', 'working');
+
+        $unpaid = $this->employee(['name' => 'Exclusive Unpaid', 'salary_day' => 1]);
+        $this->payroll($unpaid, $client, ['paid_amount' => 0, 'payment_status' => 'unpaid']);
+
+        $paid = $this->employee(['name' => 'Exclusive Paid', 'salary_day' => 1]);
+        $this->payroll($paid, $client, ['paid_amount' => 30000, 'payment_status' => 'paid']);
+
+        $finalPending = $this->employee([
+            'name' => 'Exclusive Final Pending',
+            'status' => 'terminated',
+            'last_working_date' => '2026-06-01',
+            'salary_day' => 1,
+        ]);
+        $finalUnpaid = $this->employee([
+            'name' => 'Exclusive Final Unpaid',
+            'status' => 'terminated',
+            'last_working_date' => '2026-06-01',
+            'salary_day' => 1,
+        ]);
+        $this->payroll($finalUnpaid, $client, [
+            'salary_period_to' => '2026-06-01',
+            'paid_amount' => 0,
+            'payment_status' => 'unpaid',
+        ]);
+        $finalPaid = $this->employee([
+            'name' => 'Exclusive Final Paid',
+            'status' => 'terminated',
+            'last_working_date' => '2026-06-01',
+            'salary_day' => 1,
+        ]);
+        $this->payroll($finalPaid, $client, [
+            'salary_period_to' => '2026-06-01',
+            'paid_amount' => 30000,
+            'payment_status' => 'paid',
+        ]);
+
+        $expected = [
+            $upcoming->id => PayrollCategoryService::UPCOMING,
+            $pending->id => PayrollCategoryService::PENDING_WORK_STATUS,
+            $ready->id => PayrollCategoryService::SALARY_READY,
+            $unpaid->id => PayrollCategoryService::UNPAID,
+            $paid->id => PayrollCategoryService::PAID,
+            $finalPending->id => PayrollCategoryService::FINAL_SETTLEMENT_PENDING,
+            $finalUnpaid->id => PayrollCategoryService::FINAL_SETTLEMENT_UNPAID,
+            $finalPaid->id => PayrollCategoryService::FINAL_SETTLEMENT_PAID,
+        ];
+
+        foreach ($expected as $employeeId => $category) {
+            $employee = Employee::findOrFail($employeeId);
+            $this->assertSame($category, app(PayrollCategoryService::class)->resolveEmployee($employee)['category']);
+        }
+
+        $upcomingPage = $this->actingAs($admin)->get('/admin/payroll?status=upcoming');
+        $duePage = $this->actingAs($admin)->get('/admin/payroll?status=due');
+        $paidPage = $this->actingAs($admin)->get('/admin/payroll?status=paid');
+
+        $upcomingPage->assertSee('/admin/employees/' . $upcoming->id, false);
+        foreach ([$pending, $ready, $unpaid, $paid, $finalPending, $finalUnpaid, $finalPaid] as $employee) {
+            $upcomingPage->assertDontSee('/admin/employees/' . $employee->id, false);
+        }
+
+        foreach ([$pending, $ready, $unpaid, $finalPending, $finalUnpaid] as $employee) {
+            $duePage->assertSee('/admin/employees/' . $employee->id, false);
+        }
+        foreach ([$upcoming, $paid, $finalPaid] as $employee) {
+            $duePage->assertDontSee('/admin/employees/' . $employee->id, false);
+        }
+
+        foreach ([$paid, $finalPaid] as $employee) {
+            $paidPage->assertSee('/admin/employees/' . $employee->id, false);
+        }
+        foreach ([$upcoming, $pending, $ready, $unpaid, $finalPending, $finalUnpaid] as $employee) {
+            $paidPage->assertDontSee('/admin/employees/' . $employee->id, false);
+        }
+    }
+
     public function test_employee_without_confirmation_is_excluded_from_salary_cycle_lists(): void
     {
         Carbon::setTestNow('2026-06-19');
