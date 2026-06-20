@@ -8,6 +8,10 @@ use App\Models\FinanceAccount;
 use App\Models\FinanceLoan;
 use App\Models\FinanceLoanRepayment;
 use App\Models\EmployeePayroll;
+use App\Models\FacebookCard;
+use App\Models\BinancePurchase;
+use App\Models\SalaryPayment;
+use App\Services\FinanceLedgerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -38,21 +42,32 @@ class FinanceManagementController extends Controller
     public function storeAccount(Request $request)
     {
         $data = $this->validatedAccount($request);
+        $openingBalance = round((float) $data['current_balance'], 2);
+        $data['current_balance'] = 0;
 
-        DB::transaction(function () use ($data, $request) {
+        DB::transaction(function () use ($data, $openingBalance, $request) {
             $account = FinanceAccount::create($data);
-            $openingBalance = (float) $account->current_balance;
 
-            if ($openingBalance != 0.0) {
-                $account->ledgers()->create([
-                    'ledger_date' => now()->toDateString(),
+            if ($openingBalance > 0) {
+                app(FinanceLedgerService::class)->credit($account, $openingBalance, [
                     'transaction_type' => 'opening_balance',
-                    'amount' => abs($openingBalance),
-                    'previous_balance' => 0,
-                    'new_balance' => $openingBalance,
-                    'reference' => 'finance-account:' . $account->id,
-                    'note' => 'Opening balance.',
+                    'currency' => $account->currency,
+                    'reference_type' => FinanceAccount::class,
+                    'reference_id' => $account->id,
+                    'description' => 'Opening balance for ' . $account->account_name . '.',
+                    'transaction_reference' => 'finance-account:' . $account->id,
                     'created_by' => $request->user()?->id,
+                ]);
+            } elseif ($openingBalance < 0) {
+                app(FinanceLedgerService::class)->debit($account, abs($openingBalance), [
+                    'transaction_type' => 'opening_balance',
+                    'currency' => $account->currency,
+                    'reference_type' => FinanceAccount::class,
+                    'reference_id' => $account->id,
+                    'description' => 'Opening balance for ' . $account->account_name . '.',
+                    'transaction_reference' => 'finance-account:' . $account->id,
+                    'created_by' => $request->user()?->id,
+                    'allow_negative' => true,
                 ]);
             }
         });
@@ -96,17 +111,26 @@ class FinanceManagementController extends Controller
 
             $lockedAccount->update($metadata);
 
-            if ($newBalance !== $previousBalance) {
-                $lockedAccount->update(['current_balance' => $newBalance]);
-                $lockedAccount->ledgers()->create([
-                    'ledger_date' => now()->toDateString(),
+            if ($newBalance > $previousBalance) {
+                app(FinanceLedgerService::class)->credit($lockedAccount, $newBalance - $previousBalance, [
                     'transaction_type' => 'manual_adjustment',
-                    'amount' => abs($newBalance - $previousBalance),
-                    'previous_balance' => $previousBalance,
-                    'new_balance' => $newBalance,
-                    'reference' => 'finance-account:' . $lockedAccount->id,
-                    'note' => $request->string('adjustment_reason')->toString(),
+                    'currency' => $lockedAccount->currency,
+                    'reference_type' => FinanceAccount::class,
+                    'reference_id' => $lockedAccount->id,
+                    'description' => $request->string('adjustment_reason')->toString(),
+                    'transaction_reference' => 'finance-account:' . $lockedAccount->id,
                     'created_by' => $request->user()?->id,
+                ]);
+            } elseif ($newBalance < $previousBalance) {
+                app(FinanceLedgerService::class)->debit($lockedAccount, $previousBalance - $newBalance, [
+                    'transaction_type' => 'manual_adjustment',
+                    'currency' => $lockedAccount->currency,
+                    'reference_type' => FinanceAccount::class,
+                    'reference_id' => $lockedAccount->id,
+                    'description' => $request->string('adjustment_reason')->toString(),
+                    'transaction_reference' => 'finance-account:' . $lockedAccount->id,
+                    'created_by' => $request->user()?->id,
+                    'allow_negative' => true,
                 ]);
             }
         });
@@ -131,12 +155,24 @@ class FinanceManagementController extends Controller
         return view('admin.finance.loans', [
             'loans' => FinanceLoan::with('repayments')->latest()->get(),
             'types' => FinanceLoan::TYPES,
+            'accounts' => FinanceAccount::where('currency', 'BDT')->where('status', 'active')->orderBy('account_name')->get(),
         ]);
     }
 
     public function storeLoan(Request $request)
     {
-        FinanceLoan::create($this->validatedLoan($request));
+        $data = $this->validatedLoan($request);
+        $data['paid_amount'] = 0;
+
+        DB::transaction(function () use ($data, $request) {
+            $loan = FinanceLoan::create($data);
+            $account = FinanceAccount::findOrFail($data['finance_account_id']);
+            $context = $this->loanLedgerContext($loan, $request->user()?->id);
+
+            $loan->loan_type === 'taken'
+                ? app(FinanceLedgerService::class)->credit($account, (float) $loan->amount, $context)
+                : app(FinanceLedgerService::class)->debit($account, (float) $loan->amount, $context);
+        });
 
         return redirect('/admin/finance/loans')->with('success', 'Loan saved successfully.');
     }
@@ -145,6 +181,7 @@ class FinanceManagementController extends Controller
     {
         return view('admin.finance.loan-show', [
             'loan' => $loan->load('repayments'),
+            'accounts' => FinanceAccount::where('currency', 'BDT')->where('status', 'active')->orderBy('account_name')->get(),
         ]);
     }
 
@@ -153,18 +190,35 @@ class FinanceManagementController extends Controller
         return view('admin.finance.loan-edit', [
             'loan' => $loan,
             'types' => FinanceLoan::TYPES,
+            'accounts' => FinanceAccount::where('currency', 'BDT')->where('status', 'active')->orderBy('account_name')->get(),
         ]);
     }
 
     public function updateLoan(Request $request, FinanceLoan $loan)
     {
-        $loan->update($this->validatedLoan($request));
+        $data = $this->validatedLoan($request);
+
+        if ($loan->finance_account_id
+            && ((int) $loan->finance_account_id !== (int) $data['finance_account_id']
+                || $loan->loan_type !== $data['loan_type']
+                || round((float) $loan->amount, 2) !== round((float) $data['amount'], 2))) {
+            throw ValidationException::withMessages([
+                'amount' => 'Loan account, type, and amount cannot change after the finance transaction is recorded.',
+            ]);
+        }
+
+        unset($data['paid_amount']);
+        $loan->update($data);
 
         return redirect('/admin/finance/loans/' . $loan->id)->with('success', 'Loan updated successfully.');
     }
 
     public function destroyLoan(FinanceLoan $loan)
     {
+        if ($loan->finance_account_id || $loan->repayments()->exists()) {
+            return back()->withErrors(['loan' => 'Loan with finance history cannot be deleted.']);
+        }
+
         $loan->delete();
 
         return redirect('/admin/finance/loans')->with('success', 'Loan deleted successfully.');
@@ -176,12 +230,36 @@ class FinanceManagementController extends Controller
             'payment_date' => ['required', 'date'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'method' => ['nullable', 'string', 'max:255'],
+            'finance_account_id' => ['required', 'exists:finance_accounts,id'],
             'note' => ['nullable', 'string'],
         ]);
 
-        $loan->repayments()->create($data);
-        $loan->paid_amount = (float) $loan->paid_amount + (float) $data['amount'];
-        $loan->save();
+        if ((float) $data['amount'] > (float) $loan->remaining_balance) {
+            throw ValidationException::withMessages(['amount' => 'Repayment cannot exceed the remaining loan balance.']);
+        }
+
+        DB::transaction(function () use ($loan, $data, $request) {
+            $lockedLoan = FinanceLoan::whereKey($loan->id)->lockForUpdate()->firstOrFail();
+            $repayment = $lockedLoan->repayments()->create($data);
+            $lockedLoan->paid_amount = (float) $lockedLoan->paid_amount + (float) $data['amount'];
+            $lockedLoan->save();
+            $account = FinanceAccount::findOrFail($data['finance_account_id']);
+            $context = [
+                'transaction_type' => 'loan_repayment',
+                'currency' => 'BDT',
+                'required_currency' => 'BDT',
+                'reference_type' => FinanceLoanRepayment::class,
+                'reference_id' => $repayment->id,
+                'ledger_date' => $repayment->payment_date,
+                'description' => 'Loan repayment - ' . $lockedLoan->person_company_name . '.',
+                'transaction_reference' => 'loan-repayment:' . $repayment->id,
+                'created_by' => $request->user()?->id,
+            ];
+
+            $lockedLoan->loan_type === 'taken'
+                ? app(FinanceLedgerService::class)->debit($account, (float) $repayment->amount, $context)
+                : app(FinanceLedgerService::class)->credit($account, (float) $repayment->amount, $context);
+        });
 
         return redirect('/admin/finance/loans/' . $loan->id)->with('success', 'Repayment saved successfully.');
     }
@@ -293,6 +371,33 @@ class FinanceManagementController extends Controller
         ]);
     }
 
+    public function reconciliationReport()
+    {
+        $accounts = FinanceAccount::with(['ledgers' => fn ($query) => $query->latest('id')])
+            ->orderBy('account_name')
+            ->get()
+            ->map(function (FinanceAccount $account) {
+                $latestLedger = $account->ledgers->first();
+                $ledgerBalance = $latestLedger
+                    ? (float) ($latestLedger->new_balance_snapshot ?? $latestLedger->new_balance)
+                    : 0.0;
+                $currentBalance = (float) $account->current_balance;
+
+                return [
+                    'account' => $account,
+                    'current_balance' => $currentBalance,
+                    'ledger_balance' => $ledgerBalance,
+                    'difference' => round($currentBalance - $ledgerBalance, 2),
+                    'last_ledger_at' => $latestLedger?->created_at,
+                ];
+            });
+
+        return view('admin.finance.reconciliation-report', [
+            'rows' => $accounts,
+            'mismatchCount' => $accounts->where('difference', '!=', 0)->count(),
+        ]);
+    }
+
     private function validatedAccount(Request $request): array
     {
         return $request->validate([
@@ -311,6 +416,7 @@ class FinanceManagementController extends Controller
     {
         return $request->validate([
             'loan_type' => ['required', Rule::in(array_keys(FinanceLoan::TYPES))],
+            'finance_account_id' => ['required', 'exists:finance_accounts,id'],
             'person_company_name' => ['required', 'string', 'max:255'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'loan_date' => ['required', 'date'],
@@ -340,28 +446,16 @@ class FinanceManagementController extends Controller
             return;
         }
 
-        $account = FinanceAccount::whereKey($expense->finance_account_id)->lockForUpdate()->firstOrFail();
-        $this->requireBdtAccount($account);
-
-        $amount = round((float) $expense->amount, 2);
-        $previousBalance = round((float) $account->current_balance, 2);
-
-        if ($previousBalance < $amount) {
-            throw ValidationException::withMessages([
-                'finance_account_id' => 'Insufficient finance account balance.',
-            ]);
-        }
-
-        $newBalance = $previousBalance - $amount;
-        $account->update(['current_balance' => $newBalance]);
-        $account->ledgers()->create([
+        $account = FinanceAccount::findOrFail($expense->finance_account_id);
+        app(FinanceLedgerService::class)->debit($account, (float) $expense->amount, [
             'ledger_date' => $expense->expense_date,
             'transaction_type' => 'family_expense',
-            'amount' => $amount,
-            'previous_balance' => $previousBalance,
-            'new_balance' => $newBalance,
-            'reference' => 'family-expense:' . $expense->id,
-            'note' => $expense->note ?: 'Family expense payment.',
+            'currency' => 'BDT',
+            'required_currency' => 'BDT',
+            'reference_type' => FamilyExpense::class,
+            'reference_id' => $expense->id,
+            'transaction_reference' => 'family-expense:' . $expense->id,
+            'description' => $expense->note ?: 'Family expense payment.',
             'created_by' => $userId,
         ]);
     }
@@ -372,32 +466,18 @@ class FinanceManagementController extends Controller
             return;
         }
 
-        $account = FinanceAccount::whereKey($expense->finance_account_id)->lockForUpdate()->firstOrFail();
-        $this->requireBdtAccount($account);
-
-        $amount = round((float) $expense->amount, 2);
-        $previousBalance = round((float) $account->current_balance, 2);
-        $newBalance = $previousBalance + $amount;
-        $account->update(['current_balance' => $newBalance]);
-        $account->ledgers()->create([
+        $account = FinanceAccount::findOrFail($expense->finance_account_id);
+        app(FinanceLedgerService::class)->credit($account, (float) $expense->amount, [
             'ledger_date' => now()->toDateString(),
             'transaction_type' => 'family_expense_reversal',
-            'amount' => $amount,
-            'previous_balance' => $previousBalance,
-            'new_balance' => $newBalance,
-            'reference' => 'family-expense:' . $expense->id,
-            'note' => $note,
+            'currency' => 'BDT',
+            'required_currency' => 'BDT',
+            'reference_type' => FamilyExpense::class,
+            'reference_id' => $expense->id,
+            'transaction_reference' => 'family-expense:' . $expense->id,
+            'description' => $note,
             'created_by' => $userId,
         ]);
-    }
-
-    private function requireBdtAccount(FinanceAccount $account): void
-    {
-        if ($account->currency !== 'BDT') {
-            throw ValidationException::withMessages([
-                'finance_account_id' => 'Currency mismatch. This payment requires a BDT account.',
-            ]);
-        }
     }
 
     private function summary(): array
@@ -407,6 +487,11 @@ class FinanceManagementController extends Controller
         $familyExpenseSummary = $this->familyExpenseSummary();
 
         return $familyExpenseSummary + [
+            'total_finance_accounts' => $accounts->count(),
+            'total_cash' => (float) $accounts->where('account_type', 'cash')->where('currency', 'BDT')->sum('current_balance'),
+            'total_usd_assets' => (float) $accounts->where('currency', 'USD')->sum('current_balance')
+                + (float) BinancePurchase::sum('remaining_usd')
+                + (float) FacebookCard::sum('current_balance'),
             'total_bdt_balance' => (float) $accounts->where('currency', 'BDT')->sum('current_balance'),
             'total_usd_balance' => (float) $accounts->where('currency', 'USD')->sum('current_balance'),
             'total_loan_taken' => (float) $loans->where('loan_type', 'taken')->sum('amount'),
@@ -422,6 +507,10 @@ class FinanceManagementController extends Controller
                 ->where('payroll_status', 'paid')
                 ->whereDate('payment_date', now()->toDateString())
                 ->sum('paid_amount'),
+            'client_payments_this_month' => (float) SalaryPayment::where('status', 'approved')
+                ->whereMonth('salary_month', now()->month)
+                ->whereYear('salary_month', now()->year)
+                ->sum('amount'),
             'upcoming_salary_liability' => (float) EmployeePayroll::current()
                 ->with('employee')
                 ->get()
@@ -448,6 +537,21 @@ class FinanceManagementController extends Controller
             'emergency_expense' => (float) $expenses->where('expense_category', 'emergency')->sum('amount'),
             'top_person_expense_name' => $topPerson->keys()->first() ?: '-',
             'top_person_expense_amount' => (float) ($topPerson->first() ?? 0),
+        ];
+    }
+
+    private function loanLedgerContext(FinanceLoan $loan, ?int $userId): array
+    {
+        return [
+            'transaction_type' => $loan->loan_type === 'taken' ? 'loan_taken' : 'loan_given',
+            'currency' => 'BDT',
+            'required_currency' => 'BDT',
+            'reference_type' => FinanceLoan::class,
+            'reference_id' => $loan->id,
+            'ledger_date' => $loan->loan_date,
+            'description' => $loan->typeLabel() . ' - ' . $loan->person_company_name . '.',
+            'transaction_reference' => 'loan:' . $loan->id,
+            'created_by' => $userId,
         ];
     }
 }

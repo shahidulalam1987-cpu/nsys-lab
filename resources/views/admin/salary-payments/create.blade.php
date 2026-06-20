@@ -30,6 +30,14 @@
             </p>
 
             <p>Amount (BDT)<br><input type="number" step="0.01" min="1" name="amount" value="{{ old('amount') }}" required></p>
+            <p>Receive Into Finance Account<br>
+                <select name="finance_account_id" required>
+                    <option value="">Select BDT Account</option>
+                    @foreach($financeAccounts as $account)
+                        <option value="{{ $account->id }}" @selected((string) old('finance_account_id') === (string) $account->id)>{{ $account->account_name }} - BDT {{ number_format((float) $account->current_balance, 2) }}</option>
+                    @endforeach
+                </select>
+            </p>
 
             <p>Payment Method<br>
                 <select name="payment_method" required>

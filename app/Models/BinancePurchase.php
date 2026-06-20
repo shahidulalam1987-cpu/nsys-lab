@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class BinancePurchase extends Model
 {
     protected $fillable = [
+        'finance_account_id',
         'purchase_date',
         'usd_amount',
         'remaining_usd',
@@ -47,5 +48,10 @@ class BinancePurchase extends Model
     public function transactions()
     {
         return $this->hasMany(CardTransaction::class);
+    }
+
+    public function financeAccount()
+    {
+        return $this->belongsTo(FinanceAccount::class);
     }
 }

@@ -10,6 +10,7 @@ use App\Models\EmployeeWorkStatus;
 use App\Models\FinanceAccount;
 use App\Services\ActivityLogger;
 use App\Services\ClientFundDashboardService;
+use App\Services\FinanceLedgerService;
 use App\Services\PayrollCategoryService;
 use App\Services\PayrollEstimateService;
 use Carbon\Carbon;
@@ -532,10 +533,22 @@ class EmployeePayrollController extends Controller
                 return;
             }
 
-            $newBalance = $previousBalance - $paidAmount;
             $attachment = $request->file('salary_payment_attachment')?->store('employee-salary-payments', 'public');
 
-            $account->update(['current_balance' => $newBalance]);
+            app(FinanceLedgerService::class)->debit($account, $paidAmount, [
+                'transaction_type' => 'salary_payment',
+                'currency' => 'BDT',
+                'required_currency' => 'BDT',
+                'reference_type' => EmployeePayroll::class,
+                'reference_id' => $payroll->id,
+                'employee_payroll_id' => $payroll->id,
+                'ledger_date' => $data['payment_date'],
+                'description' => 'Salary Payment - ' . $payroll->snapshotEmployeeName(),
+                'transaction_reference' => $data['transaction_id'],
+                'created_by' => auth()->id(),
+                'activity_module' => 'Payroll',
+                'activity_action' => 'Salary Payment Ledger Created',
+            ]);
 
             $payroll->update([
                 'payroll_employee_name' => $payroll->employee?->name,
@@ -558,18 +571,6 @@ class EmployeePayrollController extends Controller
                 'reversed_at' => null,
                 'reversed_by' => null,
                 'reversal_note' => null,
-            ]);
-
-            $account->ledgers()->create([
-                'employee_payroll_id' => $payroll->id,
-                'ledger_date' => $data['payment_date'],
-                'transaction_type' => 'salary_payment',
-                'amount' => $paidAmount,
-                'previous_balance' => $previousBalance,
-                'new_balance' => $newBalance,
-                'reference' => $data['transaction_id'],
-                'note' => 'Salary Payment - ' . $payroll->snapshotEmployeeName(),
-                'created_by' => auth()->id(),
             ]);
 
             $payroll->markAudit('salary_paid', auth()->id(), 'Paid from ' . $account->account_name . '.');
@@ -618,23 +619,21 @@ class EmployeePayrollController extends Controller
                 return;
             }
 
-            $account = FinanceAccount::lockForUpdate()->findOrFail($payroll->finance_account_id);
             $amount = (float) $payroll->paid_amount;
-            $previousBalance = (float) $account->current_balance;
-            $newBalance = $previousBalance + $amount;
-
-            $account->update(['current_balance' => $newBalance]);
-
-            $account->ledgers()->create([
+            $paymentLedger = $payroll->financeLedgers()->where('transaction_type', 'salary_payment')->firstOrFail();
+            app(FinanceLedgerService::class)->reverse($paymentLedger, [
+                'transaction_type' => 'salary_payment_reversal',
+                'currency' => 'BDT',
+                'required_currency' => 'BDT',
+                'reference_type' => EmployeePayroll::class,
+                'reference_id' => $payroll->id,
                 'employee_payroll_id' => $payroll->id,
                 'ledger_date' => now()->toDateString(),
-                'transaction_type' => 'salary_payment_reversal',
-                'amount' => $amount,
-                'previous_balance' => $previousBalance,
-                'new_balance' => $newBalance,
-                'reference' => $payroll->transaction_id,
-                'note' => $data['reversal_note'],
+                'description' => $data['reversal_note'],
+                'transaction_reference' => $payroll->transaction_id,
                 'created_by' => auth()->id(),
+                'activity_module' => 'Payroll',
+                'activity_action' => 'Salary Payment Reversal Ledger Created',
             ]);
 
             $payroll->update([

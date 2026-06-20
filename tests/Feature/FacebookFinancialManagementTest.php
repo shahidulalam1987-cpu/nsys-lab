@@ -8,6 +8,8 @@ use App\Models\BusinessManager;
 use App\Models\CardTransaction;
 use App\Models\Client;
 use App\Models\FacebookCard;
+use App\Models\FinanceAccount;
+use App\Models\FinanceAccountLedger;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -19,6 +21,13 @@ class FacebookFinancialManagementTest extends TestCase
     public function test_admin_can_track_binance_purchase_card_load_transaction_and_profit(): void
     {
         $admin = $this->user('admin');
+        $financeAccount = FinanceAccount::create([
+            'account_type' => 'bank',
+            'account_name' => 'Binance Purchase Bank',
+            'currency' => 'BDT',
+            'current_balance' => 200000,
+            'status' => 'active',
+        ]);
         $client = Client::create([
             'company_name' => 'Profit Client',
             'phone' => '01700000000',
@@ -57,6 +66,7 @@ class FacebookFinancialManagementTest extends TestCase
         ]);
 
         $this->actingAs($admin)->post('/admin/facebook-financial/binance-purchases', [
+            'finance_account_id' => $financeAccount->id,
             'purchase_date' => '2026-06-12',
             'usd_amount' => 1000,
             'buy_rate' => 121.5,
@@ -67,6 +77,8 @@ class FacebookFinancialManagementTest extends TestCase
 
         $purchase = BinancePurchase::firstOrFail();
         $this->assertSame(121500.0, (float) $purchase->total_bdt_cost);
+        $this->assertSame(78500.0, (float) $financeAccount->fresh()->current_balance);
+        $this->assertSame(1000.0, (float) $purchase->remaining_usd);
 
         $this->actingAs($admin)->post('/admin/facebook-financial/card-loads', [
             'load_date' => '2026-06-12',
@@ -76,6 +88,7 @@ class FacebookFinancialManagementTest extends TestCase
         ])->assertRedirect('/admin/facebook-financial/card-loads');
 
         $this->assertSame(500.0, (float) $card->fresh()->current_balance);
+        $this->assertSame(500.0, (float) $purchase->fresh()->remaining_usd);
 
         $this->actingAs($admin)->post('/admin/facebook-financial/card-transactions', [
             'transaction_date' => '2026-06-12',
@@ -93,6 +106,14 @@ class FacebookFinancialManagementTest extends TestCase
         $this->assertSame(14500.0, (float) $transaction->client_revenue);
         $this->assertSame(2228.5, (float) $transaction->net_profit);
         $this->assertSame(399.0, (float) $card->fresh()->current_balance);
+        $this->assertDatabaseHas('finance_account_ledgers', [
+            'finance_account_id' => $financeAccount->id,
+            'transaction_type' => 'binance_purchase',
+            'direction' => 'debit',
+            'amount' => 121500,
+            'currency' => 'BDT',
+        ]);
+        $this->assertSame(5, FinanceAccountLedger::count());
 
         $this->actingAs($admin)
             ->get('/admin/facebook-financial/profit-dashboard?month=2026-06')

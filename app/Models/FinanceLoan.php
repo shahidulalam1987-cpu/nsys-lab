@@ -19,6 +19,7 @@ class FinanceLoan extends Model
 
     protected $fillable = [
         'loan_type',
+        'finance_account_id',
         'person_company_name',
         'amount',
         'loan_date',
@@ -55,6 +56,11 @@ class FinanceLoan extends Model
     public function repayments()
     {
         return $this->hasMany(FinanceLoanRepayment::class);
+    }
+
+    public function account()
+    {
+        return $this->belongsTo(FinanceAccount::class, 'finance_account_id');
     }
 
     public function typeLabel(): string

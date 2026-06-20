@@ -44,6 +44,7 @@
                             <form method="POST" action="/admin/facebook-cards/{{ $card->id }}/balance" style="display:inline-flex;gap:6px;align-items:center;margin-left:8px;">
                                 @csrf
                                 <input type="number" step="0.01" name="current_balance" value="{{ $card->current_balance }}" style="width:110px;">
+                                <input type="text" name="adjustment_reason" placeholder="Reason" required style="width:130px;">
                                 <button class="btn" type="submit">Update Balance</button>
                             </form>
                         </td>

@@ -16,6 +16,14 @@
         <form method="POST" action="/admin/facebook-financial/binance-purchases" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;">
             @csrf
             <label>Purchase Date<br><input type="date" name="purchase_date" value="{{ old('purchase_date', now()->toDateString()) }}" required></label>
+            <label>Pay From BDT Account<br>
+                <select name="finance_account_id" required>
+                    <option value="">Select Account</option>
+                    @foreach($financeAccounts as $account)
+                        <option value="{{ $account->id }}">{{ $account->account_name }} - BDT {{ number_format((float) $account->current_balance, 2) }}</option>
+                    @endforeach
+                </select>
+            </label>
             <label>USD Amount<br><input type="number" step="0.01" min="0.01" name="usd_amount" value="{{ old('usd_amount') }}" required></label>
             <label>Buy Rate (BDT)<br><input type="number" step="0.0001" min="0.01" name="buy_rate" value="{{ old('buy_rate') }}" required></label>
             <label>Source<br><input type="text" name="source" value="{{ old('source') }}"></label>

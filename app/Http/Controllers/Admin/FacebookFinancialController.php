@@ -13,7 +13,10 @@ use App\Models\ClientPage;
 use App\Models\FacebookCard;
 use App\Models\FundingBalance;
 use App\Models\FundingBalanceHistory;
+use App\Models\FinanceAccount;
+use App\Services\FinanceLedgerService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class FacebookFinancialController extends Controller
@@ -85,30 +88,49 @@ class FacebookFinancialController extends Controller
             'note' => ['nullable', 'string'],
         ]);
 
-        $balance = FundingBalance::firstOrNew(['source' => $data['source']]);
-        $previousBalance = (float) ($balance->current_balance ?? 0);
-        $newBalance = round((float) $data['balance'], 2);
+        DB::transaction(function () use ($data, $request) {
+            $balance = FundingBalance::firstOrNew(['source' => $data['source']]);
+            $previousBalance = (float) ($balance->current_balance ?? 0);
+            $newBalance = round((float) $data['balance'], 2);
 
-        $balance->fill([
-            'current_balance' => $newBalance,
-            'currency' => FundingBalance::CURRENCY,
-            'balance_date' => $data['balance_date'],
-            'notes' => $data['note'] ?? null,
-            'updated_by' => $request->user()?->id,
-        ]);
-        $balance->save();
+            $balance->fill([
+                'current_balance' => $balance->exists ? $previousBalance : 0,
+                'currency' => FundingBalance::CURRENCY,
+                'balance_date' => $data['balance_date'],
+                'notes' => $data['note'] ?? null,
+                'updated_by' => $request->user()?->id,
+            ]);
+            $balance->save();
 
-        FundingBalanceHistory::create([
-            'funding_balance_id' => $balance->id,
-            'source' => $data['source'],
-            'previous_balance' => $previousBalance,
-            'new_balance' => $newBalance,
-            'difference' => round($newBalance - $previousBalance, 2),
-            'currency' => FundingBalance::CURRENCY,
-            'balance_date' => $data['balance_date'],
-            'note' => $data['note'] ?? null,
-            'created_by' => $request->user()?->id,
-        ]);
+            $context = [
+                'transaction_type' => 'manual_adjustment',
+                'currency' => 'USD',
+                'reference_type' => FundingBalance::class,
+                'reference_id' => $balance->id,
+                'ledger_date' => $data['balance_date'],
+                'description' => $data['note'] ?? ($balance->sourceLabel() . ' balance updated.'),
+                'transaction_reference' => 'funding-balance:' . $balance->id,
+                'created_by' => $request->user()?->id,
+            ];
+
+            if ($newBalance > $previousBalance) {
+                app(FinanceLedgerService::class)->credit($balance, $newBalance - $previousBalance, $context);
+            } elseif ($newBalance < $previousBalance) {
+                app(FinanceLedgerService::class)->debit($balance, $previousBalance - $newBalance, $context);
+            }
+
+            FundingBalanceHistory::create([
+                'funding_balance_id' => $balance->id,
+                'source' => $data['source'],
+                'previous_balance' => $previousBalance,
+                'new_balance' => $newBalance,
+                'difference' => round($newBalance - $previousBalance, 2),
+                'currency' => FundingBalance::CURRENCY,
+                'balance_date' => $data['balance_date'],
+                'note' => $data['note'] ?? null,
+                'created_by' => $request->user()?->id,
+            ]);
+        });
 
         return redirect('/admin/facebook-financial/funding-dashboard')->with('success', 'Funding balance updated successfully.');
     }
@@ -135,12 +157,14 @@ class FacebookFinancialController extends Controller
                 'average_buy_rate' => $totalUsd > 0 ? $totalCost / $totalUsd : 0,
                 'total_bdt_cost' => $totalCost,
             ],
+            'financeAccounts' => FinanceAccount::where('currency', 'BDT')->where('status', 'active')->orderBy('account_name')->get(),
         ]);
     }
 
     public function storeBinancePurchase(Request $request)
     {
-        BinancePurchase::create($request->validate([
+        $data = $request->validate([
+            'finance_account_id' => ['required', 'exists:finance_accounts,id'],
             'purchase_date' => ['required', 'date'],
             'usd_amount' => ['required', 'numeric', 'min:0.01'],
             'buy_rate' => ['required', 'numeric', 'min:0.01'],
@@ -148,7 +172,30 @@ class FacebookFinancialController extends Controller
             'seller_name' => ['nullable', 'string', 'max:255'],
             'reference' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
-        ]));
+        ]);
+
+        DB::transaction(function () use ($data, $request) {
+            $purchase = BinancePurchase::create($data + ['remaining_usd' => 0]);
+            $account = FinanceAccount::findOrFail($data['finance_account_id']);
+            $context = [
+                'transaction_type' => 'binance_purchase',
+                'reference_type' => BinancePurchase::class,
+                'reference_id' => $purchase->id,
+                'ledger_date' => $purchase->purchase_date,
+                'transaction_reference' => $purchase->reference ?: 'binance-purchase:' . $purchase->id,
+                'created_by' => $request->user()?->id,
+            ];
+
+            app(FinanceLedgerService::class)->debit($account, (float) $purchase->total_bdt_cost, $context + [
+                'currency' => 'BDT',
+                'required_currency' => 'BDT',
+                'description' => 'Binance USD purchase cost for USD ' . number_format((float) $purchase->usd_amount, 2, '.', '') . '.',
+            ]);
+            app(FinanceLedgerService::class)->credit($purchase, (float) $purchase->usd_amount, $context + [
+                'currency' => 'USD',
+                'description' => 'Binance USD stock purchased at BDT ' . number_format((float) $purchase->buy_rate, 4, '.', '') . '.',
+            ], 'remaining_usd');
+        });
 
         return redirect('/admin/facebook-financial/binance-purchases')->with('success', 'Binance purchase saved successfully.');
     }
@@ -169,19 +216,41 @@ class FacebookFinancialController extends Controller
             'facebook_card_id' => ['required', 'exists:facebook_cards,id'],
             'binance_purchase_id' => ['required', 'exists:binance_purchases,id'],
             'usd_loaded' => ['required', 'numeric', 'min:0.01'],
+            'fee_usd' => ['nullable', 'numeric', 'min:0'],
+            'transaction_reference' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
         ]);
 
         $purchase = BinancePurchase::findOrFail($data['binance_purchase_id']);
-        if ((float) $data['usd_loaded'] > (float) $purchase->remaining_usd) {
+        $data['fee_usd'] = (float) ($data['fee_usd'] ?? 0);
+        if ((float) $data['usd_loaded'] + (float) $data['fee_usd'] > (float) $purchase->remaining_usd) {
             return back()
                 ->withInput()
                 ->withErrors(['usd_loaded' => 'USD loaded cannot exceed selected Binance available USD.']);
         }
 
-        $load = CardLoad::create($data);
-        $load->card->increment('current_balance', (float) $load->usd_loaded);
-        $purchase->decrement('remaining_usd', (float) $load->usd_loaded);
+        DB::transaction(function () use ($data, $purchase, $request) {
+            $load = CardLoad::create($data);
+            $context = [
+                'transaction_type' => 'card_load',
+                'currency' => 'USD',
+                'reference_type' => CardLoad::class,
+                'reference_id' => $load->id,
+                'ledger_date' => $load->load_date,
+                'description' => 'Binance USD transferred to ' . ($load->card?->card_name ?: 'card') . '.',
+                'transaction_reference' => $load->transaction_reference ?: 'card-load:' . $load->id,
+                'created_by' => $request->user()?->id,
+                'balance_error_field' => 'usd_loaded',
+                'balance_error' => 'USD loaded and fee cannot exceed selected Binance available USD.',
+            ];
+            app(FinanceLedgerService::class)->transfer($purchase, $load->card, (float) $load->usd_loaded, $context, 'remaining_usd');
+
+            if ((float) $load->fee_usd > 0) {
+                app(FinanceLedgerService::class)->debit($purchase, (float) $load->fee_usd, array_merge($context, [
+                    'description' => 'Card load fee for ' . ($load->card?->card_name ?: 'card') . '.',
+                ]), 'remaining_usd');
+            }
+        });
 
         return redirect('/admin/facebook-financial/card-loads')->with('success', 'Card load saved and card balance updated.');
     }
@@ -209,6 +278,7 @@ class FacebookFinancialController extends Controller
             'spend_usd' => ['required', 'numeric', 'min:0'],
             'fee_usd' => ['required', 'numeric', 'min:0'],
             'extra_charge_usd' => ['nullable', 'numeric', 'min:0'],
+            'transaction_reference' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
         ]);
 
@@ -220,11 +290,29 @@ class FacebookFinancialController extends Controller
         }
         $data['extra_charge_usd'] = (float) ($data['extra_charge_usd'] ?? 0);
 
-        $transaction = CardTransaction::create($data + [
-            'buy_rate' => (float) $purchase->buy_rate,
-            'client_rate' => (float) ($client?->client_rate ?? 0),
-        ]);
-        $transaction->card->decrement('current_balance', (float) $transaction->total_deducted_usd);
+        DB::transaction(function () use ($data, $purchase, $client, $request) {
+            $transaction = CardTransaction::create($data + [
+                'buy_rate' => (float) $purchase->buy_rate,
+                'client_rate' => (float) ($client?->client_rate ?? 0),
+            ]);
+            app(FinanceLedgerService::class)->debit($transaction->card, (float) $transaction->total_deducted_usd, [
+                'transaction_type' => 'card_transaction',
+                'currency' => 'USD',
+                'reference_type' => CardTransaction::class,
+                'reference_id' => $transaction->id,
+                'ledger_date' => $transaction->transaction_date,
+                'description' => 'Facebook spend USD ' . number_format((float) $transaction->spend_usd, 2, '.', '')
+                    . '; fee USD ' . number_format((float) $transaction->fee_usd, 2, '.', '')
+                    . '; extra USD ' . number_format((float) $transaction->extra_charge_usd, 2, '.', '')
+                    . '; cost BDT ' . number_format((float) $transaction->bdt_cost, 2, '.', '')
+                    . '; revenue BDT ' . number_format((float) $transaction->client_revenue, 2, '.', '')
+                    . '; profit BDT ' . number_format((float) $transaction->net_profit, 2, '.', '') . '.',
+                'transaction_reference' => $transaction->transaction_reference ?: 'card-transaction:' . $transaction->id,
+                'created_by' => $request->user()?->id,
+                'balance_error_field' => 'facebook_card_id',
+                'balance_error' => 'Insufficient card balance.',
+            ]);
+        });
 
         return redirect('/admin/facebook-financial/card-transactions')->with('success', 'Card transaction saved and card balance updated.');
     }

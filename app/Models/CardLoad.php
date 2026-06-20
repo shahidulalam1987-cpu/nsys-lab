@@ -11,6 +11,8 @@ class CardLoad extends Model
         'facebook_card_id',
         'binance_purchase_id',
         'usd_loaded',
+        'fee_usd',
+        'transaction_reference',
         'notes',
     ];
 
@@ -19,6 +21,7 @@ class CardLoad extends Model
         return [
             'load_date' => 'date',
             'usd_loaded' => 'decimal:2',
+            'fee_usd' => 'decimal:2',
         ];
     }
 

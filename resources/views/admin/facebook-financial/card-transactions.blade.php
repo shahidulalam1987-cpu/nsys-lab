@@ -60,6 +60,7 @@
             <label>Spend USD<br><input type="number" step="0.01" min="0" name="spend_usd" required></label>
             <label>Fee USD<br><input type="number" step="0.01" min="0" name="fee_usd" value="0" required></label>
             <label>Extra Charge USD<br><input type="number" step="0.01" min="0" name="extra_charge_usd" value="0"></label>
+            <label>Transaction Reference<br><input type="text" name="transaction_reference" value="{{ old('transaction_reference') }}"></label>
             <label style="grid-column:1/-1;">Notes<br><textarea name="notes" rows="2" style="width:100%;"></textarea></label>
             <button class="btn" type="submit">Save Transaction</button>
         </form>

@@ -52,6 +52,12 @@
                     @if($mode === 'pending' && $payment->status === 'pending')
                         <form method="POST" action="/admin/salary-payments/{{ $payment->id }}/approve" style="display:inline;">
                             @csrf
+                            <select name="finance_account_id" required>
+                                <option value="">Receive Into</option>
+                                @foreach($financeAccounts ?? [] as $account)
+                                    <option value="{{ $account->id }}">{{ $account->account_name }} - BDT {{ number_format((float) $account->current_balance, 2) }}</option>
+                                @endforeach
+                            </select>
                             <button class="btn-success" type="submit">Approve</button>
                         </form>
                         <form method="POST" action="/admin/salary-payments/{{ $payment->id }}/reject" style="display:inline;">

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Client;
+use App\Models\FinanceAccount;
 use App\Models\SalaryPayment;
 use App\Models\User;
 use App\Services\SalaryFundService;
@@ -21,9 +22,17 @@ class ClientFundPaymentAdminTest extends TestCase
 
         $admin = $this->admin();
         $client = $this->client();
+        $account = FinanceAccount::create([
+            'account_type' => 'bank',
+            'account_name' => 'Client Fund Bank',
+            'currency' => 'BDT',
+            'current_balance' => 1000,
+            'status' => 'active',
+        ]);
 
         $response = $this->actingAs($admin)->post('/admin/salary-payments', [
             'client_id' => $client->id,
+            'finance_account_id' => $account->id,
             'amount' => 12000,
             'payment_method' => 'Bank',
             'transaction_id' => 'FUND-123',
@@ -40,6 +49,18 @@ class ClientFundPaymentAdminTest extends TestCase
         $this->assertSame('2026-06-15', $payment->salary_month->toDateString());
         $this->assertSame('approved', $payment->status);
         $this->assertNotNull($payment->approved_at);
+        $this->assertSame(13000.0, (float) $account->fresh()->current_balance);
+        $this->assertDatabaseHas('finance_account_ledgers', [
+            'finance_account_id' => $account->id,
+            'transaction_type' => 'client_payment',
+            'direction' => 'credit',
+            'reference_type' => SalaryPayment::class,
+            'reference_id' => $payment->id,
+            'amount' => 12000,
+            'old_balance' => 1000,
+            'new_balance_snapshot' => 13000,
+            'currency' => 'BDT',
+        ]);
         Storage::disk('public')->assertExists($payment->screenshot);
     }
 

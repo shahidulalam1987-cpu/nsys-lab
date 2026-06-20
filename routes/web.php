@@ -263,6 +263,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/finance/reports/balance-sheet', [FinanceManagementController::class, 'balanceSheet']);
     Route::get('/admin/finance/reports/loan-report', [FinanceManagementController::class, 'loanReport']);
     Route::get('/admin/finance/reports/family-expenses', [FinanceManagementController::class, 'familyExpenseReport']);
+    Route::get('/admin/finance/reports/reconciliation', [FinanceManagementController::class, 'reconciliationReport']);
     Route::get('/admin/facebook-financial/binance-purchases', [FacebookFinancialController::class, 'binancePurchases']);
     Route::post('/admin/facebook-financial/binance-purchases', [FacebookFinancialController::class, 'storeBinancePurchase']);
     Route::get('/admin/facebook-financial/card-loads', [FacebookFinancialController::class, 'cardLoads']);

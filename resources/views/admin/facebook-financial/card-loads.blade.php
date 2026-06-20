@@ -26,6 +26,8 @@
                 </select>
             </label>
             <label>USD Loaded<br><input type="number" step="0.01" min="0.01" name="usd_loaded" required></label>
+            <label>Fee USD<br><input type="number" step="0.01" min="0" name="fee_usd" value="{{ old('fee_usd', 0) }}"></label>
+            <label>Reference<br><input type="text" name="transaction_reference" value="{{ old('transaction_reference') }}"></label>
             <label style="grid-column:1/-1;">Notes<br><textarea name="notes" rows="2" style="width:100%;"></textarea></label>
             <button class="btn" type="submit">Save Load</button>
         </form>
@@ -41,6 +43,7 @@
                     <th>Binance Purchase</th>
                     <th>Buy Rate</th>
                     <th>USD Loaded</th>
+                    <th>Fee</th>
                     <th>Notes</th>
                 </tr>
                 @forelse($loads as $load)
@@ -51,10 +54,11 @@
                         <td>{{ $load->binancePurchase?->purchase_date?->toDateString() }}</td>
                         <td>BDT {{ number_format((float) $load->binancePurchase?->buy_rate, 4) }}</td>
                         <td>USD {{ number_format((float) $load->usd_loaded, 2) }}</td>
+                        <td>USD {{ number_format((float) $load->fee_usd, 2) }}</td>
                         <td>{{ $load->notes ?: '-' }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="7">No card loads found.</td></tr>
+                    <tr><td colspan="8">No card loads found.</td></tr>
                 @endforelse
             </table>
         </div>

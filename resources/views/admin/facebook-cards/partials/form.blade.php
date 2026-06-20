@@ -24,6 +24,9 @@
     <label>Currency<br>
         <input type="text" value="USD" readonly>
     </label>
+    @if($card->exists)
+        <label>Balance Adjustment Reason<br><input type="text" name="adjustment_reason" value="{{ old('adjustment_reason') }}" placeholder="Required when balance changes"></label>
+    @endif
     <label>Assigned Ad Account<br>
         <select name="ad_account_id">
             <option value="">Not Assigned</option>

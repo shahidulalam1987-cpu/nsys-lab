@@ -574,6 +574,7 @@
                 <a class="{{ request()->is('admin/finance/reports/balance-sheet') ? 'active-menu' : '' }}" href="/admin/finance/reports/balance-sheet">Balance Sheet</a>
                 <a class="{{ request()->is('admin/finance/reports/loan-report') ? 'active-menu' : '' }}" href="/admin/finance/reports/loan-report">Loan Report</a>
                 <a class="{{ request()->is('admin/finance/reports/family-expenses') ? 'active-menu' : '' }}" href="/admin/finance/reports/family-expenses">Family Expense Report</a>
+                <a class="{{ request()->is('admin/finance/reports/reconciliation') ? 'active-menu' : '' }}" href="/admin/finance/reports/reconciliation">Reconciliation Report</a>
                 <a class="sidebar-muted" href="#" onclick="return false;">Monthly Profit Report</a>
                 <a class="sidebar-muted" href="#" onclick="return false;">Funding Report</a>
                 <a class="sidebar-muted" href="#" onclick="return false;">Card Fee Report</a>

@@ -29,6 +29,14 @@
             <label>Date<br><input type="date" name="payment_date" value="{{ old('payment_date', now()->toDateString()) }}" required></label>
             <label>Amount<br><input type="number" step="0.01" min="0.01" name="amount" value="{{ old('amount') }}" required></label>
             <label>Method<br><input type="text" name="method" value="{{ old('method') }}"></label>
+            <label>Finance Account<br>
+                <select name="finance_account_id" required>
+                    <option value="">Select BDT Account</option>
+                    @foreach($accounts as $account)
+                        <option value="{{ $account->id }}">{{ $account->account_name }} - BDT {{ number_format((float) $account->current_balance, 2) }}</option>
+                    @endforeach
+                </select>
+            </label>
             <label style="grid-column:1/-1;">Note<br><textarea name="note" rows="2" style="width:100%;">{{ old('note') }}</textarea></label>
             <button class="btn" type="submit">Save Repayment</button>
         </form>

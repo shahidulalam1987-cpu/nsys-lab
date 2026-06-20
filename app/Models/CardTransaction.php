@@ -17,6 +17,7 @@ class CardTransaction extends Model
         'spend_usd',
         'fee_usd',
         'extra_charge_usd',
+        'transaction_reference',
         'total_deducted_usd',
         'buy_rate',
         'bdt_cost',

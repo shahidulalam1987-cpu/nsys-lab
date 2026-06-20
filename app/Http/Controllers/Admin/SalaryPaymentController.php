@@ -4,9 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Client;
+use App\Models\FinanceAccount;
+use App\Models\FinanceAccountLedger;
 use App\Models\SalaryPayment;
 use App\Services\ActivityLogger;
+use App\Services\FinanceLedgerService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class SalaryPaymentController extends Controller
 {
@@ -32,7 +36,9 @@ class SalaryPaymentController extends Controller
     {
         $clients = Client::orderBy('company_name')->get();
 
-        return view('admin.salary-payments.create', compact('clients'));
+        $financeAccounts = FinanceAccount::where('currency', 'BDT')->where('status', 'active')->orderBy('account_name')->get();
+
+        return view('admin.salary-payments.create', compact('clients', 'financeAccounts'));
     }
 
     public function store(Request $request)
@@ -46,6 +52,7 @@ class SalaryPaymentController extends Controller
             'screenshot' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'note' => ['nullable', 'string'],
             'status' => ['required', 'in:pending,approved'],
+            'finance_account_id' => ['nullable', 'required_if:status,approved', 'exists:finance_accounts,id'],
         ]);
 
         if ($request->hasFile('screenshot')) {
@@ -59,7 +66,15 @@ class SalaryPaymentController extends Controller
             $data['approved_at'] = now();
         }
 
-        $payment = SalaryPayment::create($data);
+        $payment = DB::transaction(function () use ($data, $request) {
+            $payment = SalaryPayment::create($data);
+
+            if ($payment->status === 'approved') {
+                $this->creditClientPayment($payment, $request);
+            }
+
+            return $payment;
+        });
 
         app(ActivityLogger::class)->log('Client Fund', 'Payment Received', 'Client payment #' . $payment->id . ' saved.', $request);
 
@@ -73,19 +88,36 @@ class SalaryPaymentController extends Controller
             ->latest()
             ->get();
 
-        return view('admin.salary-payments.pending', compact('payments'));
+        $financeAccounts = FinanceAccount::where('currency', 'BDT')->where('status', 'active')->orderBy('account_name')->get();
+
+        return view('admin.salary-payments.pending', compact('payments', 'financeAccounts'));
     }
 
-    public function approve($id)
+    public function approve(Request $request, $id)
     {
-        $payment = SalaryPayment::findOrFail($id);
-
-        $payment->update([
-            'status' => 'approved',
-            'approved_at' => now(),
-            'rejected_at' => null,
-            'reject_reason' => null,
+        $data = $request->validate([
+            'finance_account_id' => ['required', 'exists:finance_accounts,id'],
         ]);
+
+        $payment = DB::transaction(function () use ($id, $data, $request) {
+            $payment = SalaryPayment::whereKey($id)->lockForUpdate()->firstOrFail();
+
+            if ($payment->status === 'approved'
+                && app(FinanceLedgerService::class)->hasEntry('client_payment', SalaryPayment::class, $payment->id, 'credit')) {
+                return $payment;
+            }
+
+            $payment->finance_account_id = $data['finance_account_id'];
+            $this->creditClientPayment($payment, $request);
+            $payment->update([
+                'status' => 'approved',
+                'approved_at' => now(),
+                'rejected_at' => null,
+                'reject_reason' => null,
+            ]);
+
+            return $payment;
+        });
 
         app(ActivityLogger::class)->log('Client Fund', 'Payment Approved', 'Client payment #' . $payment->id . ' approved.', request());
 
@@ -98,13 +130,17 @@ class SalaryPaymentController extends Controller
             'reject_reason' => ['required', 'string', 'max:1000'],
         ]);
 
-        $payment = SalaryPayment::findOrFail($id);
+        $payment = DB::transaction(function () use ($id, $request) {
+            $payment = SalaryPayment::whereKey($id)->lockForUpdate()->firstOrFail();
+            $this->reverseClientPaymentIfNeeded($payment, $request, 'Client payment rejected.');
+            $payment->update([
+                'status' => 'rejected',
+                'rejected_at' => now(),
+                'reject_reason' => $request->reject_reason,
+            ]);
 
-        $payment->update([
-            'status' => 'rejected',
-            'rejected_at' => now(),
-            'reject_reason' => $request->reject_reason,
-        ]);
+            return $payment;
+        });
 
         app(ActivityLogger::class)->log('Client Fund', 'Payment Rejected', 'Client payment #' . $payment->id . ' rejected.', $request);
 
@@ -114,10 +150,56 @@ class SalaryPaymentController extends Controller
     public function destroy(SalaryPayment $payment)
     {
         $description = 'Client payment #' . $payment->id . ' deleted.';
-        $payment->delete();
+        DB::transaction(function () use ($payment) {
+            $lockedPayment = SalaryPayment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
+            $this->reverseClientPaymentIfNeeded($lockedPayment, request(), 'Client payment deleted.');
+            $lockedPayment->delete();
+        });
 
         app(ActivityLogger::class)->log('Client Fund', 'Payment Deleted', $description, request());
 
         return redirect('/admin/salary-payments')->with('success', 'Client payment record deleted successfully.');
+    }
+
+    private function creditClientPayment(SalaryPayment $payment, Request $request): void
+    {
+        $account = FinanceAccount::findOrFail($payment->finance_account_id);
+        app(FinanceLedgerService::class)->credit($account, (float) $payment->amount, [
+            'transaction_type' => 'client_payment',
+            'currency' => 'BDT',
+            'required_currency' => 'BDT',
+            'reference_type' => SalaryPayment::class,
+            'reference_id' => $payment->id,
+            'ledger_date' => $payment->salary_month,
+            'description' => 'Client payment received - ' . ($payment->client?->company_name ?: 'Client') . '.',
+            'transaction_reference' => $payment->transaction_id,
+            'created_by' => $request->user()?->id,
+        ]);
+    }
+
+    private function reverseClientPaymentIfNeeded(SalaryPayment $payment, Request $request, string $description): void
+    {
+        $ledger = FinanceAccountLedger::query()
+            ->where('transaction_type', 'client_payment')
+            ->where('reference_type', SalaryPayment::class)
+            ->where('reference_id', $payment->id)
+            ->where('direction', 'credit')
+            ->first();
+
+        if (! $ledger || app(FinanceLedgerService::class)->hasEntry('client_payment_reversal', SalaryPayment::class, $payment->id, 'debit')) {
+            return;
+        }
+
+        app(FinanceLedgerService::class)->reverse($ledger, [
+            'transaction_type' => 'client_payment_reversal',
+            'currency' => 'BDT',
+            'required_currency' => 'BDT',
+            'reference_type' => SalaryPayment::class,
+            'reference_id' => $payment->id,
+            'ledger_date' => now()->toDateString(),
+            'description' => $description,
+            'transaction_reference' => $payment->transaction_id,
+            'created_by' => $request->user()?->id,
+        ]);
     }
 }
