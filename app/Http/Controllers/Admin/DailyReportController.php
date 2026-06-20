@@ -72,6 +72,8 @@ class DailyReportController extends Controller
 
     public function show(DailyPerformanceReport $dailyReport)
     {
+        $this->authorizeModeratorCampaign($dailyReport->campaign_id);
+
         return view('admin.daily-reports.show', [
             'dailyReport' => $dailyReport->load(['campaign.businessManager', 'campaign.adAccount', 'campaign.client', 'campaign.page']),
         ]);
@@ -79,6 +81,8 @@ class DailyReportController extends Controller
 
     public function edit(DailyPerformanceReport $dailyReport)
     {
+        $this->authorizeModeratorCampaign($dailyReport->campaign_id);
+
         return view('admin.daily-reports.edit', array_merge($this->sharedData(), [
             'dailyReport' => $dailyReport->load('campaign'),
         ]));
@@ -86,6 +90,7 @@ class DailyReportController extends Controller
 
     public function update(Request $request, DailyPerformanceReport $dailyReport)
     {
+        $this->authorizeModeratorCampaign($dailyReport->campaign_id);
         $data = $this->validatedData($request, $dailyReport);
         $duplicate = DailyPerformanceReport::where('campaign_id', $data['campaign_id'])
             ->whereDate('report_date', $data['report_date'])
@@ -105,6 +110,7 @@ class DailyReportController extends Controller
 
     public function destroy(DailyPerformanceReport $dailyReport)
     {
+        $this->authorizeModeratorCampaign($dailyReport->campaign_id);
         $dailyReport->delete();
 
         return redirect('/admin/daily-reports')->with('success', 'Daily performance deleted successfully.');
@@ -144,6 +150,7 @@ class DailyReportController extends Controller
                 'clicks' => ['nullable', 'integer', 'min:0'],
                 'notes' => ['nullable', 'string'],
             ])->validate();
+            $this->authorizeModeratorCampaign((int) $data['campaign_id']);
 
             $existing = DailyPerformanceReport::where('campaign_id', $data['campaign_id'])
                 ->whereDate('report_date', $date)
@@ -181,12 +188,18 @@ class DailyReportController extends Controller
 
     private function sharedData(): array
     {
+        $campaignIds = $this->moderatorCampaignIds();
+        $campaigns = Campaign::with(['businessManager', 'adAccount', 'client', 'page'])
+            ->when($campaignIds !== null, fn ($query) => $query->whereIn('id', $campaignIds))
+            ->orderBy('campaign_name')
+            ->get();
+
         return [
-            'businessManagers' => BusinessManager::orderBy('bm_name')->get(),
-            'adAccounts' => AdAccount::orderBy('ad_account_name')->get(),
-            'clients' => Client::orderBy('company_name')->get(),
-            'clientPages' => ClientPage::orderBy('page_name')->get(),
-            'campaigns' => Campaign::with(['businessManager', 'adAccount', 'client', 'page'])->orderBy('campaign_name')->get(),
+            'businessManagers' => BusinessManager::when($campaignIds !== null, fn ($query) => $query->whereIn('id', $campaigns->pluck('business_manager_id')))->orderBy('bm_name')->get(),
+            'adAccounts' => AdAccount::when($campaignIds !== null, fn ($query) => $query->whereIn('id', $campaigns->pluck('ad_account_id')))->orderBy('ad_account_name')->get(),
+            'clients' => Client::when($campaignIds !== null, fn ($query) => $query->whereIn('id', $campaigns->pluck('client_id')))->orderBy('company_name')->get(),
+            'clientPages' => ClientPage::when($campaignIds !== null, fn ($query) => $query->whereIn('id', $campaigns->pluck('client_page_id')))->orderBy('page_name')->get(),
+            'campaigns' => $campaigns,
             'campaignStatuses' => Campaign::STATUSES,
         ];
     }
@@ -208,6 +221,7 @@ class DailyReportController extends Controller
     private function filteredQuery(array $filters)
     {
         return DailyPerformanceReport::with(['campaign.businessManager', 'campaign.adAccount', 'campaign.client', 'campaign.page'])
+            ->when($this->moderatorCampaignIds() !== null, fn ($query) => $query->whereIn('campaign_id', $this->moderatorCampaignIds()))
             ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->whereDate('report_date', '>=', $date))
             ->when($filters['date_to'] ?? null, fn ($query, $date) => $query->whereDate('report_date', '<=', $date))
             ->when($filters['campaign_id'] ?? null, fn ($query, $id) => $query->where('campaign_id', $id))
@@ -238,6 +252,7 @@ class DailyReportController extends Controller
             'clicks' => ['nullable', 'integer', 'min:0'],
             'notes' => ['nullable', 'string'],
         ]);
+        $this->authorizeModeratorCampaign((int) $data['campaign_id']);
 
         return array_merge([
             'card_provider' => null,
@@ -250,5 +265,25 @@ class DailyReportController extends Controller
             'impressions' => 0,
             'clicks' => 0,
         ], $data);
+    }
+
+    private function moderatorCampaignIds(): ?array
+    {
+        if (! auth()->user()?->hasRole('moderator')) {
+            return null;
+        }
+
+        $employee = auth()->user()->employee;
+        abort_unless($employee, 403, 'Moderator account is not linked to an employee.');
+
+        return $employee->activeAssignments()->whereNotNull('campaign_id')->pluck('campaign_id')->unique()->values()->all();
+    }
+
+    private function authorizeModeratorCampaign(?int $campaignId): void
+    {
+        $campaignIds = $this->moderatorCampaignIds();
+        if ($campaignIds !== null) {
+            abort_unless($campaignId && in_array($campaignId, $campaignIds, true), 403);
+        }
     }
 }

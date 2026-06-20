@@ -76,6 +76,39 @@
         <h1>Agency Dashboard</h1>
         <p>Overall agency summary | Today: {{ $today }}</p>
 
+        @if(! auth()->user()->isSuperAdmin())
+            <div class="card">
+                <h2>{{ auth()->user()->primaryRoleName() }} Dashboard</h2>
+                <div class="stats-grid">
+                    @if(auth()->user()->hasPermission('finance.view'))
+                        <a class="stat-card" href="/admin/financial-management" style="text-decoration:none;"><p>Client Fund Available</p><h2>BDT {{ number_format($clientFundSummary['available_balance'], 2) }}</h2></a>
+                        <a class="stat-card" href="/admin/facebook-financial/funding-dashboard" style="text-decoration:none;"><p>Total Available USD</p><h2>USD {{ number_format($fundingAlerts['total_available_usd'], 2) }}</h2></a>
+                        <a class="stat-card" href="/admin/facebook-financial/profit-dashboard" style="text-decoration:none;"><p>Monthly Profit</p><h2>BDT {{ number_format($usdProfitSummary['monthly_actual_profit'], 2) }}</h2></a>
+                        <a class="stat-card" href="/admin/client-fund" style="text-decoration:none;"><p>Client Due</p><h2>BDT {{ number_format($clientFundSummary['unpaid_salary_due'], 2) }}</h2></a>
+                    @endif
+                    @if(auth()->user()->hasPermission('employees.view'))
+                        <a class="stat-card" href="/admin/employees" style="text-decoration:none;"><p>Total Employees</p><h2>{{ number_format($totalEmployees) }}</h2></a>
+                        <a class="stat-card" href="/admin/attendance" style="text-decoration:none;"><p>Attendance</p><h2>Monitoring</h2></a>
+                        <a class="stat-card" href="/admin/payroll?status=upcoming" style="text-decoration:none;"><p>Upcoming Salary</p><h2>{{ number_format($employeeAlerts['upcoming_count']) }}</h2></a>
+                        <a class="stat-card" href="/admin/payroll?status=due" style="text-decoration:none;"><p>Unpaid Salary</p><h2>{{ number_format($employeeAlerts['unpaid_count']) }}</h2></a>
+                    @endif
+                    @if(auth()->user()->hasPermission('facebook.view'))
+                        <a class="stat-card" href="/admin/facebook-dashboard" style="text-decoration:none;"><p>Monthly Spend</p><h2>USD {{ number_format($facebookAlerts['monthly_spend'], 2) }}</h2></a>
+                        <a class="stat-card" href="/admin/profit-history" style="text-decoration:none;"><p>Total Orders</p><h2>{{ number_format($totalFacebookOrders) }}</h2></a>
+                        <a class="stat-card" href="/admin/ad-accounts" style="text-decoration:none;"><p>Billing Alerts</p><h2>{{ number_format($facebookAlerts['upcoming_billing_accounts'] + $facebookAlerts['overdue_billing_accounts']) }}</h2></a>
+                        <a class="stat-card" href="/admin/campaigns" style="text-decoration:none;"><p>Campaign Operations</p><h2>Open</h2></a>
+                    @endif
+                    @if(auth()->user()->hasRole('moderator'))
+                        <a class="stat-card" href="/admin/work-status" style="text-decoration:none;"><p>My Work Status</p><h2>Open</h2></a>
+                        <a class="stat-card" href="/admin/daily-reports" style="text-decoration:none;"><p>Assigned Daily Reports</p><h2>Open</h2></a>
+                    @endif
+                    @if(auth()->user()->hasPermission('tiktok.view'))
+                        <a class="stat-card" href="/admin/tiktok" style="text-decoration:none;"><p>TikTok</p><h2>Future Ready</h2></a>
+                    @endif
+                </div>
+            </div>
+        @else
+
         <div class="card">
             <h2>Notification Center</h2>
             <div class="stats-grid">
@@ -173,5 +206,6 @@
                 </div>
             </div>
         </div>
+        @endif
     @endif
 @endsection

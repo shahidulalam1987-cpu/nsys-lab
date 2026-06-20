@@ -17,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'client' => \App\Http\Middleware\ClientMiddleware::class,
             'client.status' => CheckClientStatus::class,
             'employee' => \App\Http\Middleware\EmployeeMiddleware::class,
+            'role' => \App\Http\Middleware\RoleMiddleware::class,
+            'permission' => \App\Http\Middleware\PermissionMiddleware::class,
+            'department.permission' => \App\Http\Middleware\DepartmentPermissionMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

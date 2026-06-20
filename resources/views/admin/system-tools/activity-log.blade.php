@@ -56,6 +56,7 @@
                 <tr>
                     <th>Date</th>
                     <th>User</th>
+                    <th>Role</th>
                     <th>Module</th>
                     <th>Action</th>
                     <th>Description</th>
@@ -65,13 +66,23 @@
                     <tr>
                         <td>{{ $log->created_at?->format('Y-m-d H:i') }}</td>
                         <td>{{ $log->user?->name ?: 'System' }}</td>
+                        <td>{{ $log->role_name ?: '-' }}</td>
                         <td><span class="badge badge-info">{{ $log->module }}</span></td>
                         <td><strong>{{ $log->action }}</strong></td>
-                        <td>{{ $log->description }}</td>
+                        <td>
+                            {{ $log->description }}
+                            @if($log->old_value !== null || $log->new_value !== null)
+                                <details style="margin-top:6px;">
+                                    <summary>View Changes</summary>
+                                    <small>Old: {{ json_encode($log->old_value, JSON_UNESCAPED_UNICODE) ?: '-' }}</small><br>
+                                    <small>New: {{ json_encode($log->new_value, JSON_UNESCAPED_UNICODE) ?: '-' }}</small>
+                                </details>
+                            @endif
+                        </td>
                         <td>{{ $log->ip_address ?: '-' }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="6">No activity logs found.</td></tr>
+                    <tr><td colspan="7">No activity logs found.</td></tr>
                 @endforelse
             </table>
         </div>

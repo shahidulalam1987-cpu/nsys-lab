@@ -10,9 +10,12 @@ class ActivityLog extends Model
 
     protected $fillable = [
         'user_id',
+        'role_name',
         'module',
         'action',
         'description',
+        'old_value',
+        'new_value',
         'ip_address',
         'created_at',
     ];
@@ -21,6 +24,8 @@ class ActivityLog extends Model
     {
         return [
             'created_at' => 'datetime',
+            'old_value' => 'array',
+            'new_value' => 'array',
         ];
     }
 

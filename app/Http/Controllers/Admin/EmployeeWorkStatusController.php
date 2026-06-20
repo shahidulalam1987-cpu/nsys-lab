@@ -27,7 +27,7 @@ class EmployeeWorkStatusController extends Controller
 
         return view('admin.work-status.index', [
             'workStatuses' => $rows,
-            'employees' => Employee::orderBy('name')->get(),
+            'employees' => $this->availableEmployees(),
             'clients' => Client::orderBy('company_name')->get(),
             'clientPages' => ClientPage::orderBy('page_name')->get(),
             'campaigns' => Campaign::orderBy('campaign_name')->get(),
@@ -60,6 +60,7 @@ class EmployeeWorkStatusController extends Controller
         $prefill['return_to'] = $this->safeReturnTo($prefill['return_to'] ?? null);
 
         $employees = Employee::with(['activeAssignments.page', 'activeAssignments.campaignRecord', 'activeAssignments.shift'])
+            ->when($this->moderatorEmployeeId(), fn ($query, $employeeId) => $query->whereKey($employeeId))
             ->orderBy('name')
             ->get();
         $assignmentDefaults = $employees
@@ -241,9 +242,11 @@ class EmployeeWorkStatusController extends Controller
 
     public function edit(EmployeeWorkStatus $workStatus)
     {
+        $this->authorizeModeratorRecord($workStatus);
+
         return view('admin.work-status.edit', [
             'workStatus' => $workStatus->load(['employee', 'client', 'page', 'campaign', 'shift']),
-            'employees' => Employee::orderBy('name')->get(),
+            'employees' => $this->availableEmployees(),
             'clients' => Client::orderBy('company_name')->get(),
             'clientPages' => ClientPage::orderBy('page_name')->get(),
             'campaigns' => Campaign::orderBy('campaign_name')->get(),
@@ -254,6 +257,7 @@ class EmployeeWorkStatusController extends Controller
 
     public function update(Request $request, EmployeeWorkStatus $workStatus)
     {
+        $this->authorizeModeratorRecord($workStatus);
         $data = $request->validate([
             'client_id' => ['nullable', 'exists:clients,id'],
             'client_page_id' => ['nullable', 'exists:client_pages,id'],
@@ -284,6 +288,7 @@ class EmployeeWorkStatusController extends Controller
 
     public function destroy(EmployeeWorkStatus $workStatus)
     {
+        $this->authorizeModeratorRecord($workStatus);
         $description = 'Work status #' . $workStatus->id . ' for ' . $workStatus->work_date?->toDateString() . ' deleted.';
         $workStatus->delete();
 
@@ -335,6 +340,7 @@ class EmployeeWorkStatusController extends Controller
     private function filteredQuery(array $filters)
     {
         return EmployeeWorkStatus::with(['employee', 'client', 'page', 'campaign', 'shift'])
+            ->when($this->moderatorEmployeeId(), fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
             ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
             ->when($filters['client_id'] ?? null, fn ($query, $clientId) => $query->where('client_id', $clientId))
             ->when($filters['campaign_id'] ?? null, fn ($query, $campaignId) => $query->where('campaign_id', $campaignId))
@@ -370,6 +376,20 @@ class EmployeeWorkStatusController extends Controller
 
         $data['entry_mode'] = $data['entry_mode'] ?? 'single';
 
+        if ($employeeId = $this->moderatorEmployeeId()) {
+            abort_unless((int) $data['employee_id'] === $employeeId, 403);
+            $assignments = auth()->user()->employee?->activeAssignments;
+            if (! empty($data['client_id'])) {
+                abort_unless($assignments?->contains('client_id', (int) $data['client_id']), 403);
+            }
+            if (! empty($data['client_page_id'])) {
+                abort_unless($assignments?->contains('client_page_id', (int) $data['client_page_id']), 403);
+            }
+            if (! empty($data['campaign_id'])) {
+                abort_unless($assignments?->contains('campaign_id', (int) $data['campaign_id']), 403);
+            }
+        }
+
         if ($data['entry_mode'] === 'range' && ! empty($data['from_date']) && ! empty($data['to_date'])) {
             $days = Carbon::parse($data['from_date'])->diffInDays(Carbon::parse($data['to_date'])) + 1;
 
@@ -390,5 +410,32 @@ class EmployeeWorkStatusController extends Controller
         }
 
         return $returnTo;
+    }
+
+    private function moderatorEmployeeId(): ?int
+    {
+        if (! auth()->user()?->hasRole('moderator')) {
+            return null;
+        }
+
+        $employeeId = auth()->user()->employee?->id;
+        abort_unless($employeeId, 403, 'Moderator account is not linked to an employee.');
+
+        return (int) $employeeId;
+    }
+
+    private function availableEmployees()
+    {
+        return Employee::query()
+            ->when($this->moderatorEmployeeId(), fn ($query, $employeeId) => $query->whereKey($employeeId))
+            ->orderBy('name')
+            ->get();
+    }
+
+    private function authorizeModeratorRecord(EmployeeWorkStatus $workStatus): void
+    {
+        if ($employeeId = $this->moderatorEmployeeId()) {
+            abort_unless((int) $workStatus->employee_id === $employeeId, 403);
+        }
     }
 }

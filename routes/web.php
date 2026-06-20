@@ -46,6 +46,10 @@ use App\Http\Controllers\Admin\CampaignController;
 Route::get('/', [DashboardController::class, 'index']);
 
 Route::get('/dashboard', function () {
+    if (auth()->user()->hasRole('moderator')) {
+        return redirect('/admin/dashboard');
+    }
+
     if (auth()->user()->role === 'admin') {
         return redirect('/admin/dashboard');
     }
@@ -71,7 +75,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [\App\Http\Controllers\ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-Route::middleware(['auth', 'admin'])->group(function () {
+Route::middleware(['auth', 'admin', 'department.permission'])->group(function () {
     Route::get('/admin/export/payments', [ExportController::class, 'paymentsCsv']);
     Route::get('/admin/export/daily-reports', [ExportController::class, 'dailyReportsCsv']);
     Route::get('/admin/dashboard', [AdminDashboardController::class, 'index']);
