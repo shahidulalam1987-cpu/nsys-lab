@@ -8,6 +8,7 @@ use App\Models\EmployeeAttendance;
 use App\Models\EmployeeWorkStatus;
 use App\Models\Shift;
 use App\Models\User;
+use App\Services\WorkStatusCycleService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -312,6 +313,20 @@ class EmployeeAttendancePhase3Test extends TestCase
         $this->assertDatabaseHas('employee_work_statuses', ['employee_id' => $employee->id, 'work_date' => '2026-05-16 00:00:00']);
         $this->assertSame('2026-05-16', $employee->workStatuses()->oldest('work_date')->first()->work_date->toDateString());
         $this->assertSame(32, $employee->workStatuses()->count());
+    }
+
+    public function test_monthly_cycle_does_not_end_on_confirmation_day_when_salary_day_matches(): void
+    {
+        $employee = $this->employee([
+            'confirmation_date' => '2026-06-12',
+            'salary_day' => 12,
+        ]);
+
+        $period = app(WorkStatusCycleService::class)->period($employee, '2026-06');
+
+        $this->assertSame('2026-06-12', $period['period_start']->toDateString());
+        $this->assertSame('2026-07-12', $period['period_end']->toDateString());
+        $this->assertSame('2026-07', $period['salary_month']->format('Y-m'));
     }
 
     public function test_next_monthly_cycle_starts_after_previous_salary_cycle_date(): void

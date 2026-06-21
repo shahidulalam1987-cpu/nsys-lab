@@ -851,6 +851,52 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $this->assertSame('2026-07-12', $employee->nextSalaryDate()?->toDateString());
     }
 
+    public function test_confirmation_day_starts_first_cycle_instead_of_becoming_due_immediately(): void
+    {
+        Carbon::setTestNow('2026-06-21');
+
+        $admin = $this->admin();
+        $employee = $this->employee([
+            'name' => 'First Cycle Equality Employee',
+            'confirmation_date' => '2026-06-12',
+            'salary_day' => 12,
+        ]);
+
+        $this->assertSame('2026-07-12', $employee->currentSalaryDueDate()?->toDateString());
+        $this->assertSame('2026-07-12', $employee->nextSalaryDate()?->toDateString());
+        $this->assertSame('upcoming', $employee->salaryCycleStatus());
+        $this->assertSame(PayrollCategoryService::UPCOMING, app(PayrollCategoryService::class)->resolveEmployee($employee)['category']);
+
+        $this->actingAs($admin)->get('/admin/payroll?status=due')
+            ->assertOk()
+            ->assertDontSee('/admin/employees/' . $employee->id, false);
+        $this->actingAs($admin)->get('/admin/payroll?status=upcoming')
+            ->assertOk()
+            ->assertDontSee('/admin/employees/' . $employee->id, false);
+
+        Carbon::setTestNow('2026-07-08');
+
+        $this->actingAs($admin)->get('/admin/payroll?status=upcoming')
+            ->assertOk()
+            ->assertSee('/admin/employees/' . $employee->id, false);
+        $this->actingAs($admin)->get('/admin/payroll?status=due')
+            ->assertOk()
+            ->assertDontSee('/admin/employees/' . $employee->id, false);
+    }
+
+    public function test_first_due_date_is_next_month_when_confirmation_matches_salary_day(): void
+    {
+        Carbon::setTestNow('2026-06-01');
+
+        $employee = $this->employee([
+            'confirmation_date' => '2026-05-16',
+            'salary_day' => 16,
+        ]);
+
+        $this->assertSame('2026-06-16', $employee->currentSalaryDueDate()?->toDateString());
+        $this->assertSame('2026-06-16', $employee->nextSalaryDate()?->toDateString());
+    }
+
     public function test_work_status_before_confirmation_is_ignored_and_after_confirmation_is_counted(): void
     {
         Carbon::setTestNow('2026-06-20');

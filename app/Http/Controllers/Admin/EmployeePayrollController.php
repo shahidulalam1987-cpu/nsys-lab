@@ -935,6 +935,7 @@ class EmployeePayrollController extends Controller
             'due' => in_array($category, [
                 PayrollCategoryService::PENDING_WORK_STATUS,
                 PayrollCategoryService::SALARY_READY,
+                PayrollCategoryService::GENERATED,
                 PayrollCategoryService::UNPAID,
                 PayrollCategoryService::FINAL_SETTLEMENT_PENDING,
                 PayrollCategoryService::FINAL_SETTLEMENT_UNPAID,

@@ -341,7 +341,7 @@ class Employee extends Model
             $day = min($this->salaryCycleDay(), $cycleMonth->copy()->endOfMonth()->day);
             $salaryDate = $cycleMonth->copy()->addDays($day - 1);
             $cycleMonth->addMonthNoOverflow()->startOfMonth();
-        } while ($eligibilityDate && $salaryDate->lt($eligibilityDate));
+        } while ($eligibilityDate && $salaryDate->lte($eligibilityDate));
 
         return $salaryDate;
     }

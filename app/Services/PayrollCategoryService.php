@@ -100,6 +100,17 @@ class PayrollCategoryService
             return $this->category(self::UNPAID, ['payroll' => $overduePayroll]);
         }
 
+        $outstandingPayroll = $payrolls->first(
+            fn (EmployeePayroll $payroll) => (float) $payroll->paid_amount < (float) $payroll->payable_salary
+        );
+
+        if ($outstandingPayroll) {
+            $resolved = $this->resolvePayroll($outstandingPayroll);
+            $resolved['payroll'] = $outstandingPayroll;
+
+            return $resolved;
+        }
+
         if (! $employee->isSalaryEligible($today) && $payrolls->isNotEmpty()) {
             $payroll = $payrolls->first();
             $resolved = $this->resolvePayroll($payroll);

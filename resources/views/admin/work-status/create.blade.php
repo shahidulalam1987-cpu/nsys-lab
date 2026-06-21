@@ -255,9 +255,12 @@
 
             const [year, month] = salaryMonthInput.value.split('-').map(Number);
             const monthIndex = month - 1;
-            const end = cycleDate(year, monthIndex, Number(defaults.salary_day));
-            const previous = cycleDate(year, monthIndex - 1, Number(defaults.salary_day));
             const confirmation = utcDate(defaults.confirmation_date);
+            let end = cycleDate(year, monthIndex, Number(defaults.salary_day));
+            if (end <= confirmation) {
+                end = cycleDate(year, monthIndex + 1, Number(defaults.salary_day));
+            }
+            const previous = cycleDate(end.getUTCFullYear(), end.getUTCMonth() - 1, Number(defaults.salary_day));
             const start = confirmation >= previous
                 ? confirmation
                 : new Date(Date.UTC(previous.getUTCFullYear(), previous.getUTCMonth(), previous.getUTCDate() + 1));
