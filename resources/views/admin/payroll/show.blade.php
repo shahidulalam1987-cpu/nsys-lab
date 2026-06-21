@@ -46,7 +46,7 @@
     </style>
 
     <div class="payroll-actions">
-        <a class="btn" href="/admin/payroll">Back to Salary Generate</a>
+        <a class="btn" href="/admin/payroll?status=due">Back to Unpaid Salary</a>
         <a class="btn" href="/admin/payroll/{{ $payroll->id }}/edit">Edit Salary</a>
         <a class="btn" href="/admin/payroll/{{ $payroll->id }}/salary-statement">Download Salary PDF</a>
 
@@ -78,7 +78,7 @@
     @if($payroll->canMarkPaid() && $payroll->payroll_status !== 'paid')
         <div class="card" id="confirm-payment-panel" style="display:none;border-color:#22c55e;">
             <h2>Confirm Payment</h2>
-            <p>Record finance account, transaction reference, and salary transfer note before moving this salary to Paid Salary History.</p>
+            <p>Record finance account, transaction reference, and salary transfer note before moving this salary to Salary Report.</p>
             <div class="stats-grid">
                 <div class="stat-card"><p>Employee</p><h2>{{ $payroll->snapshotEmployeeName() }}</h2><p>{{ $payroll->snapshotEmployeeCode() }}</p></div>
                 <div class="stat-card"><p>Salary Month</p><h2>{{ $payroll->salary_month?->format('Y-m') ?: '-' }}</h2></div>

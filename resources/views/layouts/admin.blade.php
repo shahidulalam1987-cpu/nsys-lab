@@ -663,21 +663,20 @@
 
                 @if($authUser->hasPermission('payroll.view'))
                 <div class="sidebar-section-title">Payroll</div>
-                <a class="{{ request()->is('admin/payroll*') && ! request()->filled('status') ? 'active-menu' : '' }}" href="/admin/payroll">Salary Generate</a>
-                <a class="{{ request()->is('admin/salary-month-sheet*') ? 'active-menu' : '' }}" href="/admin/salary-month-sheet">Salary Report</a>
+                <a class="{{ request()->is('admin/payroll') && ! request()->filled('status') ? 'active-menu' : '' }}" href="/admin/payroll">Payroll Dashboard</a>
                 <a class="sidebar-link-with-badge {{ request()->is('admin/payroll') && request('status') === 'upcoming' ? 'active-menu' : '' }}" href="/admin/payroll?status=upcoming">
                     <span>Upcoming Salary</span>
                     @if($clientFundBadges['upcoming_salary_count'] > 0)
                         <span class="sidebar-count-badge">{{ $clientFundBadges['upcoming_salary_count'] }}</span>
                     @endif
                 </a>
-                <a class="{{ request()->is('admin/payroll') && request('status') === 'paid' ? 'active-menu' : '' }}" href="/admin/payroll?status=paid">Paid Salary</a>
                 <a class="sidebar-link-with-badge {{ request()->is('admin/payroll') && request('status') === 'due' ? 'active-menu' : '' }}" href="/admin/payroll?status=due">
                     <span>Unpaid Salary</span>
                     @if($clientFundBadges['unpaid_salary_count'] > 0)
                         <span class="sidebar-count-badge danger">{{ $clientFundBadges['unpaid_salary_count'] }}</span>
                     @endif
                 </a>
+                <a class="{{ request()->is('admin/salary-month-sheet*') ? 'active-menu' : '' }}" href="/admin/salary-month-sheet">Salary Report</a>
                 @endif
             @elseif($isFacebook)
                 <div class="sidebar-section-title">Facebook</div>

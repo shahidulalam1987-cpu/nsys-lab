@@ -5,7 +5,7 @@
 
     <div class="card">
         <form method="GET" action="/admin/salary-month-sheet">
-            <input type="month" name="month" value="{{ request('month', $month->format('Y-m')) }}">
+            <input type="month" name="month" value="{{ request('month') }}">
 
             <select name="employee_id">
                 <option value="">All Employees</option>
@@ -16,17 +16,31 @@
                 @endforeach
             </select>
 
+            <select name="client_id">
+                <option value="">All Clients</option>
+                @foreach($clients as $client)
+                    <option value="{{ $client->id }}" @selected((string)request('client_id') === (string)$client->id)>{{ $client->company_name }}</option>
+                @endforeach
+            </select>
+
             <select name="status">
                 <option value="">All Status</option>
-                @foreach(['upcoming' => 'Upcoming', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'] as $value => $label)
+                @foreach(['generated' => 'Generated', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid', 'final_settlement' => 'Final Settlement', 'reversed' => 'Reversed'] as $value => $label)
                     <option value="{{ $value }}" {{ request('status') == $value ? 'selected' : '' }}>{{ $label }}</option>
+                @endforeach
+            </select>
+
+            <select name="salary_source">
+                <option value="">All Salary Sources</option>
+                @foreach(\App\Models\Employee::SALARY_SOURCES as $value => $label)
+                    <option value="{{ $value }}" @selected(request('salary_source') === $value)>{{ $label }}</option>
                 @endforeach
             </select>
 
             <button class="btn" type="submit">Filter</button>
             <a href="/admin/salary-month-sheet">Reset</a>
-            <a class="btn" href="/admin/salary-month-sheet/export?{{ http_build_query(request()->only(['month', 'employee_id', 'status'])) }}">Export CSV</a>
-            <a class="btn" href="/admin/salary-month-sheet/export/excel?{{ http_build_query(request()->only(['month', 'employee_id', 'status'])) }}">Export Excel</a>
+            <a class="btn" href="/admin/salary-month-sheet/export?{{ http_build_query(request()->only(['month', 'employee_id', 'client_id', 'status', 'salary_source'])) }}">Export CSV</a>
+            <a class="btn" href="/admin/salary-month-sheet/export/excel?{{ http_build_query(request()->only(['month', 'employee_id', 'client_id', 'status', 'salary_source'])) }}">Export Excel</a>
         </form>
     </div>
 
@@ -50,7 +64,7 @@
     </div>
 
     <div class="card">
-        <h2>{{ $month->format('F Y') }}</h2>
+        <h2>{{ $month?->format('F Y') ?: 'All Payroll History' }}</h2>
 
         <div class="table-wrap">
             <table>
@@ -83,7 +97,7 @@
                         <td>BDT {{ number_format($payroll->payable_salary, 2) }}</td>
                         <td>BDT {{ number_format($payroll->paid_amount, 2) }}</td>
                         <td>BDT {{ number_format(max($payroll->payable_salary - $payroll->paid_amount, 0), 2) }}</td>
-                        <td>{{ ['upcoming' => 'Upcoming', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'][$payroll->calculated_status] ?? ucfirst($payroll->calculated_status) }}</td>
+                        <td><span class="badge {{ $payroll->reportStatusKey() === 'paid' ? 'badge-success' : ($payroll->reportStatusKey() === 'reversed' ? 'badge-neutral' : 'badge-warning') }}">{{ $payroll->reportStatusLabel() }}</span></td>
                         <td>
                             <details>
                                 <summary>Payment Information</summary>
@@ -101,7 +115,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="10">No generated salary records found for this month.</td>
+                        <td colspan="10">{{ $month ? 'No generated salary records found for this month.' : 'No salary history found.' }}</td>
                     </tr>
                 @endforelse
             </table>

@@ -9,15 +9,28 @@ class SalaryMonthSheetService
 {
     public function build(array $filters = []): array
     {
-        $month = Carbon::createFromFormat('Y-m', $filters['month'] ?? now()->format('Y-m'))->startOfMonth();
-        $rows = EmployeePayroll::current()
-            ->with(['employee', 'client'])
-            ->whereDate('salary_month', $month->toDateString())
+        $month = ! empty($filters['month']) ? Carbon::createFromFormat('Y-m', $filters['month'])->startOfMonth() : null;
+        $rows = EmployeePayroll::query()
+            ->current()
+            ->with(['employee', 'client', 'financeAccount'])
+            ->when($month, fn ($query) => $query->whereDate('salary_month', $month->toDateString()))
             ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
+            ->when($filters['client_id'] ?? null, fn ($query, $clientId) => $query->where('client_id', $clientId))
+            ->when($filters['salary_source'] ?? null, fn ($query, $salarySource) => $query->where('salary_source', $salarySource))
             ->latest('salary_month')
             ->latest()
             ->get()
-            ->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter($filters['status'] ?? null))
+            ->filter(function (EmployeePayroll $payroll) use ($filters) {
+                if (empty($filters['status'])) {
+                    return true;
+                }
+
+                if ($filters['status'] === 'final_settlement') {
+                    return $payroll->isFinalSettlementPayroll();
+                }
+
+                return $payroll->reportStatusKey() === $filters['status'];
+            })
             ->values();
 
         return [
@@ -41,7 +54,7 @@ class SalaryMonthSheetService
         $rows = $sheet['rows'];
 
         return [
-            'month' => $sheet['month'],
+            'month' => $sheet['month'] ?: Carbon::createFromFormat('Y-m', $month)->startOfMonth(),
             'client_id' => $rows->first()?->client_id,
             'payable_salary' => (float) $rows->sum('payable_salary'),
             'counted_days' => (int) $rows->sum('working_days'),

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
+use App\Models\Client;
 use App\Services\SalaryMonthSheetService;
 use Illuminate\Http\Request;
 
@@ -14,7 +15,9 @@ class SalaryMonthSheetController extends Controller
         $filters = $request->validate([
             'month' => ['nullable', 'date_format:Y-m'],
             'employee_id' => ['nullable', 'exists:employees,id'],
-            'status' => ['nullable', 'in:upcoming,unpaid,partial,paid'],
+            'client_id' => ['nullable', 'exists:clients,id'],
+            'status' => ['nullable', 'in:generated,unpaid,partial,paid,final_settlement,reversed'],
+            'salary_source' => ['nullable', 'in:' . implode(',', array_keys(Employee::SALARY_SOURCES))],
         ]);
 
         $sheet = $salaryMonthSheetService->build($filters);
@@ -25,6 +28,7 @@ class SalaryMonthSheetController extends Controller
             'filters' => $filters,
             'month' => $sheet['month'],
             'employees' => $employees,
+            'clients' => Client::orderBy('company_name')->get(),
             'rows' => $sheet['rows'],
             'summary' => $sheet['summary'],
         ]);
@@ -35,11 +39,13 @@ class SalaryMonthSheetController extends Controller
         $filters = $request->validate([
             'month' => ['nullable', 'date_format:Y-m'],
             'employee_id' => ['nullable', 'exists:employees,id'],
-            'status' => ['nullable', 'in:upcoming,unpaid,partial,paid'],
+            'client_id' => ['nullable', 'exists:clients,id'],
+            'status' => ['nullable', 'in:generated,unpaid,partial,paid,final_settlement,reversed'],
+            'salary_source' => ['nullable', 'in:' . implode(',', array_keys(Employee::SALARY_SOURCES))],
         ]);
 
         $sheet = $salaryMonthSheetService->build($filters);
-        $fileName = 'employee-salary-report-' . $sheet['month']->format('Y-m') . '.csv';
+        $fileName = 'employee-salary-report-' . ($sheet['month']?->format('Y-m') ?: 'all') . '.csv';
 
         return response()->streamDownload(function () use ($sheet) {
             $handle = fopen('php://output', 'w');
@@ -65,7 +71,7 @@ class SalaryMonthSheetController extends Controller
                     number_format($payroll->payable_salary, 2, '.', ''),
                     number_format($payroll->paid_amount, 2, '.', ''),
                     number_format(max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0), 2, '.', ''),
-                    ['upcoming' => 'Upcoming', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'][$payroll->calculated_status] ?? ucfirst($payroll->calculated_status),
+                    $payroll->reportStatusLabel(),
                     $payroll->payment_date?->toDateString() ?: '-',
                 ]);
             }
@@ -81,7 +87,9 @@ class SalaryMonthSheetController extends Controller
         $filters = $request->validate([
             'month' => ['nullable', 'date_format:Y-m'],
             'employee_id' => ['nullable', 'exists:employees,id'],
-            'status' => ['nullable', 'in:upcoming,unpaid,partial,paid'],
+            'client_id' => ['nullable', 'exists:clients,id'],
+            'status' => ['nullable', 'in:generated,unpaid,partial,paid,final_settlement,reversed'],
+            'salary_source' => ['nullable', 'in:' . implode(',', array_keys(Employee::SALARY_SOURCES))],
         ]);
 
         $sheet = $salaryMonthSheetService->build($filters);
@@ -90,7 +98,7 @@ class SalaryMonthSheetController extends Controller
             'rows' => $sheet['rows'],
         ], 200, [
             'Content-Type' => 'application/vnd.ms-excel',
-            'Content-Disposition' => 'attachment; filename="employee-salary-report-' . $sheet['month']->format('Y-m') . '.xls"',
+            'Content-Disposition' => 'attachment; filename="employee-salary-report-' . ($sheet['month']?->format('Y-m') ?: 'all') . '.xls"',
         ]);
     }
 }

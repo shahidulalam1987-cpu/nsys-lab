@@ -54,10 +54,11 @@ class ClientFundDashboardService
     public function sidebarBadges(): array
     {
         $dashboard = $this->dashboard();
+        $payrollCounts = app(PayrollCategoryService::class)->queueCounts();
 
         return [
-            'upcoming_salary_count' => $dashboard['summary']['upcoming_employee_count'],
-            'unpaid_salary_count' => $dashboard['summary']['unpaid_employee_count'],
+            'upcoming_salary_count' => $payrollCounts['upcoming'],
+            'unpaid_salary_count' => $payrollCounts['unpaid'],
             'pending_payment_count' => $dashboard['summary']['pending_client_payment_count'],
         ];
     }

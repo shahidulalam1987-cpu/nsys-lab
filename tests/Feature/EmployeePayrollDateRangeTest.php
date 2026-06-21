@@ -636,7 +636,7 @@ class EmployeePayrollDateRangeTest extends TestCase
             'status' => 'partial',
         ]);
 
-        $listResponse = $this->actingAs($admin)->get('/admin/payroll');
+        $listResponse = $this->actingAs($admin)->get('/admin/salary-month-sheet?month=2026-06&status=partial');
         $showResponse = $this->actingAs($admin)->get('/admin/payroll/' . $payroll->id);
 
         $listResponse->assertOk();

@@ -687,12 +687,12 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $payroll->update(['is_current' => null]);
 
         $dueResponse = $this->actingAs($admin)->get('/admin/payroll?status=due&employee_scope=terminated');
-        $paidResponse = $this->actingAs($admin)->get('/admin/payroll?status=paid');
+        $paidResponse = $this->actingAs($admin)->get('/admin/salary-month-sheet?status=paid');
 
         $this->assertTrue($employee->fresh()->load(['payrolls' => fn ($query) => $query->current()])->hasFinalSalaryPayroll());
         $this->assertTrue($payroll->fresh()->isFinalSettlementPaid());
         $dueResponse->assertOk();
-        $dueResponse->assertSee('No salary records found.');
+        $dueResponse->assertSee('No unpaid salary work found.');
         $dueResponse->assertDontSee('Final salary not generated yet');
         $dueResponse->assertDontSee('Generate Final Salary');
         $paidResponse->assertOk();
@@ -797,7 +797,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
 
         $upcomingPage = $this->actingAs($admin)->get('/admin/payroll?status=upcoming');
         $duePage = $this->actingAs($admin)->get('/admin/payroll?status=due');
-        $paidPage = $this->actingAs($admin)->get('/admin/payroll?status=paid');
+        $paidPage = $this->actingAs($admin)->get('/admin/salary-month-sheet?status=paid');
 
         $upcomingPage->assertSee('/admin/employees/' . $upcoming->id, false);
         foreach ([$pending, $ready, $unpaid, $paid, $finalPending, $finalUnpaid, $finalPaid] as $employee) {
@@ -990,8 +990,30 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response = $this->actingAs($admin)->get('/admin/payroll?status=upcoming');
 
         $response->assertOk();
-        $response->assertSee('Upcoming Salary This Week');
+        $response->assertSee('Upcoming Salary');
         $response->assertSee('Confirmed Upcoming Employee');
+        $response->assertDontSee('Generate Salary');
+    }
+
+    public function test_payroll_dashboard_is_summary_only_and_uses_simplified_navigation(): void
+    {
+        Carbon::setTestNow('2026-06-19');
+
+        $admin = $this->admin();
+
+        $response = $this->actingAs($admin)->get('/admin/payroll');
+
+        $response->assertOk();
+        $response->assertSee('Payroll Dashboard');
+        $response->assertSee('Upcoming Salaries');
+        $response->assertSee('Unpaid Salaries');
+        $response->assertSee('Pending Work Status');
+        $response->assertSee('Salary Ready');
+        $response->assertSee('Final Settlement Due');
+        $response->assertSee('Total Generated This Month');
+        $response->assertSee('Total Paid This Month');
+        $response->assertDontSee('href="/admin/payroll/create"', false);
+        $response->assertDontSee('href="/admin/payroll?status=paid"', false);
     }
 
     public function test_confirmed_past_due_employee_without_work_status_is_pending_not_unpaid(): void
@@ -1037,7 +1059,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response = $this->actingAs($admin)->get('/admin/payroll?status=due');
 
         $response->assertOk();
-        $response->assertSee('Unpaid Salary Due');
+        $response->assertSee('Unpaid Salary');
         $response->assertSee('Generated Unpaid Employee');
         $response->assertDontSee('Salary Ready / Pending Generation');
         $response->assertDontSee('Work Status Required');

@@ -3,7 +3,7 @@
 @section('content')
     <h1>Generate Salary</h1>
 
-    <a class="btn" href="/admin/payroll">Back to Salary Generate</a>
+    <a class="btn" href="/admin/payroll?status=due">Back to Unpaid Salary</a>
 
     <p>Generate salary directly from Work Status records, or use manual date-to-date entry for special cases.</p>
 

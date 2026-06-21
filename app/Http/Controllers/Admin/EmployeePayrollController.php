@@ -31,15 +31,34 @@ class EmployeePayrollController extends Controller
     public function index(Request $request)
     {
         $filters = $this->validatedFilters($request);
+        $status = $filters['status'] ?? null;
+
+        if ($status === 'paid') {
+            return redirect('/admin/salary-month-sheet?status=paid');
+        }
+
+        if (in_array($status, ['unpaid', 'partial'], true)) {
+            $filters['status'] = 'due';
+        }
+
         $data = $this->filteredPayrollData($filters);
 
-        return view('admin.payroll.index', [
+        if (! $status) {
+            return view('admin.payroll.dashboard', [
+                'summary' => $data['summary'],
+                'queueCounts' => $this->payrollCategory->queueCounts(),
+            ]);
+        }
+
+        return view('admin.payroll.queue', [
             'filters' => $filters,
             'payrolls' => $data['payrolls'],
             'employees' => $data['employees'],
             'financeAccounts' => FinanceAccount::where('status', 'active')->where('currency', 'BDT')->orderBy('account_name')->get(),
             'cycleEmployees' => $data['cycleEmployees'],
+            'stageRows' => $data['stageRows'],
             'summary' => $data['summary'],
+            'mode' => $filters['status'] === 'upcoming' ? 'upcoming' : 'unpaid',
         ]);
     }
 
@@ -844,8 +863,9 @@ class EmployeePayrollController extends Controller
             ->values();
 
         return [
+            'stageRows' => $stageRows,
             'payrolls' => $payrolls,
-                'employees' => $allEmployees,
+            'employees' => $allEmployees,
             'cycleEmployees' => $cycleEmployees,
             'summary' => [
                 'total_payable' => $payrolls->sum('payable_salary'),
@@ -869,6 +889,16 @@ class EmployeePayrollController extends Controller
                 'current_month_due' => $payrolls
                     ->filter(fn (EmployeePayroll $payroll) => $payroll->salary_month?->isSameMonth(now()))
                     ->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
+                'pending_work_status_count' => $stageRows->where('stage.category', PayrollCategoryService::PENDING_WORK_STATUS)->count(),
+                'salary_ready_count' => $stageRows->where('stage.category', PayrollCategoryService::SALARY_READY)->count(),
+                'total_generated_this_month' => (float) EmployeePayroll::current()
+                    ->whereMonth('salary_month', now()->month)
+                    ->whereYear('salary_month', now()->year)
+                    ->sum('payable_salary'),
+                'total_paid_this_month' => (float) EmployeePayroll::current()
+                    ->whereMonth('payment_date', now()->month)
+                    ->whereYear('payment_date', now()->year)
+                    ->sum('paid_amount'),
             ],
         ];
     }

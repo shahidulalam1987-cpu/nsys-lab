@@ -241,6 +241,61 @@ class EmployeePayroll extends Model
         return Employee::SALARY_SOURCES[$this->salary_source ?: 'client_fund'] ?? 'Client Fund';
     }
 
+    public function reportStatusKey(): string
+    {
+        if ($this->reversed_at) {
+            return 'reversed';
+        }
+
+        if (in_array($this->calculated_status, ['paid', 'partial'], true)) {
+            return $this->calculated_status;
+        }
+
+        if ($this->isFinalSettlementPayroll()) {
+            return 'final_settlement';
+        }
+
+        if (in_array($this->payroll_status, ['draft', 'generated'], true)) {
+            return 'generated';
+        }
+
+        return $this->calculated_status;
+    }
+
+    public function reportStatusLabel(): string
+    {
+        if ($this->reversed_at) {
+            return 'Reversed';
+        }
+
+        if ($this->isFinalSettlementPayroll()) {
+            return 'Final Settlement ' . match ($this->calculated_status) {
+                'paid' => 'Paid',
+                'partial' => 'Partial',
+                default => 'Unpaid',
+            };
+        }
+
+        if ($this->calculated_status === 'paid') {
+            return 'Paid';
+        }
+
+        if ($this->calculated_status === 'partial') {
+            return 'Partially Paid';
+        }
+
+        if (in_array($this->payroll_status, ['draft', 'generated'], true)) {
+            return 'Generated';
+        }
+
+        return match ($this->calculated_status) {
+            'paid' => 'Paid',
+            'partial' => 'Partially Paid',
+            'unpaid' => 'Unpaid',
+            default => ucfirst($this->calculated_status),
+        };
+    }
+
     public function snapshotEmployeeName(): string
     {
         return $this->payroll_employee_name ?: ($this->employee?->name ?: '-');

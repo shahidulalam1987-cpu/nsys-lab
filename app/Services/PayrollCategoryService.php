@@ -35,14 +35,14 @@ class PayrollCategoryService
 
     public const PRIORITY = [
         self::FINAL_SETTLEMENT_UNPAID => 10,
-        self::FINAL_SETTLEMENT_PAID => 20,
-        self::FINAL_SETTLEMENT_PENDING => 30,
-        self::UNPAID => 40,
-        self::GENERATED => 50,
+        self::FINAL_SETTLEMENT_PENDING => 20,
+        self::UNPAID => 30,
+        self::GENERATED => 40,
+        self::SALARY_READY => 50,
+        self::PENDING_WORK_STATUS => 55,
         self::UPCOMING => 60,
-        self::SALARY_READY => 70,
-        self::PENDING_WORK_STATUS => 80,
         self::PAID => 90,
+        self::FINAL_SETTLEMENT_PAID => 90,
         self::NOT_SALARY_ELIGIBLE => 100,
     ];
 
@@ -120,11 +120,17 @@ class PayrollCategoryService
         $isUpcomingWindow = $upcomingSalaryDate
             && $upcomingSalaryDate->betweenIncluded($today, $today->copy()->addDays(5));
 
-        if ($isUpcomingWindow && (! $upcomingPayroll || (float) $upcomingPayroll->paid_amount < (float) $upcomingPayroll->payable_salary)) {
+        if ($isUpcomingWindow && $upcomingPayroll) {
+            $resolved = $this->resolvePayroll($upcomingPayroll);
+            $resolved['payroll'] = $upcomingPayroll;
+
+            return $resolved;
+        }
+
+        if ($isUpcomingWindow) {
             return $this->category(self::UPCOMING, [
-                'payroll' => $upcomingPayroll,
                 'salary_date' => $upcomingSalaryDate,
-                'estimate' => $upcomingPayroll ? null : $this->payrollEstimator->estimateCycle($employee, $upcomingSalaryDate, $client),
+                'estimate' => $this->payrollEstimator->estimateCycle($employee, $upcomingSalaryDate, $client),
             ]);
         }
 
@@ -228,6 +234,41 @@ class PayrollCategoryService
             })
             ->filter()
             ->values();
+    }
+
+    public function employeeStages(?Carbon $today = null): Collection
+    {
+        $today = ($today ?: now())->copy()->startOfDay();
+
+        return Employee::with(['payrolls' => fn ($query) => $query->current(), 'activeAssignments.client'])
+            ->get()
+            ->map(fn (Employee $employee) => [
+                'employee' => $employee,
+                'stage' => $this->resolveEmployee($employee, $today),
+            ])
+            ->filter(fn (array $row) => ($row['stage']['category'] ?? null) !== self::NOT_SALARY_ELIGIBLE)
+            ->values();
+    }
+
+    public function queueCounts(?Carbon $today = null): array
+    {
+        $stages = $this->employeeStages($today);
+        $unpaidCategories = [
+            self::PENDING_WORK_STATUS,
+            self::SALARY_READY,
+            self::GENERATED,
+            self::UNPAID,
+            self::FINAL_SETTLEMENT_PENDING,
+            self::FINAL_SETTLEMENT_UNPAID,
+        ];
+
+        return [
+            'upcoming' => $stages->where('stage.category', self::UPCOMING)->count(),
+            'unpaid' => $stages->filter(fn (array $row) => in_array($row['stage']['category'], $unpaidCategories, true))->count(),
+            'pending_work_status' => $stages->where('stage.category', self::PENDING_WORK_STATUS)->count(),
+            'salary_ready' => $stages->where('stage.category', self::SALARY_READY)->count(),
+            'final_settlement_due' => $stages->filter(fn (array $row) => in_array($row['stage']['category'], [self::FINAL_SETTLEMENT_PENDING, self::FINAL_SETTLEMENT_UNPAID], true))->count(),
+        ];
     }
 
     private function payrollForCycle(Collection $payrolls, ?Carbon $salaryDate): ?EmployeePayroll

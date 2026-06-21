@@ -26,7 +26,7 @@
                 <td>{{ number_format($payroll->payable_salary, 2, '.', '') }}</td>
                 <td>{{ number_format($payroll->paid_amount, 2, '.', '') }}</td>
                 <td>{{ number_format(max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0), 2, '.', '') }}</td>
-                <td>{{ ['upcoming' => 'Upcoming', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'][$payroll->calculated_status] ?? ucfirst($payroll->calculated_status) }}</td>
+                <td>{{ $payroll->reportStatusLabel() }}</td>
                 <td>{{ $payroll->payment_date?->toDateString() ?: '-' }}</td>
             </tr>
         @endforeach

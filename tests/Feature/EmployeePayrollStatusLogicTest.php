@@ -65,7 +65,7 @@ class EmployeePayrollStatusLogicTest extends TestCase
             'status' => 'paid',
         ]);
 
-        $response = $this->actingAs($admin)->get('/admin/payroll?status=paid');
+        $response = $this->actingAs($admin)->get('/admin/salary-month-sheet?status=paid');
 
         $response->assertOk();
         $response->assertSee('Calculated Paid');

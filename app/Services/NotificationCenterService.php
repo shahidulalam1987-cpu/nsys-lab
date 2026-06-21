@@ -110,11 +110,27 @@ class NotificationCenterService
 
     private function employeeAlerts(): array
     {
-        $payrolls = EmployeePayroll::current()->with('employee')->get();
         $upcoming = $this->payrollCategory->upcomingCycles();
-        $unpaid = $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('due') && $payroll->employee?->status !== 'terminated');
-        $finalSettlements = $payrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue());
-        $overdue = $unpaid->filter(fn (EmployeePayroll $payroll) => $payroll->isOverdue());
+        $stages = $this->payrollCategory->employeeStages();
+        $unpaidCategories = [
+            PayrollCategoryService::PENDING_WORK_STATUS,
+            PayrollCategoryService::SALARY_READY,
+            PayrollCategoryService::GENERATED,
+            PayrollCategoryService::UNPAID,
+            PayrollCategoryService::FINAL_SETTLEMENT_PENDING,
+            PayrollCategoryService::FINAL_SETTLEMENT_UNPAID,
+        ];
+        $unpaid = $stages->filter(fn (array $row) => in_array($row['stage']['category'], $unpaidCategories, true));
+        $finalSettlements = $stages->filter(fn (array $row) => in_array($row['stage']['category'], [PayrollCategoryService::FINAL_SETTLEMENT_PENDING, PayrollCategoryService::FINAL_SETTLEMENT_UNPAID], true));
+        $overdue = $unpaid->filter(function (array $row) {
+            $payroll = data_get($row, 'stage.payroll');
+            $salaryDate = data_get($row, 'stage.salary_date') ?: $payroll?->salaryDueDate();
+
+            return $salaryDate && $salaryDate->lt(today());
+        });
+        $dueInFive = $upcoming->filter(fn (array $row) => today()->diffInDays($row['salary_date']) === 5)->count();
+        $dueInThree = $upcoming->filter(fn (array $row) => today()->diffInDays($row['salary_date']) === 3)->count();
+        $dueTomorrow = $upcoming->filter(fn (array $row) => today()->diffInDays($row['salary_date']) === 1)->count();
 
         $employees = Employee::with(['activeAssignments', 'workStatuses' => fn ($query) => $query->whereDate('work_date', today())])
             ->whereIn('status', ['active', 'probation', 'on_leave'])
@@ -127,10 +143,13 @@ class NotificationCenterService
 
         return array_values(array_filter([
             $this->alertIf($upcoming->count(), 'employee.upcoming_salary', 'Employee', 'warning', $upcoming->count() . ' Upcoming Salaries', '/admin/payroll?status=upcoming', 'HR Team'),
-            $this->alertIf($unpaid->count(), 'employee.unpaid_salary', 'Employee', 'critical', $unpaid->count() . ' Unpaid Salaries', '/admin/payroll?status=due', 'HR Team'),
+            $this->alertIf($dueInFive, 'employee.salary_due_5_days', 'Employee', 'information', $dueInFive . ' Salaries Due in 5 Days', '/admin/payroll?status=upcoming', 'HR Team'),
+            $this->alertIf($dueInThree, 'employee.salary_due_3_days', 'Employee', 'warning', $dueInThree . ' Salaries Due in 3 Days', '/admin/payroll?status=upcoming', 'HR Team'),
+            $this->alertIf($dueTomorrow, 'employee.salary_due_tomorrow', 'Employee', 'critical', $dueTomorrow . ' Salaries Due Tomorrow', '/admin/payroll?status=upcoming', 'HR Team'),
+            $this->alertIf($unpaid->count(), 'employee.unpaid_salary', 'Employee', 'critical', $unpaid->count() . ' Unpaid Salary Actions', '/admin/payroll?status=due', 'HR Team'),
             $this->alertIf($overdue->count(), 'employee.salary_overdue', 'Employee', 'critical', $overdue->count() . ' Salary Payments Overdue', '/admin/payroll?status=due', 'HR Team'),
-            $this->alertIf($finalSettlements->count(), 'employee.final_settlement_due', 'Employee', 'critical', $this->finalSettlementMessage($finalSettlements), '/admin/payroll?status=due&employee_scope=terminated', 'HR Team'),
-            $this->alertIf($finalSalaryPending->count(), 'employee.final_salary_pending', 'Employee', 'warning', $this->finalSalaryPendingMessage($finalSalaryPending), '/admin/payroll/create', 'HR Team'),
+            $this->alertIf($finalSettlements->count(), 'employee.final_settlement_due', 'Employee', 'critical', $this->finalSettlementStageMessage($finalSettlements), '/admin/payroll?status=due&employee_scope=terminated', 'HR Team'),
+            $this->alertIf($finalSalaryPending->count(), 'employee.final_salary_pending', 'Employee', 'warning', $this->finalSalaryPendingMessage($finalSalaryPending), '/admin/payroll?status=due&employee_scope=terminated', 'HR Team'),
             $this->alertIf($missingBank->count(), 'employee.missing_bank', 'Employee', 'warning', $missingBank->count() . ' Employees Missing Bank Information', '/admin/employees', 'HR Team'),
             $this->alertIf($onLeave->count(), 'employee.on_leave', 'Employee', 'information', $onLeave->count() . ' Employees On Leave', '/admin/employees?status=on_leave', 'HR Team'),
             $this->alertIf($missingAssignment->count(), 'employee.missing_assignment', 'Employee', 'warning', $missingAssignment->count() . ' Employees Missing Assignment', '/admin/assignments', 'HR Team'),
@@ -282,6 +301,20 @@ class NotificationCenterService
             . ' | Payable: BDT ' . number_format((float) $first->payable_salary, 2)
             . ' | Period: ' . $first->salary_period
             . ' | ' . $first->overdueLabel();
+    }
+
+    private function finalSettlementStageMessage(Collection $stages): string
+    {
+        $payrolls = $stages
+            ->map(fn (array $row) => data_get($row, 'stage.payroll'))
+            ->filter()
+            ->values();
+
+        if ($payrolls->isNotEmpty()) {
+            return $this->finalSettlementMessage($payrolls);
+        }
+
+        return $stages->count() . ' Final Settlements Due';
     }
 
     private function terminatedEmployeesMissingFinalPayroll(): Collection
