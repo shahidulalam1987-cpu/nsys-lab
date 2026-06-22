@@ -72,7 +72,7 @@ class EmployeeSalaryMonthSheetTest extends TestCase
         $response = $this->actingAs($admin)->get('/admin/salary-month-sheet?month=2026-06');
 
         $response->assertOk();
-        $response->assertSee('No generated salary records found for this month.');
+        $response->assertSee('No generated salary records found for the selected month.');
         $response->assertDontSee('<br>Only Salary Day Employee', false);
     }
 
@@ -126,8 +126,8 @@ class EmployeeSalaryMonthSheetTest extends TestCase
         $response->assertDownload('employee-salary-report-2026-06.csv');
 
         $csv = $response->streamedContent();
-        $this->assertStringContainsString('Employee,Client,"Salary Period","Working Days","Payable Salary","Paid Salary","Remaining Due",Status,"Payment Source Status","Payment Date"', $csv);
-        $this->assertStringContainsString('"NSYS-EM-011 CSV Employee","Sheet Client","2026-06-01 to 2026-06-10",10.00,10000.00,10000.00,0.00,Paid,"Legacy Manual Paid",2026-06-15', $csv);
+        $this->assertStringContainsString('Employee,Client,"Salary Month","Salary Period","Working Days","Payable Salary","Paid Salary","Remaining Due",Status,"Payment Source Status","Payment Date"', $csv);
+        $this->assertStringContainsString('"NSYS-EM-011 CSV Employee","Sheet Client",2026-06,"2026-06-01 to 2026-06-10",10.00,10000.00,10000.00,0.00,Paid,"Legacy Manual Paid",2026-06-15', $csv);
     }
 
     public function test_salary_report_classifies_payment_sources_and_exposes_superseded_history(): void
@@ -196,6 +196,55 @@ class EmployeeSalaryMonthSheetTest extends TestCase
         $this->assertSame('legacy_manual_paid', $legacy->fresh()->paymentSourceStatusKey());
         $this->assertSame('finance_ledger_linked', $linked->fresh()->paymentSourceStatusKey());
         $this->assertSame('superseded', $historical->fresh()->paymentSourceStatusKey());
+    }
+
+    public function test_salary_month_and_payment_month_filters_are_independent(): void
+    {
+        $admin = $this->admin();
+        $client = $this->client();
+        $mayEmployee = $this->employee(['name' => 'May Salary Paid June']);
+        $juneEmployee = $this->employee(['name' => 'June Salary Paid July']);
+
+        $this->payroll($mayEmployee, $client, [
+            'salary_month' => '2026-05-01',
+            'salary_period_from' => '2026-05-01',
+            'salary_period_to' => '2026-05-31',
+            'payable_salary' => 5000,
+            'paid_amount' => 5000,
+            'payment_status' => 'paid',
+            'payment_date' => '2026-06-20',
+            'payment_confirmed_at' => '2026-06-20 10:00:00',
+            'paid_at' => '2026-06-20 10:00:00',
+        ]);
+        $this->payroll($juneEmployee, $client, [
+            'salary_month' => '2026-06-01',
+            'salary_period_from' => '2026-06-01',
+            'salary_period_to' => '2026-06-30',
+            'payable_salary' => 6000,
+            'paid_amount' => 6000,
+            'payment_status' => 'paid',
+            'payment_date' => '2026-07-20',
+            'payment_confirmed_at' => '2026-07-20 10:00:00',
+            'paid_at' => '2026-07-20 10:00:00',
+        ]);
+
+        $salaryMay = $this->actingAs($admin)->get('/admin/salary-month-sheet?month=2026-05');
+        $salaryMay->assertOk()->assertSee('<br>May Salary Paid June', false);
+        $salaryMay->assertDontSee('<br>June Salary Paid July', false);
+
+        $paymentJune = $this->actingAs($admin)->get('/admin/salary-month-sheet?payment_month=2026-06');
+        $paymentJune->assertOk()->assertSee('<br>May Salary Paid June', false);
+        $paymentJune->assertDontSee('<br>June Salary Paid July', false);
+
+        $salaryJune = $this->actingAs($admin)->get('/admin/salary-month-sheet?month=2026-06');
+        $salaryJune->assertOk()->assertDontSee('<br>May Salary Paid June', false);
+        $salaryJune->assertSee('<br>June Salary Paid July', false);
+
+        $reset = $this->actingAs($admin)->get('/admin/salary-month-sheet');
+        $reset->assertOk();
+        $reset->assertSee('<br>May Salary Paid June', false);
+        $reset->assertSee('<br>June Salary Paid July', false);
+        $reset->assertSee('Salary Month = the month salary belongs to. Payment Month = the month salary was actually paid.');
     }
 
     private function payroll(Employee $employee, Client $client, array $overrides = [])

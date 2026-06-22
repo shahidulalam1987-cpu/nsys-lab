@@ -10,6 +10,7 @@ class SalaryMonthSheetService
     public function build(array $filters = []): array
     {
         $month = ! empty($filters['month']) ? Carbon::createFromFormat('Y-m', $filters['month'])->startOfMonth() : null;
+        $paymentMonth = ! empty($filters['payment_month']) ? Carbon::createFromFormat('Y-m', $filters['payment_month'])->startOfMonth() : null;
         $historyScope = $filters['history_scope'] ?? 'current';
         $rows = EmployeePayroll::query()
             ->when($historyScope === 'current', fn ($query) => $query->current())
@@ -18,6 +19,13 @@ class SalaryMonthSheetService
             }))
             ->with(['employee', 'client', 'financeAccount', 'financeLedgers'])
             ->when($month, fn ($query) => $query->whereDate('salary_month', $month->toDateString()))
+            ->when($paymentMonth, fn ($query) => $query->where(function ($query) use ($paymentMonth) {
+                $start = $paymentMonth->copy()->startOfMonth();
+                $end = $paymentMonth->copy()->endOfMonth();
+
+                $query->whereBetween('payment_confirmed_at', [$start, $end])
+                    ->orWhereBetween('paid_at', [$start, $end]);
+            }))
             ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
             ->when($filters['client_id'] ?? null, fn ($query, $clientId) => $query->where('client_id', $clientId))
             ->when($filters['salary_source'] ?? null, fn ($query, $salarySource) => $query->where('salary_source', $salarySource))
@@ -47,6 +55,7 @@ class SalaryMonthSheetService
 
         return [
             'month' => $month,
+            'payment_month' => $paymentMonth,
             'rows' => $rows,
             'history_scope' => $historyScope,
             'integrity' => [

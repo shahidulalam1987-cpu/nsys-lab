@@ -9,6 +9,7 @@
         <tr>
             <th>Employee</th>
             <th>Client</th>
+            <th>Salary Month</th>
             <th>Salary Period</th>
             <th>Working Days</th>
             <th>Payable Salary</th>
@@ -22,6 +23,7 @@
             <tr>
                 <td>{{ trim(($payroll->employee?->employee_id ?: '-') . ' ' . ($payroll->employee?->name ?: '')) }}</td>
                 <td>{{ $payroll->client?->company_name ?: '-' }}</td>
+                <td>{{ $payroll->salary_month?->format('Y-m') ?: '-' }}</td>
                 <td>{{ $payroll->salary_period }}</td>
                 <td>{{ $payroll->working_days ?? 0 }}</td>
                 <td>{{ number_format($payroll->payable_salary, 2, '.', '') }}</td>

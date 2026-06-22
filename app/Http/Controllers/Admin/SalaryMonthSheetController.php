@@ -14,6 +14,7 @@ class SalaryMonthSheetController extends Controller
     {
         $filters = $request->validate([
             'month' => ['nullable', 'date_format:Y-m'],
+            'payment_month' => ['nullable', 'date_format:Y-m'],
             'employee_id' => ['nullable', 'exists:employees,id'],
             'client_id' => ['nullable', 'exists:clients,id'],
             'status' => ['nullable', 'in:generated,unpaid,partial,paid,final_settlement,reversed'],
@@ -42,6 +43,7 @@ class SalaryMonthSheetController extends Controller
     {
         $filters = $request->validate([
             'month' => ['nullable', 'date_format:Y-m'],
+            'payment_month' => ['nullable', 'date_format:Y-m'],
             'employee_id' => ['nullable', 'exists:employees,id'],
             'client_id' => ['nullable', 'exists:clients,id'],
             'status' => ['nullable', 'in:generated,unpaid,partial,paid,final_settlement,reversed'],
@@ -59,6 +61,7 @@ class SalaryMonthSheetController extends Controller
             fputcsv($handle, [
                 'Employee',
                 'Client',
+                'Salary Month',
                 'Salary Period',
                 'Working Days',
                 'Payable Salary',
@@ -73,6 +76,7 @@ class SalaryMonthSheetController extends Controller
                 fputcsv($handle, [
                     trim(($payroll->employee?->employee_id ?: '-') . ' ' . ($payroll->employee?->name ?: '')),
                     $payroll->client?->company_name ?: '-',
+                    $payroll->salary_month?->format('Y-m') ?: '-',
                     $payroll->salary_period,
                     $payroll->working_days ?? 0,
                     number_format($payroll->payable_salary, 2, '.', ''),
@@ -94,6 +98,7 @@ class SalaryMonthSheetController extends Controller
     {
         $filters = $request->validate([
             'month' => ['nullable', 'date_format:Y-m'],
+            'payment_month' => ['nullable', 'date_format:Y-m'],
             'employee_id' => ['nullable', 'exists:employees,id'],
             'client_id' => ['nullable', 'exists:clients,id'],
             'status' => ['nullable', 'in:generated,unpaid,partial,paid,final_settlement,reversed'],

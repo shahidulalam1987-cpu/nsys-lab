@@ -5,7 +5,8 @@
 
     <div class="card">
         <form method="GET" action="/admin/salary-month-sheet">
-            <input type="month" name="month" value="{{ request('month') }}">
+            <label>Salary Month<br><input type="month" name="month" value="{{ request('month') }}"></label>
+            <label>Payment Month<br><input type="month" name="payment_month" value="{{ request('payment_month') }}"></label>
 
             <select name="employee_id">
                 <option value="">All Employees</option>
@@ -52,8 +53,9 @@
 
             <button class="btn" type="submit">Filter</button>
             <a href="/admin/salary-month-sheet">Reset</a>
-            <a class="btn" href="/admin/salary-month-sheet/export?{{ http_build_query(request()->only(['month', 'employee_id', 'client_id', 'status', 'salary_source', 'payment_source', 'history_scope'])) }}">Export CSV</a>
-            <a class="btn" href="/admin/salary-month-sheet/export/excel?{{ http_build_query(request()->only(['month', 'employee_id', 'client_id', 'status', 'salary_source', 'payment_source', 'history_scope'])) }}">Export Excel</a>
+            <a class="btn" href="/admin/salary-month-sheet/export?{{ http_build_query(request()->only(['month', 'payment_month', 'employee_id', 'client_id', 'status', 'salary_source', 'payment_source', 'history_scope'])) }}">Export CSV</a>
+            <a class="btn" href="/admin/salary-month-sheet/export/excel?{{ http_build_query(request()->only(['month', 'payment_month', 'employee_id', 'client_id', 'status', 'salary_source', 'payment_source', 'history_scope'])) }}">Export Excel</a>
+            <p style="margin:10px 5px 0;flex-basis:100%;">Salary Month = the month salary belongs to. Payment Month = the month salary was actually paid.</p>
         </form>
     </div>
 
@@ -90,13 +92,14 @@
     </div>
 
     <div class="card">
-        <h2>{{ $month?->format('F Y') ?: 'All Payroll History' }}</h2>
+        <h2>{{ $month ? 'Salary Month: ' . $month->format('F Y') : (request('payment_month') ? 'Payment Month: ' . \Carbon\Carbon::createFromFormat('Y-m', request('payment_month'))->format('F Y') : 'All Payroll History') }}</h2>
 
         <div class="table-wrap">
             <table>
                 <tr>
                     <th>Employee</th>
                     <th>Client</th>
+                    <th>Salary Month</th>
                     <th>Salary Period</th>
                     <th>Working Days</th>
                     <th>Payable Salary (BDT)</th>
@@ -119,6 +122,7 @@
                             @endif
                         </td>
                         <td>{{ $payroll->client?->company_name ?: '-' }}</td>
+                        <td>{{ $payroll->salary_month?->format('F Y') ?: '-' }}</td>
                         <td>{{ $payroll->salary_period }}</td>
                         <td>{{ $payroll->working_days ?? '-' }}</td>
                         <td>BDT {{ number_format($payroll->payable_salary, 2) }}</td>
@@ -152,7 +156,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="11">{{ $month ? 'No generated salary records found for this month.' : 'No salary history found.' }}</td>
+                        <td colspan="12">{{ $month || request('payment_month') ? 'No generated salary records found for the selected month.' : 'No salary history found.' }}</td>
                     </tr>
                 @endforelse
             </table>
