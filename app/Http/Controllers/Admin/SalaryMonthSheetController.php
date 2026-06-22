@@ -18,6 +18,8 @@ class SalaryMonthSheetController extends Controller
             'client_id' => ['nullable', 'exists:clients,id'],
             'status' => ['nullable', 'in:generated,unpaid,partial,paid,final_settlement,reversed'],
             'salary_source' => ['nullable', 'in:' . implode(',', array_keys(Employee::SALARY_SOURCES))],
+            'payment_source' => ['nullable', 'in:finance_ledger_linked,legacy_manual_paid,reversed,superseded'],
+            'history_scope' => ['nullable', 'in:current,historical,all'],
         ]);
 
         $sheet = $salaryMonthSheetService->build($filters);
@@ -31,6 +33,8 @@ class SalaryMonthSheetController extends Controller
             'clients' => Client::orderBy('company_name')->get(),
             'rows' => $sheet['rows'],
             'summary' => $sheet['summary'],
+            'integrity' => $sheet['integrity'],
+            'historyScope' => $sheet['history_scope'],
         ]);
     }
 
@@ -42,6 +46,8 @@ class SalaryMonthSheetController extends Controller
             'client_id' => ['nullable', 'exists:clients,id'],
             'status' => ['nullable', 'in:generated,unpaid,partial,paid,final_settlement,reversed'],
             'salary_source' => ['nullable', 'in:' . implode(',', array_keys(Employee::SALARY_SOURCES))],
+            'payment_source' => ['nullable', 'in:finance_ledger_linked,legacy_manual_paid,reversed,superseded'],
+            'history_scope' => ['nullable', 'in:current,historical,all'],
         ]);
 
         $sheet = $salaryMonthSheetService->build($filters);
@@ -59,6 +65,7 @@ class SalaryMonthSheetController extends Controller
                 'Paid Salary',
                 'Remaining Due',
                 'Status',
+                'Payment Source Status',
                 'Payment Date',
             ]);
 
@@ -72,6 +79,7 @@ class SalaryMonthSheetController extends Controller
                     number_format($payroll->paid_amount, 2, '.', ''),
                     number_format(max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0), 2, '.', ''),
                     $payroll->reportStatusLabel(),
+                    $payroll->paymentSourceStatusLabel(),
                     $payroll->payment_date?->toDateString() ?: '-',
                 ]);
             }
@@ -90,6 +98,8 @@ class SalaryMonthSheetController extends Controller
             'client_id' => ['nullable', 'exists:clients,id'],
             'status' => ['nullable', 'in:generated,unpaid,partial,paid,final_settlement,reversed'],
             'salary_source' => ['nullable', 'in:' . implode(',', array_keys(Employee::SALARY_SOURCES))],
+            'payment_source' => ['nullable', 'in:finance_ledger_linked,legacy_manual_paid,reversed,superseded'],
+            'history_scope' => ['nullable', 'in:current,historical,all'],
         ]);
 
         $sheet = $salaryMonthSheetService->build($filters);

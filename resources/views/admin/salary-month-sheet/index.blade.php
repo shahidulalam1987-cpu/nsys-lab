@@ -37,12 +37,38 @@
                 @endforeach
             </select>
 
+            <select name="payment_source">
+                <option value="">All Payment Sources</option>
+                @foreach(['finance_ledger_linked' => 'Finance Ledger Linked', 'legacy_manual_paid' => 'Legacy Manual Paid', 'reversed' => 'Reversed', 'superseded' => 'Superseded'] as $value => $label)
+                    <option value="{{ $value }}" @selected(request('payment_source') === $value)>{{ $label }}</option>
+                @endforeach
+            </select>
+
+            <select name="history_scope">
+                @foreach(['current' => 'Current Payrolls', 'historical' => 'Historical/Superseded Payrolls', 'all' => 'All Payrolls'] as $value => $label)
+                    <option value="{{ $value }}" @selected(request('history_scope', 'current') === $value)>{{ $label }}</option>
+                @endforeach
+            </select>
+
             <button class="btn" type="submit">Filter</button>
             <a href="/admin/salary-month-sheet">Reset</a>
-            <a class="btn" href="/admin/salary-month-sheet/export?{{ http_build_query(request()->only(['month', 'employee_id', 'client_id', 'status', 'salary_source'])) }}">Export CSV</a>
-            <a class="btn" href="/admin/salary-month-sheet/export/excel?{{ http_build_query(request()->only(['month', 'employee_id', 'client_id', 'status', 'salary_source'])) }}">Export Excel</a>
+            <a class="btn" href="/admin/salary-month-sheet/export?{{ http_build_query(request()->only(['month', 'employee_id', 'client_id', 'status', 'salary_source', 'payment_source', 'history_scope'])) }}">Export CSV</a>
+            <a class="btn" href="/admin/salary-month-sheet/export/excel?{{ http_build_query(request()->only(['month', 'employee_id', 'client_id', 'status', 'salary_source', 'payment_source', 'history_scope'])) }}">Export Excel</a>
         </form>
     </div>
+
+    @if($integrity['legacy_paid_without_ledger_count'] > 0)
+        <a class="card" href="/admin/salary-month-sheet?payment_source=legacy_manual_paid&history_scope=current" style="display:block;text-decoration:none;border-color:var(--warning);">
+            <strong>Integrity Warning</strong>
+            <p style="margin-bottom:0;">Legacy Paid Without Ledger: {{ number_format($integrity['legacy_paid_without_ledger_count']) }} | Amount: BDT {{ number_format($integrity['legacy_paid_without_ledger_amount'], 2) }}</p>
+        </a>
+    @endif
+
+    @if($historyScope === 'all')
+        <div class="card" style="border-color:var(--warning);">
+            Historical payrolls may include regenerated/superseded records and should not be double-counted in current liabilities.
+        </div>
+    @endif
 
     <div class="stats-grid">
         <div class="stat-card">
@@ -77,6 +103,7 @@
                     <th>Paid Salary</th>
                     <th>Remaining Due</th>
                     <th>Status</th>
+                    <th>Payment Source Status</th>
                     <th>Payment Information</th>
                     <th>Payment Date</th>
                 </tr>
@@ -98,6 +125,16 @@
                         <td>BDT {{ number_format($payroll->paid_amount, 2) }}</td>
                         <td>BDT {{ number_format(max($payroll->payable_salary - $payroll->paid_amount, 0), 2) }}</td>
                         <td><span class="badge {{ $payroll->reportStatusKey() === 'paid' ? 'badge-success' : ($payroll->reportStatusKey() === 'reversed' ? 'badge-neutral' : 'badge-warning') }}">{{ $payroll->reportStatusLabel() }}</span></td>
+                        @php
+                            $paymentSourceKey = $payroll->paymentSourceStatusKey();
+                            $paymentSourceClass = match ($paymentSourceKey) {
+                                'finance_ledger_linked' => 'badge-success',
+                                'legacy_manual_paid' => 'badge-warning',
+                                'reversed', 'superseded' => 'badge-neutral',
+                                default => 'badge-info',
+                            };
+                        @endphp
+                        <td><span class="badge {{ $paymentSourceClass }}" title="{{ $payroll->paymentSourceStatusHelp() }}">{{ $payroll->paymentSourceStatusLabel() }}</span></td>
                         <td>
                             <details>
                                 <summary>Payment Information</summary>
@@ -115,7 +152,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="10">{{ $month ? 'No generated salary records found for this month.' : 'No salary history found.' }}</td>
+                        <td colspan="11">{{ $month ? 'No generated salary records found for this month.' : 'No salary history found.' }}</td>
                     </tr>
                 @endforelse
             </table>

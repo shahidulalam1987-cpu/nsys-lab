@@ -15,6 +15,7 @@
             <th>Paid Salary</th>
             <th>Remaining Due</th>
             <th>Status</th>
+            <th>Payment Source Status</th>
             <th>Payment Date</th>
         </tr>
         @foreach($rows as $payroll)
@@ -27,6 +28,7 @@
                 <td>{{ number_format($payroll->paid_amount, 2, '.', '') }}</td>
                 <td>{{ number_format(max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0), 2, '.', '') }}</td>
                 <td>{{ $payroll->reportStatusLabel() }}</td>
+                <td>{{ $payroll->paymentSourceStatusLabel() }}</td>
                 <td>{{ $payroll->payment_date?->toDateString() ?: '-' }}</td>
             </tr>
         @endforeach

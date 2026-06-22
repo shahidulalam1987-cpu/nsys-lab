@@ -10,9 +10,13 @@ class SalaryMonthSheetService
     public function build(array $filters = []): array
     {
         $month = ! empty($filters['month']) ? Carbon::createFromFormat('Y-m', $filters['month'])->startOfMonth() : null;
+        $historyScope = $filters['history_scope'] ?? 'current';
         $rows = EmployeePayroll::query()
-            ->current()
-            ->with(['employee', 'client', 'financeAccount'])
+            ->when($historyScope === 'current', fn ($query) => $query->current())
+            ->when($historyScope === 'historical', fn ($query) => $query->where(function ($query) {
+                $query->where('is_current', false)->orWhereNotNull('superseded_by_id');
+            }))
+            ->with(['employee', 'client', 'financeAccount', 'financeLedgers'])
             ->when($month, fn ($query) => $query->whereDate('salary_month', $month->toDateString()))
             ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
             ->when($filters['client_id'] ?? null, fn ($query, $clientId) => $query->where('client_id', $clientId))
@@ -31,11 +35,24 @@ class SalaryMonthSheetService
 
                 return $payroll->reportStatusKey() === $filters['status'];
             })
+            ->filter(fn (EmployeePayroll $payroll) => empty($filters['payment_source'])
+                || $payroll->paymentSourceStatusKey() === $filters['payment_source'])
             ->values();
+
+        $legacyPaid = EmployeePayroll::query()
+            ->current()
+            ->with('financeLedgers')
+            ->get()
+            ->filter(fn (EmployeePayroll $payroll) => $payroll->paymentSourceStatusKey() === 'legacy_manual_paid');
 
         return [
             'month' => $month,
             'rows' => $rows,
+            'history_scope' => $historyScope,
+            'integrity' => [
+                'legacy_paid_without_ledger_count' => $legacyPaid->count(),
+                'legacy_paid_without_ledger_amount' => (float) $legacyPaid->sum('paid_amount'),
+            ],
             'summary' => [
                 'total_salary_records' => $rows->count(),
                 'total_payable_salary' => $rows->sum('payable_salary'),

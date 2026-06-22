@@ -296,6 +296,54 @@ class EmployeePayroll extends Model
         };
     }
 
+    public function paymentSourceStatusKey(): string
+    {
+        if ($this->reversed_at) {
+            return 'reversed';
+        }
+
+        if ($this->is_current === false || $this->superseded_by_id) {
+            return 'superseded';
+        }
+
+        if ($this->hasSalaryPaymentLedger()) {
+            return 'finance_ledger_linked';
+        }
+
+        if ($this->calculated_status === 'paid') {
+            return 'legacy_manual_paid';
+        }
+
+        return 'not_paid';
+    }
+
+    public function paymentSourceStatusLabel(): string
+    {
+        return [
+            'finance_ledger_linked' => 'Finance Ledger Linked',
+            'legacy_manual_paid' => 'Legacy Manual Paid',
+            'reversed' => 'Reversed',
+            'superseded' => 'Superseded History',
+            'not_paid' => 'Not Paid',
+        ][$this->paymentSourceStatusKey()] ?? 'Not Paid';
+    }
+
+    public function paymentSourceStatusHelp(): string
+    {
+        return $this->paymentSourceStatusKey() === 'legacy_manual_paid'
+            ? 'This salary was marked paid before finance ledger integration or without payment source.'
+            : $this->paymentSourceStatusLabel();
+    }
+
+    public function hasSalaryPaymentLedger(): bool
+    {
+        if ($this->relationLoaded('financeLedgers')) {
+            return $this->financeLedgers->contains('transaction_type', 'salary_payment');
+        }
+
+        return $this->financeLedgers()->where('transaction_type', 'salary_payment')->exists();
+    }
+
     public function snapshotEmployeeName(): string
     {
         return $this->payroll_employee_name ?: ($this->employee?->name ?: '-');
