@@ -585,6 +585,11 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $client = $this->client();
         $employee = $this->employee(['salary_day' => 12]);
         $this->payroll($employee, $client, [
+            'salary_month' => '2026-05-01',
+            'salary_period_from' => '2026-05-01',
+            'salary_period_to' => '2026-05-31',
+            'from_date' => '2026-05-01',
+            'to_date' => '2026-05-31',
             'payable_salary' => 30000,
             'paid_amount' => 30000,
             'payment_status' => 'paid',
@@ -707,12 +712,22 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $client = $this->client();
         $employee = $this->employee(['salary_day' => 12]);
         $old = $this->payroll($employee, $client, [
+            'salary_month' => '2026-05-01',
+            'salary_period_from' => '2026-05-01',
+            'salary_period_to' => '2026-05-31',
+            'from_date' => '2026-05-01',
+            'to_date' => '2026-05-31',
             'payable_salary' => 30000,
             'paid_amount' => 0,
             'payment_status' => 'unpaid',
             'is_current' => false,
         ]);
         $current = $this->payroll($employee, $client, [
+            'salary_month' => '2026-05-01',
+            'salary_period_from' => '2026-05-01',
+            'salary_period_to' => '2026-05-31',
+            'from_date' => '2026-05-01',
+            'to_date' => '2026-05-31',
             'payable_salary' => 30000,
             'paid_amount' => 30000,
             'payment_status' => 'paid',
@@ -748,7 +763,15 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         ]);
 
         $paid = $this->employee(['name' => 'Exclusive Paid', 'salary_day' => 1]);
-        $this->payroll($paid, $client, ['paid_amount' => 30000, 'payment_status' => 'paid']);
+        $this->payroll($paid, $client, [
+            'salary_month' => '2026-05-01',
+            'salary_period_from' => '2026-05-01',
+            'salary_period_to' => '2026-05-31',
+            'from_date' => '2026-05-01',
+            'to_date' => '2026-05-31',
+            'paid_amount' => 30000,
+            'payment_status' => 'paid',
+        ]);
 
         $finalPending = $this->employee([
             'name' => 'Exclusive Final Pending',
@@ -895,6 +918,136 @@ class EmployeeSalaryCycleStatusTest extends TestCase
 
         $this->assertSame('2026-06-16', $employee->currentSalaryDueDate()?->toDateString());
         $this->assertSame('2026-06-16', $employee->nextSalaryDate()?->toDateString());
+    }
+
+    public function test_paid_may_payroll_due_in_june_resolves_as_paid_for_june_cycle(): void
+    {
+        Carbon::setTestNow('2026-06-22');
+
+        $admin = $this->admin();
+        $client = $this->client();
+        $employee = $this->employee([
+            'name' => 'Farzana Style Paid Employee',
+            'confirmation_date' => '2026-05-16',
+            'salary_day' => 16,
+            'monthly_salary' => 5000,
+        ]);
+        $payroll = $this->payroll($employee, $client, [
+            'salary_month' => '2026-05-01',
+            'salary_period_from' => '2026-05-01',
+            'salary_period_to' => '2026-05-31',
+            'from_date' => '2026-05-01',
+            'to_date' => '2026-05-31',
+            'payable_salary' => 5000,
+            'paid_amount' => 5000,
+            'payment_status' => 'paid',
+            'payroll_status' => 'paid',
+        ]);
+
+        $category = app(PayrollCategoryService::class)->resolveEmployee($employee);
+
+        $this->assertSame('2026-06-16', $payroll->salaryDueDate()?->toDateString());
+        $this->assertTrue($payroll->matchesSalaryCycleDate(Carbon::parse('2026-06-16')));
+        $this->assertSame('paid', $employee->salaryCycleStatus());
+        $this->assertSame(PayrollCategoryService::PAID, $category['category']);
+        $this->assertSame($payroll->id, $category['payroll']->id);
+
+        $this->actingAs($admin)->get('/admin/payroll?status=due')
+            ->assertOk()
+            ->assertDontSee('/admin/employees/' . $employee->id, false);
+        $this->actingAs($admin)->get('/admin/employees/' . $employee->id)
+            ->assertOk()
+            ->assertSee('<strong>Salary Status:</strong> Paid', false)
+            ->assertSee('BDT 5,000.00');
+    }
+
+    public function test_unpaid_may_payroll_due_in_june_resolves_as_unpaid(): void
+    {
+        Carbon::setTestNow('2026-06-22');
+
+        $client = $this->client();
+        $employee = $this->employee([
+            'confirmation_date' => '2026-05-16',
+            'salary_day' => 16,
+            'monthly_salary' => 5000,
+        ]);
+        $payroll = $this->payroll($employee, $client, [
+            'salary_month' => '2026-05-01',
+            'salary_period_from' => '2026-05-01',
+            'salary_period_to' => '2026-05-31',
+            'from_date' => '2026-05-01',
+            'to_date' => '2026-05-31',
+            'payable_salary' => 5000,
+            'paid_amount' => 0,
+            'payment_status' => 'unpaid',
+            'payroll_status' => 'approved',
+        ]);
+
+        $category = app(PayrollCategoryService::class)->resolveEmployee($employee);
+
+        $this->assertTrue($payroll->matchesSalaryCycleDate(Carbon::parse('2026-06-16')));
+        $this->assertSame(PayrollCategoryService::UNPAID, $category['category']);
+        $this->assertSame($payroll->id, $category['payroll']->id);
+    }
+
+    public function test_paid_payroll_with_different_due_date_does_not_suppress_current_cycle(): void
+    {
+        Carbon::setTestNow('2026-06-22');
+
+        $client = $this->client();
+        $employee = $this->employee([
+            'confirmation_date' => '2026-04-16',
+            'salary_day' => 16,
+            'monthly_salary' => 5000,
+        ]);
+        $oldPayroll = $this->payroll($employee, $client, [
+            'salary_month' => '2026-04-01',
+            'salary_period_from' => '2026-04-01',
+            'salary_period_to' => '2026-04-30',
+            'from_date' => '2026-04-01',
+            'to_date' => '2026-04-30',
+            'payable_salary' => 5000,
+            'paid_amount' => 5000,
+            'payment_status' => 'paid',
+            'payroll_status' => 'paid',
+        ]);
+        $this->workStatus($employee, null, '2026-06-16', 'working');
+
+        $category = app(PayrollCategoryService::class)->resolveEmployee($employee);
+
+        $this->assertSame('2026-05-16', $oldPayroll->salaryDueDate()?->toDateString());
+        $this->assertFalse($oldPayroll->matchesSalaryCycleDate(Carbon::parse('2026-06-16')));
+        $this->assertSame(PayrollCategoryService::SALARY_READY, $category['category']);
+    }
+
+    public function test_superseded_paid_payroll_does_not_satisfy_cycle_match(): void
+    {
+        Carbon::setTestNow('2026-06-22');
+
+        $client = $this->client();
+        $employee = $this->employee([
+            'confirmation_date' => '2026-05-16',
+            'salary_day' => 16,
+            'monthly_salary' => 5000,
+        ]);
+        $superseded = $this->payroll($employee, $client, [
+            'salary_month' => '2026-05-01',
+            'salary_period_from' => '2026-05-01',
+            'salary_period_to' => '2026-05-31',
+            'from_date' => '2026-05-01',
+            'to_date' => '2026-05-31',
+            'payable_salary' => 5000,
+            'paid_amount' => 5000,
+            'payment_status' => 'paid',
+            'payroll_status' => 'paid',
+            'is_current' => false,
+        ]);
+        $this->workStatus($employee, null, '2026-06-16', 'working');
+
+        $category = app(PayrollCategoryService::class)->resolveEmployee($employee);
+
+        $this->assertFalse($superseded->matchesSalaryCycleDate(Carbon::parse('2026-06-16')));
+        $this->assertSame(PayrollCategoryService::SALARY_READY, $category['category']);
     }
 
     public function test_work_status_before_confirmation_is_ignored_and_after_confirmation_is_counted(): void
@@ -1222,6 +1375,11 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         ]);
 
         $this->payroll($employee, $client, [
+            'salary_month' => '2026-05-01',
+            'salary_period_from' => '2026-05-01',
+            'salary_period_to' => '2026-05-31',
+            'from_date' => '2026-05-01',
+            'to_date' => '2026-05-31',
             'payable_salary' => 10000,
             'paid_amount' => 10000,
             'payment_status' => 'paid',

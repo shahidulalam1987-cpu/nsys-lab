@@ -293,7 +293,7 @@ class Employee extends Model
         }
 
         $today = ($today ?: now())->copy()->startOfDay();
-        $payroll = $this->payrollForSalaryMonth($this->currentSalaryDueDate($today)?->copy()->startOfMonth());
+        $payroll = $this->payrollForSalaryCycle($this->currentSalaryDueDate($today));
 
         if ($payroll) {
             $paymentStatus = EmployeePayroll::statusFor((float) $payroll->payable_salary, (float) $payroll->paid_amount);
@@ -366,23 +366,20 @@ class Employee extends Model
         });
     }
 
-    private function payrollForSalaryMonth(?Carbon $month): ?EmployeePayroll
+    private function payrollForSalaryCycle(?Carbon $salaryDate): ?EmployeePayroll
     {
-        if (! $month) {
+        if (! $salaryDate) {
             return null;
         }
 
-        if ($this->relationLoaded('payrolls')) {
-            return $this->payrolls
-                ->filter(fn (EmployeePayroll $payroll) => $payroll->is_current && $payroll->salary_month?->toDateString() === $month->toDateString())
-                ->sortByDesc('id')
-                ->first();
-        }
+        $payrolls = $this->relationLoaded('payrolls')
+            ? $this->payrolls
+            : $this->payrolls()->current()->get();
 
-        return $this->payrolls()
-            ->current()
-            ->whereDate('salary_month', $month->toDateString())
-            ->latest()
+        return $payrolls
+            ->each(fn (EmployeePayroll $payroll) => $payroll->setRelation('employee', $this))
+            ->filter(fn (EmployeePayroll $payroll) => $payroll->matchesSalaryCycleDate($salaryDate))
+            ->sortByDesc('id')
             ->first();
     }
 }

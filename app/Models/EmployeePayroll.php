@@ -344,6 +344,20 @@ class EmployeePayroll extends Model
         return $this->financeLedgers()->where('transaction_type', 'salary_payment')->exists();
     }
 
+    public function matchesSalaryCycleDate(\Carbon\Carbon $calculatedSalaryDate): bool
+    {
+        if ($this->is_current === false || $this->superseded_by_id || $this->reversed_at) {
+            return false;
+        }
+
+        $dueDate = $this->salaryDueDate();
+        if ($dueDate) {
+            return $dueDate->isSameDay($calculatedSalaryDate);
+        }
+
+        return $this->salary_month?->isSameMonth($calculatedSalaryDate) ?? false;
+    }
+
     public function snapshotEmployeeName(): string
     {
         return $this->payroll_employee_name ?: ($this->employee?->name ?: '-');

@@ -288,10 +288,8 @@ class PayrollCategoryService
             return null;
         }
 
-        $cycleMonth = $salaryDate->copy()->startOfMonth()->toDateString();
-
         return $payrolls
-            ->first(fn (EmployeePayroll $payroll) => $payroll->salary_month?->copy()->startOfMonth()->toDateString() === $cycleMonth);
+            ->first(fn (EmployeePayroll $payroll) => $payroll->matchesSalaryCycleDate($salaryDate));
     }
 
     private function category(string $category, array $context = []): array
