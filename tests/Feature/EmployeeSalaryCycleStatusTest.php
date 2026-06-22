@@ -1020,6 +1020,74 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $this->assertSame(PayrollCategoryService::SALARY_READY, $category['category']);
     }
 
+    public function test_legacy_paid_payroll_uses_salary_month_instead_of_future_computed_due_date(): void
+    {
+        Carbon::setTestNow('2026-06-22');
+
+        $admin = $this->admin();
+        $client = $this->client();
+        $employee = $this->employee([
+            'employee_id' => 'NSYS-EM-001',
+            'name' => 'Legacy Paid Employee',
+            'confirmation_date' => '2026-05-06',
+            'salary_day' => 6,
+            'monthly_salary' => 5000,
+        ]);
+        $payroll = $this->payroll($employee, $client, [
+            'salary_month' => '2026-06-01',
+            'salary_period_from' => '2026-06-01',
+            'salary_period_to' => '2026-06-30',
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-30',
+            'payable_salary' => 5000,
+            'paid_amount' => 5000,
+            'payment_date' => '2026-06-07',
+            'payment_status' => 'paid',
+            'payroll_status' => 'approved',
+        ]);
+
+        $category = app(PayrollCategoryService::class)->resolveEmployee($employee);
+
+        $this->assertSame('2026-07-06', $payroll->salaryDueDate()?->toDateString());
+        $this->assertTrue($payroll->matchesSalaryCycleDate(Carbon::parse('2026-06-06')));
+        $this->assertFalse($payroll->matchesSalaryCycleDate(Carbon::parse('2026-07-06')));
+        $this->assertSame(PayrollCategoryService::PAID, $category['category']);
+        $this->assertSame($payroll->id, $category['payroll']->id);
+
+        $this->actingAs($admin)->get('/admin/payroll?status=due')
+            ->assertOk()
+            ->assertDontSee('/admin/employees/' . $employee->id, false);
+    }
+
+    public function test_legacy_paid_payroll_does_not_suppress_the_following_cycle(): void
+    {
+        Carbon::setTestNow('2026-07-22');
+
+        $client = $this->client();
+        $employee = $this->employee([
+            'confirmation_date' => '2026-05-06',
+            'salary_day' => 6,
+            'monthly_salary' => 5000,
+        ]);
+        $payroll = $this->payroll($employee, $client, [
+            'salary_month' => '2026-06-01',
+            'salary_period_from' => '2026-06-01',
+            'salary_period_to' => '2026-06-30',
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-30',
+            'payable_salary' => 5000,
+            'paid_amount' => 5000,
+            'payment_date' => '2026-06-07',
+            'payment_status' => 'paid',
+            'payroll_status' => 'approved',
+        ]);
+
+        $category = app(PayrollCategoryService::class)->resolveEmployee($employee);
+
+        $this->assertFalse($payroll->matchesSalaryCycleDate(Carbon::parse('2026-07-06')));
+        $this->assertSame(PayrollCategoryService::PENDING_WORK_STATUS, $category['category']);
+    }
+
     public function test_superseded_paid_payroll_does_not_satisfy_cycle_match(): void
     {
         Carbon::setTestNow('2026-06-22');

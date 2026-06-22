@@ -350,12 +350,38 @@ class EmployeePayroll extends Model
             return false;
         }
 
+        // Older manually paid payrolls were stored against the salary month while
+        // their full-month period makes salaryDueDate() fall in the following month.
+        // Treat the stored month as canonical so one payroll cannot match both cycles.
+        if ($this->usesLegacyHandledSalaryMonth()) {
+            return $this->salary_month->isSameMonth($calculatedSalaryDate);
+        }
+
         $dueDate = $this->salaryDueDate();
         if ($dueDate) {
             return $dueDate->isSameDay($calculatedSalaryDate);
         }
 
         return $this->salary_month?->isSameMonth($calculatedSalaryDate) ?? false;
+    }
+
+    private function usesLegacyHandledSalaryMonth(): bool
+    {
+        if (! $this->salary_month || ! $this->salary_period_to) {
+            return false;
+        }
+
+        if (self::statusFor((float) $this->payable_salary, (float) $this->paid_amount) !== 'paid') {
+            return false;
+        }
+
+        $handledAt = $this->payment_confirmed_at
+            ?: $this->paid_at
+            ?: $this->payment_date;
+
+        return $handledAt
+            && $this->salary_month->isSameMonth($this->salary_period_to)
+            && $handledAt->copy()->startOfDay()->lte($this->salary_period_to->copy()->endOfDay());
     }
 
     public function snapshotEmployeeName(): string
