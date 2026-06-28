@@ -376,6 +376,19 @@
                             $workStatusQuery,
                             fn ($value) => $value !== null && $value !== ''
                         ));
+                        $generateSalaryQuery = [
+                            'employee_id' => $cycleEmployee->id,
+                            'client_id' => $activeAssignment?->client_id,
+                            'salary_date' => $cycleSalaryDate?->toDateString(),
+                            'cycle_start' => data_get($cycleEstimate, 'salary_period_start')?->toDateString(),
+                            'cycle_end' => data_get($cycleEstimate, 'salary_period_end')?->toDateString(),
+                            'calculation_type' => 'date_to_date',
+                            'use_work_status' => 1,
+                        ];
+                        $generateSalaryUrl = '/admin/payroll/create?' . http_build_query(array_filter(
+                            $generateSalaryQuery,
+                            fn ($value) => $value !== null && $value !== ''
+                        ));
                     @endphp
                     <tr>
                         <td>
@@ -406,7 +419,7 @@
                         </td>
                         <td>
                             @if($canGenerateCycleSalary)
-                                <a class="btn" href="/admin/payroll/create">{{ $cycleEmployee->status === 'terminated' ? 'Generate Final Salary' : 'Generate Salary' }}</a>
+                                <a class="btn" href="{{ $generateSalaryUrl }}">{{ $cycleEmployee->status === 'terminated' ? 'Generate Final Salary' : 'Generate Salary' }}</a>
                             @else
                                 <a class="btn" href="{{ $addWorkStatusUrl }}">Add Work Status</a>
                             @endif

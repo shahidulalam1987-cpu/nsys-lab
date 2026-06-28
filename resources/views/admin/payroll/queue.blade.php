@@ -117,7 +117,18 @@
                                 @endphp
                                 <a class="btn" href="/admin/work-status/create?{{ http_build_query(array_filter($query)) }}">Add Work Status</a>
                             @elseif(in_array($category, [\App\Services\PayrollCategoryService::SALARY_READY, \App\Services\PayrollCategoryService::FINAL_SETTLEMENT_PENDING], true))
-                                <a class="btn" href="/admin/payroll/create">{{ $employee->status === 'terminated' ? 'Generate Final Salary' : 'Generate Salary' }}</a>
+                                @php
+                                    $generateQuery = [
+                                        'employee_id' => $employee->id,
+                                        'client_id' => $client?->id,
+                                        'salary_date' => $salaryDate?->toDateString(),
+                                        'cycle_start' => data_get($estimate, 'salary_period_start')?->toDateString(),
+                                        'cycle_end' => data_get($estimate, 'salary_period_end')?->toDateString(),
+                                        'calculation_type' => 'date_to_date',
+                                        'use_work_status' => 1,
+                                    ];
+                                @endphp
+                                <a class="btn" href="/admin/payroll/create?{{ http_build_query(array_filter($generateQuery, fn ($value) => $value !== null && $value !== '')) }}">{{ $employee->status === 'terminated' ? 'Generate Final Salary' : 'Generate Salary' }}</a>
                             @elseif($payroll)
                                 <a href="/admin/payroll/{{ $payroll->id }}">View</a> |
                                 <a href="/admin/payroll/{{ $payroll->id }}/edit">Edit</a>

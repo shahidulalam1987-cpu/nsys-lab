@@ -1302,6 +1302,114 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertDontSee('Unpaid Salary Due');
     }
 
+    public function test_salary_ready_quick_action_includes_cycle_context_and_prefills_salary_form(): void
+    {
+        Carbon::setTestNow('2026-06-22');
+
+        $admin = $this->admin();
+        $client = $this->client();
+        $employee = $this->employee([
+            'name' => 'Quick Salary Employee',
+            'confirmation_date' => '2026-05-20',
+            'salary_day' => 20,
+        ]);
+        $this->assignment($employee, $client);
+        $this->workStatus($employee, $client, '2026-06-01', 'working');
+
+        $queue = $this->actingAs($admin)->get('/admin/payroll?status=due');
+
+        $queue->assertOk();
+        $queue->assertSee('employee_id=' . $employee->id, false);
+        $queue->assertSee('client_id=' . $client->id, false);
+        $queue->assertSee('salary_date=2026-06-20', false);
+        $queue->assertSee('cycle_start=2026-05-20', false);
+        $queue->assertSee('cycle_end=2026-06-20', false);
+        $queue->assertSee('use_work_status=1', false);
+
+        $form = $this->actingAs($admin)->get('/admin/payroll/create?' . http_build_query([
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'salary_date' => '2026-06-20',
+            'cycle_start' => '2026-05-20',
+            'cycle_end' => '2026-06-20',
+            'calculation_type' => 'date_to_date',
+            'use_work_status' => 1,
+        ]));
+
+        $form->assertOk();
+        $form->assertSee('Salary Cycle Setup');
+        $form->assertSee('Quick Salary Employee');
+        $form->assertSee('Cycle Client');
+        $form->assertSee('value="2026-05-20"', false);
+        $form->assertSee('value="2026-06-20"', false);
+        $form->assertSee('id="use_work_status_records" value="1" checked', false);
+        $form->assertSee('value="' . $employee->id . '" data-salary="30000" selected', false);
+    }
+
+    public function test_salary_quick_action_supports_agency_employee_without_client(): void
+    {
+        Carbon::setTestNow('2026-06-22');
+
+        $admin = $this->admin();
+        $employee = $this->employee([
+            'name' => 'Agency Payroll Employee',
+            'employee_type' => 'agency_internal',
+            'salary_source' => 'agency_fund',
+            'confirmation_date' => '2026-05-20',
+            'salary_day' => 20,
+        ]);
+        $this->workStatus($employee, null, '2026-06-01', 'working');
+
+        $response = $this->actingAs($admin)->get('/admin/payroll/create?' . http_build_query([
+            'employee_id' => $employee->id,
+            'salary_date' => '2026-06-20',
+            'cycle_start' => '2026-05-20',
+            'cycle_end' => '2026-06-20',
+            'calculation_type' => 'date_to_date',
+            'use_work_status' => 1,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('Agency Payroll Employee');
+        $response->assertSee('No Client / Agency Payroll');
+        $response->assertSee('Salary Preview');
+    }
+
+    public function test_existing_cycle_payroll_disables_quick_salary_generation(): void
+    {
+        Carbon::setTestNow('2026-06-22');
+
+        $admin = $this->admin();
+        $client = $this->client();
+        $employee = $this->employee([
+            'confirmation_date' => '2026-05-20',
+            'salary_day' => 20,
+        ]);
+        $payroll = $this->payroll($employee, $client, [
+            'salary_month' => '2026-05-01',
+            'salary_period_from' => '2026-05-01',
+            'salary_period_to' => '2026-05-31',
+            'from_date' => '2026-05-01',
+            'to_date' => '2026-05-31',
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/payroll/create?' . http_build_query([
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'salary_date' => '2026-06-20',
+            'cycle_start' => '2026-05-20',
+            'cycle_end' => '2026-06-20',
+            'calculation_type' => 'date_to_date',
+            'use_work_status' => 1,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('Salary already generated for this cycle.');
+        $response->assertSee('/admin/payroll/' . $payroll->id, false);
+        $response->assertSee('Save Salary');
+        $response->assertSee('disabled', false);
+    }
+
     public function test_generated_unpaid_payroll_appears_only_in_unpaid_section(): void
     {
         Carbon::setTestNow('2026-06-19');

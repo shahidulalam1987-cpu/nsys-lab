@@ -284,12 +284,55 @@
         }
     </style>
 
-    @php($activeMode = old('generation_mode', ($workStatusPreviewRows !== null ? 'work_status' : 'work_status')))
+    @php
+        $quickSalaryContext = $quickSalaryContext ?? null;
+        $duplicateCyclePayroll = $duplicateCyclePayroll ?? null;
+        $activeMode = old('generation_mode', 'work_status');
+        $quickEmployeeId = data_get($quickSalaryContext, 'employee.id');
+        $quickClientId = data_get($quickSalaryContext, 'client_id');
+        $quickCycleStart = data_get($quickSalaryContext, 'cycle_start')?->toDateString();
+        $quickCycleEnd = data_get($quickSalaryContext, 'cycle_end')?->toDateString();
+        $quickSalaryDate = data_get($quickSalaryContext, 'salary_date')?->toDateString();
+        $quickSalaryMonth = $quickCycleStart ? \Carbon\Carbon::parse($quickCycleStart)->format('Y-m') : ($quickSalaryDate ? \Carbon\Carbon::parse($quickSalaryDate)->format('Y-m') : now()->format('Y-m'));
+    @endphp
 
     <div class="mode-tabs">
         <button class="mode-tab {{ $activeMode === 'work_status' ? 'active-mode' : '' }}" type="button" data-mode-target="work_status">Generate From Work Status</button>
         <button class="mode-tab {{ $activeMode === 'manual' ? 'active-mode' : '' }}" type="button" data-mode-target="manual">Manual Date-to-Date</button>
     </div>
+
+    @if($quickSalaryContext)
+        @php($assignment = data_get($quickSalaryContext, 'assignment'))
+        @php($lastPayroll = data_get($quickSalaryContext, 'last_payroll'))
+        <div class="card" style="margin-top:16px;">
+            <h2 style="margin-top:0;">Salary Cycle Setup</h2>
+            <div class="salary-form-grid calculation-grid">
+                <p><strong>Employee</strong><br>{{ data_get($quickSalaryContext, 'employee.name') }} ({{ data_get($quickSalaryContext, 'employee.employee_id') }})</p>
+                <p><strong>Client</strong><br>{{ $assignment?->client?->company_name ?: 'No Client / Agency Payroll' }}</p>
+                <p><strong>Page</strong><br>{{ $assignment?->page?->page_name ?: '-' }}</p>
+                <p><strong>Campaign</strong><br>{{ $assignment?->campaignRecord?->campaign_name ?: ($assignment?->campaign ?: '-') }}</p>
+                <p><strong>Shift</strong><br>{{ $assignment?->shift?->name ?: data_get($quickSalaryContext, 'employee.shift.name', '-') }}</p>
+                <p><strong>Salary Source</strong><br>{{ data_get($quickSalaryContext, 'employee')->salarySourceLabel() }}</p>
+                <p><strong>Cycle</strong><br>{{ $quickCycleStart ?: '-' }} to {{ $quickCycleEnd ?: '-' }}</p>
+                <p><strong>Salary Date</strong><br>{{ $quickSalaryDate ?: '-' }}</p>
+            </div>
+
+            @if($lastPayroll)
+                <div style="margin-top:12px;color:var(--muted);">
+                    <strong style="color:var(--text);">Last Payroll:</strong>
+                    #{{ $lastPayroll->id }} · {{ $lastPayroll->salary_period }} · {{ $lastPayroll->reportStatusLabel() }} ·
+                    {{ (float)$lastPayroll->paid_amount >= (float)$lastPayroll->payable_salary ? 'Paid' : 'Unpaid' }}
+                </div>
+            @endif
+        </div>
+    @endif
+
+    @if($duplicateCyclePayroll)
+        <div class="card" style="margin-top:16px;border-color:#f59e0b;color:#fcd34d;">
+            <strong>Salary already generated for this cycle.</strong>
+            <a class="btn" href="/admin/payroll/{{ $duplicateCyclePayroll->id }}" style="margin-left:10px;">View Existing Salary</a>
+        </div>
+    @endif
 
     <div class="card salary-mode-panel" id="work-status-mode-card" style="margin-top:20px;">
         <h2>Generate From Work Status</h2>
@@ -299,6 +342,10 @@
             @csrf
             <input type="hidden" name="generation_mode" value="work_status">
             <input type="hidden" name="work_status_action" value="preview">
+            <input type="hidden" name="salary_date" value="{{ $quickSalaryDate }}">
+            <input type="hidden" name="cycle_start" value="{{ $quickCycleStart }}">
+            <input type="hidden" name="cycle_end" value="{{ $quickCycleEnd }}">
+            @if($quickSalaryContext)<input type="hidden" name="return_to" value="/admin/payroll?status=due">@endif
 
             <div class="salary-section">
                 <h2>Preview Setup</h2>
@@ -318,7 +365,7 @@
                     </p>
                     <p class="salary-field">Client<br>
                         <select name="client_id">
-                            <option value="">All Clients</option>
+                            <option value="">{{ data_get($quickSalaryContext, 'employee')?->isAgencyInternal() ? 'No Client / Agency Payroll' : 'All Clients' }}</option>
                             @foreach($clients as $client)
                                 <option value="{{ $client->id }}" {{ (string) old('client_id', $workStatusFilters['client_id'] ?? '') === (string) $client->id ? 'selected' : '' }}>
                                     {{ $client->company_name }}
@@ -340,6 +387,10 @@
                 <input type="hidden" name="generation_mode" value="work_status">
                 <input type="hidden" name="work_status_action" value="generate">
                 <input type="hidden" name="salary_month" value="{{ $workStatusFilters['salary_month'] }}">
+                <input type="hidden" name="salary_date" value="{{ $workStatusFilters['salary_date'] ?? '' }}">
+                <input type="hidden" name="cycle_start" value="{{ $workStatusFilters['cycle_start'] ?? '' }}">
+                <input type="hidden" name="cycle_end" value="{{ $workStatusFilters['cycle_end'] ?? '' }}">
+                @if($quickSalaryContext || data_get($workStatusFilters, 'return_to'))<input type="hidden" name="return_to" value="/admin/payroll?status=due">@endif
 
                 <div class="salary-section">
                     <h2>Salary Preview</h2>
@@ -365,8 +416,8 @@
                                         <input type="hidden" name="rows[{{ $index }}][employee_id]" value="{{ $row['employee']->id }}">
                                     </td>
                                     <td>
-                                        {{ $row['client']->company_name }}
-                                        <input type="hidden" name="rows[{{ $index }}][client_id]" value="{{ $row['client']->id }}">
+                                        {{ $row['client']?->company_name ?: 'No Client / Agency Payroll' }}
+                                        <input type="hidden" name="rows[{{ $index }}][client_id]" value="{{ $row['client']?->id }}">
                                     </td>
                                     <td>{{ number_format($row['working_count'], 2) }}</td>
                                     <td>
@@ -404,7 +455,7 @@
                     </div>
                     @if(count($workStatusPreviewRows) > 0)
                         <div class="salary-actions">
-                            <button class="btn" type="submit">Generate Salary</button>
+                            <button class="btn" type="submit" {{ $duplicateCyclePayroll ? 'disabled' : '' }}>Generate Salary</button>
                         </div>
                     @endif
                 </div>
@@ -418,6 +469,7 @@
         <form method="POST" action="/admin/payroll" id="salary-generate-form" enctype="multipart/form-data">
             @csrf
             <input type="hidden" name="generation_mode" value="manual">
+            @if($quickSalaryContext)<input type="hidden" name="return_to" value="/admin/payroll?status=due">@endif
 
             <div class="salary-section">
                 <h2>Salary Setup</h2>
@@ -426,7 +478,7 @@
                         <select name="employee_id" id="employee_id" class="employee-payment-select" required>
                             <option value="" data-salary="0">Select Employee</option>
                             @foreach($employees as $employee)
-                                <option value="{{ $employee->id }}" data-salary="{{ (float) $employee->monthly_salary }}" {{ old('employee_id') == $employee->id ? 'selected' : '' }}>
+                                <option value="{{ $employee->id }}" data-salary="{{ (float) $employee->monthly_salary }}" {{ (string) old('employee_id', $quickEmployeeId) === (string) $employee->id ? 'selected' : '' }}>
                                     {{ $employee->name }} ({{ $employee->employee_id }}) - BDT {{ number_format($employee->monthly_salary, 2) }}
                                 </option>
                             @endforeach
@@ -437,7 +489,7 @@
                         <select name="client_id" id="client_id">
                             <option value="">No Client / Agency Payroll</option>
                             @foreach($clients as $client)
-                                <option value="{{ $client->id }}" data-balance="{{ $clientBalances[$client->id] ?? 0 }}" {{ old('client_id') == $client->id ? 'selected' : '' }}>
+                                <option value="{{ $client->id }}" data-balance="{{ $clientBalances[$client->id] ?? 0 }}" {{ (string) old('client_id', $quickClientId) === (string) $client->id ? 'selected' : '' }}>
                                     {{ $client->company_name }}
                                 </option>
                             @endforeach
@@ -446,17 +498,17 @@
 
                     <p class="salary-field">Calculation Type<br>
                         <select name="calculation_type" id="calculation_type" required>
-                            <option value="date_to_date" {{ old('calculation_type', 'date_to_date') === 'date_to_date' ? 'selected' : '' }}>Date To Date</option>
-                            <option value="monthly_cycle" {{ old('calculation_type') === 'monthly_cycle' ? 'selected' : '' }}>Monthly Cycle</option>
+                            <option value="date_to_date" {{ old('calculation_type', data_get($quickSalaryContext, 'calculation_type', 'date_to_date')) === 'date_to_date' ? 'selected' : '' }}>Date To Date</option>
+                            <option value="monthly_cycle" {{ old('calculation_type', data_get($quickSalaryContext, 'calculation_type')) === 'monthly_cycle' ? 'selected' : '' }}>Monthly Cycle</option>
                         </select>
                     </p>
 
-                    <p class="salary-field">Salary Month<br><input type="month" name="salary_month" id="salary_month" value="{{ old('salary_month', now()->format('Y-m')) }}"></p>
-                    <p class="salary-field">From Date<br><input type="date" name="from_date" id="from_date" value="{{ old('from_date', now()->startOfMonth()->toDateString()) }}"></p>
-                    <p class="salary-field">To Date<br><input type="date" name="to_date" id="to_date" value="{{ old('to_date', now()->toDateString()) }}"></p>
+                    <p class="salary-field">Salary Month<br><input type="month" name="salary_month" id="salary_month" value="{{ old('salary_month', $quickSalaryMonth) }}"></p>
+                    <p class="salary-field">From Date<br><input type="date" name="from_date" id="from_date" value="{{ old('from_date', $quickCycleStart ?: now()->startOfMonth()->toDateString()) }}"></p>
+                    <p class="salary-field">To Date<br><input type="date" name="to_date" id="to_date" value="{{ old('to_date', $quickCycleEnd ?: now()->toDateString()) }}"></p>
                     <p class="salary-field">Use Work Status Records<br>
                         <label style="display:flex; align-items:center; gap:8px;">
-                            <input type="checkbox" name="use_work_status_records" id="use_work_status_records" value="1" {{ old('use_work_status_records') ? 'checked' : '' }}>
+                            <input type="checkbox" name="use_work_status_records" id="use_work_status_records" value="1" {{ old('use_work_status_records', data_get($quickSalaryContext, 'use_work_status', false)) ? 'checked' : '' }}>
                             Auto-fill working days
                         </label>
                     </p>
@@ -515,7 +567,7 @@
             </div>
 
             <div class="salary-actions">
-                <button class="btn" type="submit">Save Salary</button>
+                <button class="btn" type="submit" {{ $duplicateCyclePayroll ? 'disabled' : '' }}>Save Salary</button>
             </div>
         </form>
     </div>

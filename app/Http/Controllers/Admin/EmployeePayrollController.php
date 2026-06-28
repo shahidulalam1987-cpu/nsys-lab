@@ -105,9 +105,15 @@ class EmployeePayrollController extends Controller
         ]);
     }
 
-    public function create(ClientFundDashboardService $clientFundDashboardService)
+    public function create(Request $request, ClientFundDashboardService $clientFundDashboardService)
     {
-        $employees = Employee::orderBy('name')->get();
+        $employees = Employee::with([
+            'activeAssignments.client',
+            'activeAssignments.page',
+            'activeAssignments.campaignRecord',
+            'activeAssignments.shift',
+            'shift',
+        ])->orderBy('name')->get();
         $clients = Client::orderBy('company_name')->get();
         $clientBalances = $clientFundDashboardService->clientBalanceMap();
         $employeePaymentInfo = $this->employeePaymentInfo($employees);
@@ -128,9 +134,69 @@ class EmployeePayrollController extends Controller
             'salary_month' => now()->format('Y-m'),
             'employee_id' => null,
             'client_id' => null,
+            'salary_date' => null,
+            'cycle_start' => null,
+            'cycle_end' => null,
         ];
+        $quickSalaryContext = null;
+        $duplicateCyclePayroll = null;
 
-        return view('admin.payroll.create', compact('employees', 'clients', 'clientBalances', 'employeePaymentInfo', 'workStatusRecords', 'workStatusPreviewRows', 'workStatusFilters'));
+        if ($request->filled('employee_id')) {
+            $employee = $employees->firstWhere('id', (int) $request->integer('employee_id'));
+
+            if ($employee) {
+                $assignment = $employee->activeAssignments
+                    ->sortByDesc(fn ($item) => ($item->assigned_from?->format('Y-m-d') ?? '') . ':' . str_pad((string) $item->id, 12, '0', STR_PAD_LEFT))
+                    ->first();
+                $salaryDate = $request->filled('salary_date') ? Carbon::parse($request->input('salary_date'))->startOfDay() : null;
+                $cycleStart = $request->filled('cycle_start') ? Carbon::parse($request->input('cycle_start'))->startOfDay() : null;
+                $cycleEnd = $request->filled('cycle_end') ? Carbon::parse($request->input('cycle_end'))->startOfDay() : $salaryDate?->copy();
+                $clientId = $employee->isAgencyInternal()
+                    ? null
+                    : ($request->filled('client_id') ? (int) $request->integer('client_id') : $assignment?->client_id);
+
+                $workStatusFilters = [
+                    'salary_month' => ($cycleStart ?: $salaryDate ?: now())->format('Y-m'),
+                    'employee_id' => $employee->id,
+                    'client_id' => $clientId,
+                    'salary_date' => $salaryDate?->toDateString(),
+                    'cycle_start' => $cycleStart?->toDateString(),
+                    'cycle_end' => $cycleEnd?->toDateString(),
+                ];
+
+                if ($request->boolean('use_work_status') && $cycleStart && $cycleEnd) {
+                    $workStatusPreviewRows = $this->workStatusPreviewRows($workStatusFilters);
+                }
+
+                $duplicateCyclePayroll = $salaryDate
+                    ? $this->existingPayrollForCycleDate($employee->id, $clientId, $salaryDate)
+                    : null;
+                $lastPayroll = $employee->payrolls()->current()->latest('id')->first();
+                $quickSalaryContext = [
+                    'employee' => $employee,
+                    'client_id' => $clientId,
+                    'assignment' => $assignment,
+                    'salary_date' => $salaryDate,
+                    'cycle_start' => $cycleStart,
+                    'cycle_end' => $cycleEnd,
+                    'calculation_type' => $request->input('calculation_type', 'date_to_date'),
+                    'use_work_status' => $request->boolean('use_work_status'),
+                    'last_payroll' => $lastPayroll,
+                ];
+            }
+        }
+
+        return view('admin.payroll.create', compact(
+            'employees',
+            'clients',
+            'clientBalances',
+            'employeePaymentInfo',
+            'workStatusRecords',
+            'workStatusPreviewRows',
+            'workStatusFilters',
+            'quickSalaryContext',
+            'duplicateCyclePayroll'
+        ));
     }
 
     public function store(Request $request)
@@ -175,6 +241,7 @@ class EmployeePayrollController extends Controller
             'transaction_id' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string'],
             'confirm_regenerate' => ['nullable', 'boolean'],
+            'return_to' => ['nullable', 'string', Rule::in(['/admin/payroll?status=due'])],
         ]);
 
         $employee = Employee::findOrFail($data['employee_id']);
@@ -268,7 +335,7 @@ class EmployeePayrollController extends Controller
             $request
         );
 
-        return redirect('/admin/payroll/' . $payroll->id)
+        return redirect($data['return_to'] ?? ('/admin/payroll/' . $payroll->id))
             ->with('success', 'Employee payroll saved successfully.');
     }
 
@@ -283,6 +350,10 @@ class EmployeePayrollController extends Controller
                 'rows.*.employee_id' => ['required', 'exists:employees,id'],
                 'rows.*.client_id' => ['nullable', 'exists:clients,id'],
                 'rows.*.action' => ['required', Rule::in(['skip', 'generate', 'regenerate'])],
+                'salary_date' => ['nullable', 'date'],
+                'cycle_start' => ['nullable', 'date'],
+                'cycle_end' => ['nullable', 'date', 'after_or_equal:cycle_start'],
+                'return_to' => ['nullable', 'string', Rule::in(['/admin/payroll?status=due'])],
             ]);
 
             $created = 0;
@@ -290,11 +361,16 @@ class EmployeePayrollController extends Controller
             $skipped = collect($data['rows'] ?? [])->where('action', 'skip')->count();
             $blockedMissingWorkStatus = 0;
             $salaryMonth = Carbon::createFromFormat('Y-m', $data['salary_month'])->startOfMonth();
+            $periodStart = ! empty($data['cycle_start']) ? Carbon::parse($data['cycle_start']) : $salaryMonth->copy();
+            $periodEnd = ! empty($data['cycle_end']) ? Carbon::parse($data['cycle_end']) : $salaryMonth->copy()->endOfMonth();
+            $salaryDate = ! empty($data['salary_date']) ? Carbon::parse($data['salary_date']) : null;
             $selectedRows = collect($data['rows'] ?? [])
                 ->filter(fn (array $row) => in_array($row['action'], ['generate', 'regenerate'], true));
 
             foreach ($selectedRows as $row) {
-                $existingPayroll = $this->existingPayrollForPeriod((int) $row['employee_id'], isset($row['client_id']) ? (int) $row['client_id'] : null, $salaryMonth);
+                $existingPayroll = $salaryDate
+                    ? $this->existingPayrollForCycleDate((int) $row['employee_id'], isset($row['client_id']) ? (int) $row['client_id'] : null, $salaryDate)
+                    : $this->existingPayrollForPeriod((int) $row['employee_id'], isset($row['client_id']) ? (int) $row['client_id'] : null, $salaryMonth);
 
                 if ($existingPayroll && $row['action'] !== 'regenerate') {
                     $skipped++;
@@ -305,6 +381,9 @@ class EmployeePayrollController extends Controller
                     'salary_month' => $data['salary_month'],
                     'employee_id' => $row['employee_id'],
                     'client_id' => $row['client_id'],
+                    'salary_date' => $data['salary_date'] ?? null,
+                    'cycle_start' => $data['cycle_start'] ?? null,
+                    'cycle_end' => $data['cycle_end'] ?? null,
                 ]))->first();
 
                 if (! $previewRow || $previewRow['working_count'] <= 0) {
@@ -318,16 +397,16 @@ class EmployeePayrollController extends Controller
                     'client_id' => $previewRow['client']?->id,
                     'salary_source' => $previewRow['employee']->defaultSalarySource(),
                     'calculation_type' => 'monthly_cycle',
-                    'salary_period_from' => $salaryMonth->toDateString(),
-                    'salary_period_to' => $salaryMonth->copy()->endOfMonth()->toDateString(),
-                    'from_date' => $salaryMonth->toDateString(),
-                    'to_date' => $salaryMonth->copy()->endOfMonth()->toDateString(),
+                    'salary_period_from' => $periodStart->toDateString(),
+                    'salary_period_to' => $periodEnd->toDateString(),
+                    'from_date' => $periodStart->toDateString(),
+                    'to_date' => $periodEnd->toDateString(),
                     'working_days' => $previewRow['working_count'],
                     'non_working_days' => $previewRow['non_working_count'],
                     'month_days' => EmployeePayroll::FIXED_SALARY_MONTH_DAYS,
                     'daily_salary' => $previewRow['daily_salary'],
                     'salary_day_adjustments' => $previewRow['adjustments'],
-                    'salary_month' => $salaryMonth->toDateString(),
+                    'salary_month' => $periodStart->copy()->startOfMonth()->toDateString(),
                     'payable_salary' => $previewRow['payable_salary'],
                     'payroll_employee_name' => $previewRow['employee']->name,
                     'payroll_employee_code' => $previewRow['employee']->employee_id,
@@ -371,7 +450,7 @@ class EmployeePayrollController extends Controller
                     ->withErrors(['work_status' => 'Work Status records are required before salary generation.']);
             }
 
-            return redirect('/admin/payroll')->with(
+            return redirect($data['return_to'] ?? '/admin/payroll')->with(
                 'success',
                 "Work Status salary generation complete. Created: {$created}, Regenerated: {$regenerated}, Skipped: {$skipped}."
             );
@@ -381,6 +460,10 @@ class EmployeePayrollController extends Controller
             'salary_month' => ['required', 'date_format:Y-m'],
             'employee_id' => ['nullable', 'exists:employees,id'],
             'client_id' => ['nullable', 'exists:clients,id'],
+            'salary_date' => ['nullable', 'date'],
+            'cycle_start' => ['nullable', 'date'],
+            'cycle_end' => ['nullable', 'date', 'after_or_equal:cycle_start'],
+            'return_to' => ['nullable', 'string', Rule::in(['/admin/payroll?status=due'])],
         ]);
 
         $employees = Employee::orderBy('name')->get();
@@ -1067,21 +1150,23 @@ class EmployeePayrollController extends Controller
     private function workStatusPreviewRows(array $filters): array
     {
         $salaryMonth = Carbon::createFromFormat('Y-m', $filters['salary_month'])->startOfMonth();
-        $monthEnd = $salaryMonth->copy()->endOfMonth();
+        $periodStart = ! empty($filters['cycle_start']) ? Carbon::parse($filters['cycle_start']) : $salaryMonth->copy();
+        $periodEnd = ! empty($filters['cycle_end']) ? Carbon::parse($filters['cycle_end']) : $salaryMonth->copy()->endOfMonth();
+        $selectedEmployee = ! empty($filters['employee_id']) ? Employee::find($filters['employee_id']) : null;
 
         return EmployeeWorkStatus::with(['employee', 'client'])
-            ->whereNotNull('client_id')
-            ->whereDate('work_date', '>=', $salaryMonth->toDateString())
-            ->whereDate('work_date', '<=', $monthEnd->toDateString())
+            ->whereDate('work_date', '>=', $periodStart->toDateString())
+            ->whereDate('work_date', '<=', $periodEnd->toDateString())
             ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
             ->when($filters['client_id'] ?? null, fn ($query, $clientId) => $query->where('client_id', $clientId))
+            ->when($selectedEmployee?->isAgencyInternal(), fn ($query) => $query->whereNull('client_id'))
             ->orderBy('work_date')
             ->get()
             ->groupBy(fn (EmployeeWorkStatus $workStatus) => $workStatus->employee_id . ':' . $workStatus->client_id)
-            ->map(function ($records) use ($salaryMonth) {
+            ->map(function ($records) use ($salaryMonth, $periodEnd, $filters) {
                 $employee = $records->first()->employee;
                 $client = $records->first()->client;
-                if (! $employee?->isSalaryEligible($salaryMonth->copy()->endOfMonth())) {
+                if (! $employee?->isSalaryEligible($periodEnd)) {
                     return null;
                 }
                 $records = $records->filter(fn (EmployeeWorkStatus $workStatus) => $workStatus->work_date->gte($employee->salaryEligibilityDate()));
@@ -1093,8 +1178,10 @@ class EmployeePayrollController extends Controller
                 $payableSalary = $effectiveSalaryCount >= EmployeePayroll::FIXED_SALARY_MONTH_DAYS
                     ? round($monthlySalary, 2)
                     : min(round($dailySalary * $effectiveSalaryCount, 2), round($monthlySalary, 2));
-                $existingPayroll = $employee && $client
-                    ? $this->existingPayrollForPeriod($employee->id, $client->id, $salaryMonth)
+                $existingPayroll = $employee
+                    ? (! empty($filters['salary_date'])
+                        ? $this->existingPayrollForCycleDate($employee->id, $client?->id, Carbon::parse($filters['salary_date']))
+                        : $this->existingPayrollForPeriod($employee->id, $client?->id, $salaryMonth))
                     : null;
 
                 return [
@@ -1117,10 +1204,24 @@ class EmployeePayrollController extends Controller
                     ])->values()->all(),
                 ];
             })
-            ->filter(fn (?array $row) => $row && $row['employee'] && $row['client'])
-            ->sortBy(fn (array $row) => $row['employee']->name . ' ' . $row['client']->company_name)
+            ->filter(fn (?array $row) => $row && $row['employee'] && ($row['client'] || $row['employee']->isAgencyInternal()))
+            ->sortBy(fn (array $row) => $row['employee']->name . ' ' . ($row['client']?->company_name ?? 'Agency Payroll'))
             ->values()
             ->all();
+    }
+
+    private function existingPayrollForCycleDate(int $employeeId, ?int $clientId, Carbon $salaryDate): ?EmployeePayroll
+    {
+        return EmployeePayroll::current()
+            ->with('employee')
+            ->where('employee_id', $employeeId)
+            ->when(
+                $clientId,
+                fn ($query) => $query->where('client_id', $clientId),
+                fn ($query) => $query->whereNull('client_id')
+            )
+            ->get()
+            ->first(fn (EmployeePayroll $payroll) => $payroll->matchesSalaryCycleDate($salaryDate));
     }
 
     private function calculatePayroll(Employee $employee, array $data): array

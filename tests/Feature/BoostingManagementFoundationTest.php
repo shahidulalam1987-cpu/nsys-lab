@@ -8,12 +8,20 @@ use App\Models\BusinessManager;
 use App\Models\Client;
 use App\Models\ClientPage;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class BoostingManagementFoundationTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
 
     public function test_admin_can_manage_bm_ad_account_and_page_hierarchy(): void
     {
@@ -115,6 +123,8 @@ class BoostingManagementFoundationTest extends TestCase
 
     public function test_ad_account_alert_filters_and_ledger_updates_work(): void
     {
+        Carbon::setTestNow('2026-06-10');
+
         $admin = $this->user('admin');
         $bm = BusinessManager::create([
             'bm_name' => 'Alert BM',
