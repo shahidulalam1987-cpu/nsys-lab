@@ -274,7 +274,7 @@ class PayrollCategoryService
         ];
 
         return [
-            'upcoming' => $stages->where('stage.category', self::UPCOMING)->count(),
+            'upcoming' => $this->upcomingCycles($today)->count(),
             'unpaid' => $stages->filter(fn (array $row) => in_array($row['stage']['category'], $unpaidCategories, true))->count(),
             'pending_work_status' => $stages->where('stage.category', self::PENDING_WORK_STATUS)->count(),
             'salary_ready' => $stages->where('stage.category', self::SALARY_READY)->count(),

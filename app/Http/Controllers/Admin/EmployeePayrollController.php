@@ -955,7 +955,7 @@ class EmployeePayrollController extends Controller
                 'total_paid' => $payrolls->sum('paid_amount'),
                 'total_due' => $payrolls->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
                 'record_count' => $payrolls->count() + $cycleEmployees->count(),
-                'upcoming_count' => $stageRows->where('stage.category', PayrollCategoryService::UPCOMING)->count(),
+                'upcoming_count' => $this->payrollCategory->upcomingCycles()->count(),
                 'overdue_count' => $stageRows
                     ->where('stage.category', PayrollCategoryService::UNPAID)
                     ->filter(fn (array $row) => data_get($row, 'stage.payroll')?->isOverdue())

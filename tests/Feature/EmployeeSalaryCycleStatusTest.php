@@ -9,6 +9,7 @@ use App\Models\EmployeeWorkStatus;
 use App\Models\User;
 use App\Services\PayrollCategoryService;
 use App\Services\PayrollEstimateService;
+use App\Services\NotificationCenterService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -84,6 +85,44 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertSee('Cycle Upcoming Without Payroll');
         $response->assertSee('Upcoming Salary');
         $response->assertDontSee('/admin/employees/' . $futureEmployee->id, false);
+    }
+
+    public function test_upcoming_page_sidebar_dashboard_and_notifications_share_five_day_count(): void
+    {
+        Carbon::setTestNow('2026-06-30');
+
+        $admin = $this->admin();
+        $dueInFourDays = $this->employee([
+            'name' => 'Due In Four Days',
+            'confirmation_date' => '2026-06-04',
+            'salary_day' => 4,
+        ]);
+        $dueInNineDays = $this->employee([
+            'name' => 'Due In Nine Days',
+            'confirmation_date' => '2026-06-09',
+            'salary_day' => 9,
+        ]);
+        $payrollCategory = app(PayrollCategoryService::class);
+
+        $this->assertSame(1, $payrollCategory->upcomingCycles()->count());
+        $this->assertSame(1, $payrollCategory->queueCounts()['upcoming']);
+        $this->assertSame(
+            [$dueInFourDays->id],
+            $payrollCategory->upcomingCycles()->pluck('employee.id')->all()
+        );
+
+        $page = $this->actingAs($admin)->get('/admin/payroll?status=upcoming');
+        $page->assertOk();
+        $page->assertSee('Due In Four Days');
+        $page->assertDontSee('/admin/employees/' . $dueInNineDays->id, false);
+        $page->assertSee('<span class="sidebar-count-badge">1</span>', false);
+
+        $dashboard = $this->actingAs($admin)->get('/admin/payroll');
+        $dashboard->assertOk();
+        $dashboard->assertSee('<p>Upcoming Salaries</p><h2>1</h2>', false);
+
+        $this->assertSame(1, app(NotificationCenterService::class)->summary()['upcoming_salaries']);
+        $this->assertNotSame($dueInNineDays->id, $payrollCategory->upcomingCycles()->first()['employee']->id);
     }
 
     public function test_salary_generate_due_filter_includes_past_due_unpaid_cycle(): void
