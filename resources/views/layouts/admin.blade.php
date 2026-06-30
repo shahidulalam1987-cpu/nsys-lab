@@ -427,7 +427,7 @@
         $canDashboard = $authUser->hasPermission('dashboard.view');
         $canFinance = $authUser->hasPermission('finance.view');
         $canClients = $authUser->hasPermission('clients.view');
-        $canEmployees = $authUser->hasAnyPermission(['employees.view', 'assignments.view', 'attendance.view', 'work_status.view', 'payroll.view', 'notices.view']);
+        $canEmployees = $authUser->hasAnyPermission(['employees.view', 'departments.view', 'assignments.view', 'attendance.view', 'work_status.view', 'payroll.view', 'notices.view']);
         $canFacebook = $authUser->hasAnyPermission(['facebook.view', 'daily_reports.view']);
         $canTikTok = $authUser->hasPermission('tiktok.view');
         $canSystemTools = $authUser->hasPermission('system_tools.view');
@@ -443,6 +443,7 @@
             || (($canClients) && (request()->is('admin/client-fund*') || request()->is('admin/salary-payments*')));
         $isEmployeeDepartment = request()->is('admin/employee-dashboard')
             || request()->is('admin/employees*')
+            || request()->is('admin/departments*')
             || request()->is('admin/salary-month-sheet*')
             || request()->is('admin/attendance*')
             || request()->is('admin/assignments*')
@@ -641,6 +642,9 @@
                 @if($authUser->hasPermission('employees.view'))
                 <a class="{{ request()->is('admin/employee-dashboard') ? 'active-menu' : '' }}" href="/admin/employee-dashboard">Employee Dashboard</a>
                 <a class="{{ request()->is('admin/employees*') ? 'active-menu' : '' }}" href="/admin/employees">Employee List</a>
+                @if($authUser->hasPermission('departments.view'))
+                <a class="{{ request()->is('admin/departments*') ? 'active-menu' : '' }}" href="/admin/departments">Departments</a>
+                @endif
                 @endif
 
                 @if($authUser->hasPermission('assignments.view'))

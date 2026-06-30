@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Campaign;
 use App\Models\Client;
 use App\Models\ClientPage;
+use App\Models\Department;
 use App\Models\Employee;
 use App\Models\Shift;
 use App\Models\User;
@@ -22,7 +23,7 @@ class EmployeeController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Employee::with('user');
+        $query = Employee::with(['user', 'departmentRecord']);
 
         if ($request->search) {
             $query->where(function ($inner) use ($request) {
@@ -40,7 +41,9 @@ class EmployeeController extends Controller
             $query->where('employee_type', $request->employee_type);
         }
 
-        if ($request->department) {
+        if ($request->department_id) {
+            $query->where('department_id', $request->department_id);
+        } elseif ($request->department) {
             $query->where('department', $request->department);
         }
 
@@ -67,20 +70,24 @@ class EmployeeController extends Controller
             'agency_internal' => Employee::where('employee_type', 'agency_internal')->count(),
         ];
 
-        return view('admin.employees.index', compact('employees', 'summary'));
+        $departments = Department::ordered()->get();
+
+        return view('admin.employees.index', compact('employees', 'summary', 'departments'));
     }
 
     public function create()
     {
         $users = User::where('role', 'employee')->orderBy('name')->get();
         $shifts = Shift::where('status', 'active')->orderBy('id')->get();
+        $departments = Department::active()->ordered()->get();
 
-        return view('admin.employees.create', compact('users', 'shifts'));
+        return view('admin.employees.create', compact('users', 'shifts', 'departments'));
     }
 
     public function store(Request $request)
     {
         $data = $this->validatedEmployee($request);
+        $data['department'] = Department::findOrFail($data['department_id'])->name;
         $employeeId = $this->nextEmployeeId();
         $data['employee_id'] = $employeeId;
         $data['salary_type'] = 'monthly';
@@ -102,6 +109,7 @@ class EmployeeController extends Controller
         $employee = Employee::with([
             'user',
             'shift',
+            'departmentRecord',
             'assignments.client',
             'assignments.page',
             'assignments.campaignRecord',
@@ -139,14 +147,19 @@ class EmployeeController extends Controller
             ->orderBy('name')
             ->get();
         $shifts = Shift::where('status', 'active')->orderBy('id')->get();
+        $departments = Department::active()
+            ->when($employee->department_id, fn ($query) => $query->orWhere('id', $employee->department_id))
+            ->ordered()
+            ->get();
 
-        return view('admin.employees.edit', compact('employee', 'users', 'shifts'));
+        return view('admin.employees.edit', compact('employee', 'users', 'shifts', 'departments'));
     }
 
     public function update(Request $request, $id)
     {
         $employee = Employee::findOrFail($id);
-        $data = $this->validatedEmployee($request);
+        $data = $this->validatedEmployee($request, $employee);
+        $data['department'] = Department::findOrFail($data['department_id'])->name;
         $data['salary_source'] = $this->salarySourceForEmployeeType($data['employee_type'] ?? $employee->employee_type, $data['salary_source'] ?? null);
         $data['salary_day'] = $data['salary_day'] ?? $this->salaryDayFromConfirmation($data['confirmation_date'] ?? null);
         $this->storeEmployeeFiles($request, $data, $employee->employee_id, $employee);
@@ -321,8 +334,14 @@ class EmployeeController extends Controller
         ]);
     }
 
-    private function validatedEmployee(Request $request): array
+    private function validatedEmployee(Request $request, ?Employee $employee = null): array
     {
+        if (! $request->filled('department_id') && $request->filled('department')) {
+            $departmentId = Department::whereRaw('LOWER(name) = ?', [mb_strtolower(trim((string) $request->input('department')))])
+                ->value('id');
+            $request->merge(['department_id' => $departmentId]);
+        }
+
         $data = $request->validate([
             'user_id' => ['nullable', 'exists:users,id'],
             'name' => ['required', 'string', 'max:255'],
@@ -339,7 +358,12 @@ class EmployeeController extends Controller
             'appointment_letter_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png,webp', 'max:5120'],
             'agreement_file' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png,webp', 'max:5120'],
             'employee_type' => ['nullable', 'in:' . implode(',', array_keys(Employee::EMPLOYEE_TYPES))],
-            'department' => ['required', 'in:' . implode(',', array_values(array_unique(array_merge(Employee::DEPARTMENTS, Employee::AGENCY_DEPARTMENTS))))],
+            'department' => ['nullable', function (string $attribute, mixed $value, \Closure $fail) {
+                if ($value && ! Department::whereRaw('LOWER(name) = ?', [mb_strtolower(trim((string) $value))])->exists()) {
+                    $fail('The selected department is invalid.');
+                }
+            }],
+            'department_id' => ['required', 'exists:departments,id'],
             'role' => ['required', 'in:' . implode(',', Employee::ROLES)],
             'salary_source' => ['nullable', 'in:' . implode(',', array_keys(Employee::SALARY_SOURCES))],
             'permission_group' => ['nullable', 'in:' . implode(',', array_keys(Employee::PERMISSION_GROUPS))],
@@ -361,6 +385,11 @@ class EmployeeController extends Controller
             'mobile_banking_info' => ['nullable', 'string'],
             'admin_note' => ['nullable', 'string'],
         ]);
+
+        $department = Department::find($data['department_id']);
+        if ($department?->status !== 'active' && (int) $employee?->department_id !== (int) $department?->id) {
+            throw ValidationException::withMessages(['department_id' => 'The selected department is inactive.']);
+        }
 
         $joiningDate = Carbon::parse($data['joining_date'])->startOfDay();
         $confirmationDate = ! empty($data['confirmation_date']) ? Carbon::parse($data['confirmation_date'])->startOfDay() : null;

@@ -65,10 +65,12 @@
             </select>
         </p>
         <p>Department<br>
-            <select name="department" required>
+            <select name="department_id" required>
                 <option value="">Select Department</option>
-                @foreach(array_values(array_unique(array_merge(\App\Models\Employee::DEPARTMENTS, \App\Models\Employee::AGENCY_DEPARTMENTS))) as $department)
-                    <option value="{{ $department }}" {{ old('department', $employee?->department) == $department ? 'selected' : '' }}>{{ $department }}</option>
+                @foreach($departments as $department)
+                    <option value="{{ $department->id }}" {{ (int) old('department_id', $employee?->department_id) === $department->id ? 'selected' : '' }}>
+                        {{ $department->name }}{{ $department->status === 'inactive' ? ' (Inactive)' : '' }}
+                    </option>
                 @endforeach
             </select>
         </p>

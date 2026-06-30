@@ -204,7 +204,7 @@
             <div class="card" style="margin-top:0;">
                 <h2>Employment Information</h2>
                 <div class="employee-info-grid">
-                    <p><strong>Department:</strong> {{ $employee->department }}</p>
+                    <p><strong>Department:</strong> {{ $employee->departmentName() }}</p>
                     <p><strong>Role:</strong> {{ $employee->role }}</p>
                     <p><strong>Salary Source:</strong> {{ $employee->salarySourceLabel() }}</p>
                     <p><strong>Permission Group:</strong> {{ $employee->permissionGroupLabel() }}</p>

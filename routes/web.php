@@ -42,6 +42,7 @@ use App\Http\Controllers\Admin\FacebookFinancialController;
 use App\Http\Controllers\Admin\FinanceManagementController;
 use App\Http\Controllers\Admin\NotificationCenterController;
 use App\Http\Controllers\Admin\CampaignController;
+use App\Http\Controllers\Admin\DepartmentController;
 
 Route::get('/', [DashboardController::class, 'index']);
 
@@ -111,6 +112,12 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::post('/admin/invoices/{id}/status/{status}', [InvoiceController::class, 'updateStatus']);
 
     Route::get('/admin/employees', [EmployeeController::class, 'index']);
+    Route::get('/admin/departments', [DepartmentController::class, 'index']);
+    Route::get('/admin/departments/create', [DepartmentController::class, 'create']);
+    Route::post('/admin/departments', [DepartmentController::class, 'store']);
+    Route::get('/admin/departments/{department}/edit', [DepartmentController::class, 'edit']);
+    Route::put('/admin/departments/{department}', [DepartmentController::class, 'update']);
+    Route::delete('/admin/departments/{department}', [DepartmentController::class, 'destroy']);
     Route::get('/admin/employees/create', [EmployeeController::class, 'create']);
     Route::post('/admin/employees', [EmployeeController::class, 'store']);
     Route::get('/admin/employees/{employee}/create-login', [EmployeeController::class, 'createLogin']);

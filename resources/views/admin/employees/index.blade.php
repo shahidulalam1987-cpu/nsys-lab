@@ -325,10 +325,12 @@
                     <option value="{{ $value }}" {{ request('employee_type') == $value ? 'selected' : '' }}>{{ $label }}</option>
                 @endforeach
             </select>
-            <select name="department">
+            <select name="department_id">
                 <option value="">All Departments</option>
-                @foreach(array_values(array_unique(array_merge(\App\Models\Employee::DEPARTMENTS, \App\Models\Employee::AGENCY_DEPARTMENTS))) as $department)
-                    <option value="{{ $department }}" {{ request('department') == $department ? 'selected' : '' }}>{{ $department }}</option>
+                @foreach($departments as $department)
+                    <option value="{{ $department->id }}" {{ (int) request('department_id') === $department->id ? 'selected' : '' }}>
+                        {{ $department->name }}{{ $department->status === 'inactive' ? ' (Inactive)' : '' }}
+                    </option>
                 @endforeach
             </select>
             <select name="role">
@@ -371,7 +373,7 @@
                         </td>
                         <td>{{ $employee->mobile ?: '-' }}</td>
                         <td>
-                            <strong>{{ $employee->department }}</strong>
+                            <strong>{{ $employee->departmentName() }}</strong>
                             <div class="employee-subtext">{{ $employee->role }}</div>
                             <div class="employee-subtext">{{ $employee->salarySourceLabel() }}</div>
                         </td>

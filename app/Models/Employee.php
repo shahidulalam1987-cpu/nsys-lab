@@ -105,6 +105,7 @@ class Employee extends Model
         'appointment_letter_file',
         'agreement_file',
         'department',
+        'department_id',
         'role',
         'shift_id',
         'joining_date',
@@ -157,6 +158,16 @@ class Employee extends Model
     public function shift()
     {
         return $this->belongsTo(Shift::class);
+    }
+
+    public function departmentRecord()
+    {
+        return $this->belongsTo(Department::class, 'department_id');
+    }
+
+    public function departmentName(): string
+    {
+        return $this->departmentRecord?->name ?: ($this->department ?: '-');
     }
 
     public function salaryDays()

@@ -122,7 +122,7 @@
                 <p><strong>Name:</strong> {{ $payroll->employee?->name ?: '-' }}</p>
                 <p><strong>Employee ID:</strong> {{ $payroll->employee?->employee_id ?: '-' }}</p>
                 <p><strong>Employment Type:</strong> {{ $payroll->employee?->employeeTypeLabel() ?: '-' }}</p>
-                <p><strong>Department:</strong> {{ $payroll->employee?->department ?: '-' }}</p>
+                <p><strong>Department:</strong> {{ $payroll->employee?->departmentName() ?: '-' }}</p>
                 <p><strong>Role:</strong> {{ $payroll->employee?->role ?: '-' }}</p>
                 <p><strong>Salary Source:</strong> {{ $payroll->salarySourceLabel() }}</p>
                 <p><strong>Salary Day:</strong> {{ $payroll->employee?->salaryCycleDay() ?: '-' }}</p>
