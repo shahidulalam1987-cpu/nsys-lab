@@ -43,6 +43,7 @@ use App\Http\Controllers\Admin\FinanceManagementController;
 use App\Http\Controllers\Admin\NotificationCenterController;
 use App\Http\Controllers\Admin\CampaignController;
 use App\Http\Controllers\Admin\DepartmentController;
+use App\Http\Controllers\Admin\EmployeeRoleController;
 
 Route::get('/', [DashboardController::class, 'index']);
 
@@ -118,6 +119,12 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::get('/admin/departments/{department}/edit', [DepartmentController::class, 'edit']);
     Route::put('/admin/departments/{department}', [DepartmentController::class, 'update']);
     Route::delete('/admin/departments/{department}', [DepartmentController::class, 'destroy']);
+    Route::get('/admin/employee-roles', [EmployeeRoleController::class, 'index']);
+    Route::get('/admin/employee-roles/create', [EmployeeRoleController::class, 'create']);
+    Route::post('/admin/employee-roles', [EmployeeRoleController::class, 'store']);
+    Route::get('/admin/employee-roles/{employeeRole}/edit', [EmployeeRoleController::class, 'edit']);
+    Route::put('/admin/employee-roles/{employeeRole}', [EmployeeRoleController::class, 'update']);
+    Route::delete('/admin/employee-roles/{employeeRole}', [EmployeeRoleController::class, 'destroy']);
     Route::get('/admin/employees/create', [EmployeeController::class, 'create']);
     Route::post('/admin/employees', [EmployeeController::class, 'store']);
     Route::get('/admin/employees/{employee}/create-login', [EmployeeController::class, 'createLogin']);

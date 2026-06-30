@@ -65,7 +65,7 @@
             </select>
         </p>
         <p>Department<br>
-            <select name="department_id" required>
+            <select name="department_id" id="employee_department_id" required>
                 <option value="">Select Department</option>
                 @foreach($departments as $department)
                     <option value="{{ $department->id }}" {{ (int) old('department_id', $employee?->department_id) === $department->id ? 'selected' : '' }}>
@@ -75,10 +75,12 @@
             </select>
         </p>
         <p>Role<br>
-            <select name="role" required>
+            <select name="role_id" id="employee_role_id" required>
                 <option value="">Select Role</option>
-                @foreach(\App\Models\Employee::ROLES as $role)
-                    <option value="{{ $role }}" {{ old('role', $employee?->role) == $role ? 'selected' : '' }}>{{ $role }}</option>
+                @foreach($roles as $role)
+                    <option value="{{ $role->id }}" data-department-id="{{ $role->department_id }}" {{ (int) old('role_id', $employee?->role_id) === $role->id ? 'selected' : '' }}>
+                        {{ $role->name }}{{ $role->status === 'inactive' ? ' (Inactive)' : '' }}
+                    </option>
                 @endforeach
             </select>
         </p>
@@ -169,6 +171,8 @@
 <script>
     const employeeTypeSelect = document.getElementById('employee_type');
     const salarySourceSelect = document.getElementById('salary_source');
+    const departmentSelect = document.getElementById('employee_department_id');
+    const roleSelect = document.getElementById('employee_role_id');
 
     employeeTypeSelect?.addEventListener('change', () => {
         if (employeeTypeSelect.value === 'agency_internal') {
@@ -177,4 +181,21 @@
             salarySourceSelect.value = 'client_fund';
         }
     });
+
+    const prioritizeDepartmentRoles = () => {
+        if (!departmentSelect || !roleSelect) return;
+
+        const departmentId = departmentSelect.value;
+        const placeholder = roleSelect.options[0];
+        const options = Array.from(roleSelect.options).slice(1);
+        options.sort((left, right) => {
+            const leftMatch = left.dataset.departmentId === departmentId ? 0 : 1;
+            const rightMatch = right.dataset.departmentId === departmentId ? 0 : 1;
+            return leftMatch - rightMatch;
+        });
+        roleSelect.replaceChildren(placeholder, ...options);
+    };
+
+    departmentSelect?.addEventListener('change', prioritizeDepartmentRoles);
+    prioritizeDepartmentRoles();
 </script>

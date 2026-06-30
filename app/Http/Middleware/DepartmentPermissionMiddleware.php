@@ -65,6 +65,9 @@ class DepartmentPermissionMiddleware
             $request->is('admin/departments*')
                 => [$manage ? 'departments.manage' : 'departments.view'],
 
+            $request->is('admin/employee-roles*')
+                => [$manage ? 'employee_roles.manage' : 'employee_roles.view'],
+
             $request->is('admin/client-pages*')
                 => [$manage ? 'employees.manage' : 'employees.view', $manage ? 'facebook.manage' : 'facebook.view'],
 

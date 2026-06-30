@@ -1,0 +1,23 @@
+@if($errors->any())
+    <div class="card" style="color:#ef4444; margin-top:20px;"><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
+@endif
+
+<div class="card" style="margin-top:20px; max-width:760px;">
+    <form method="POST" action="{{ $action }}">
+        @csrf
+        @if($employeeRole) @method('PUT') @endif
+        <p>Role Name<br><input type="text" name="name" value="{{ old('name', $employeeRole?->name) }}" required></p>
+        <p>Department<br>
+            <select name="department_id">
+                <option value="">All Departments</option>
+                @foreach($departments as $department)
+                    <option value="{{ $department->id }}" {{ (int) old('department_id', $employeeRole?->department_id) === $department->id ? 'selected' : '' }}>{{ $department->name }}{{ $department->status === 'inactive' ? ' (Inactive)' : '' }}</option>
+                @endforeach
+            </select>
+        </p>
+        <p>Description<br><textarea name="description">{{ old('description', $employeeRole?->description) }}</textarea></p>
+        <p>Status<br><select name="status" required><option value="active" {{ old('status', $employeeRole?->status ?? 'active') === 'active' ? 'selected' : '' }}>Active</option><option value="inactive" {{ old('status', $employeeRole?->status) === 'inactive' ? 'selected' : '' }}>Inactive</option></select></p>
+        <p>Sort Order<br><input type="number" name="sort_order" min="0" value="{{ old('sort_order', $employeeRole?->sort_order ?? 0) }}" required></p>
+        <div style="display:flex; justify-content:flex-end; gap:10px;"><a class="btn" href="/admin/employee-roles">Cancel</a><button class="btn" type="submit">{{ $button }}</button></div>
+    </form>
+</div>

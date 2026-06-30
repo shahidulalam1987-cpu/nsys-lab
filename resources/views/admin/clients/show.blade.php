@@ -90,7 +90,7 @@
                             @endif
                         </td>
                         <td>{{ $assignment->employee?->name ?: '-' }}</td>
-                        <td>{{ $assignment->employee?->role ?: '-' }}</td>
+                        <td>{{ $assignment->employee?->roleName() ?: '-' }}</td>
                         <td>{{ $assignment->employee?->statusLabel() ?: '-' }}</td>
                         <td>{{ $assignment->assigned_from?->toDateString() }}</td>
                         <td>{{ $assignment->assigned_to?->toDateString() ?: '-' }}</td>

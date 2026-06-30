@@ -46,25 +46,6 @@ class Employee extends Model
         'Management',
     ];
 
-    public const ROLES = [
-        'Admin',
-        'Manager',
-        'Team Leader',
-        'HR',
-        'Finance Officer',
-        'Developer',
-        'Designer',
-        'Trainee Moderator',
-        'Moderator',
-        'Senior Moderator',
-        'Customer Care',
-        'Sales Executive',
-        'Graphic Designer',
-        'Video Editor',
-        'Support',
-        'Custom',
-    ];
-
     public const EMPLOYEE_TYPES = [
         'client_assigned' => 'Client Assigned',
         'agency_internal' => 'Agency Internal',
@@ -107,6 +88,7 @@ class Employee extends Model
         'department',
         'department_id',
         'role',
+        'role_id',
         'shift_id',
         'joining_date',
         'confirmation_date',
@@ -168,6 +150,16 @@ class Employee extends Model
     public function departmentName(): string
     {
         return $this->departmentRecord?->name ?: ($this->department ?: '-');
+    }
+
+    public function roleRecord()
+    {
+        return $this->belongsTo(EmployeeRole::class, 'role_id');
+    }
+
+    public function roleName(): string
+    {
+        return $this->roleRecord?->name ?: ($this->role ?: '-');
     }
 
     public function salaryDays()

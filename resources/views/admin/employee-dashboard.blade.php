@@ -76,7 +76,7 @@
                 <tr>
                     <td><a href="/admin/employees/{{ $employee->id }}">{{ $employee->employee_id }}</a></td>
                     <td>{{ $employee->name }}</td>
-                    <td>{{ $employee->role }}</td>
+                    <td>{{ $employee->roleName() }}</td>
                     <td>{{ $employee->statusLabel() }}</td>
                     <td>{{ $employee->joining_date?->toDateString() }}</td>
                 </tr>

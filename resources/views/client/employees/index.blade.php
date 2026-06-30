@@ -22,7 +22,7 @@
                 @endphp
                 <tr>
                     <td>{{ $assignment->employee?->name }}</td>
-                    <td>{{ $assignment->employee?->role }}</td>
+                    <td>{{ $assignment->employee?->roleName() }}</td>
                     <td>{{ $assignment->employee?->statusLabel() }}</td>
                     <td>{{ $assignment->employee?->joining_date?->toDateString() }}</td>
                     <td>{{ $assignment->employee?->confirmation_date?->toDateString() ?: '-' }}</td>

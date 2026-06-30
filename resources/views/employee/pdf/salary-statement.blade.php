@@ -143,7 +143,7 @@
                         <tr><td class="label">Employee Name</td><td>{{ $employee?->name ?: $payroll->snapshotEmployeeName() }}</td></tr>
                         <tr><td class="label">Employee ID</td><td>{{ $employee?->employee_id ?: $payroll->snapshotEmployeeCode() }}</td></tr>
                         <tr><td class="label">Department</td><td>{{ $employee?->departmentName() ?: '-' }}</td></tr>
-                        <tr><td class="label">Role</td><td>{{ $employee?->role ?: '-' }}</td></tr>
+                        <tr><td class="label">Role</td><td>{{ $employee?->roleName() ?: '-' }}</td></tr>
                         <tr><td class="label">Employment Type</td><td>{{ $employee?->employeeTypeLabel() ?: '-' }}</td></tr>
                         <tr><td class="label">Joining Date</td><td>{{ $employee?->joining_date?->toDateString() ?: '-' }}</td></tr>
                         <tr><td class="label">Confirmation Date</td><td>{{ $employee?->confirmation_date?->toDateString() ?: '-' }}</td></tr>

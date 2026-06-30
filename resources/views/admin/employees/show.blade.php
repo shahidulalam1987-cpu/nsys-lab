@@ -205,7 +205,7 @@
                 <h2>Employment Information</h2>
                 <div class="employee-info-grid">
                     <p><strong>Department:</strong> {{ $employee->departmentName() }}</p>
-                    <p><strong>Role:</strong> {{ $employee->role }}</p>
+                    <p><strong>Role:</strong> {{ $employee->roleName() }}</p>
                     <p><strong>Salary Source:</strong> {{ $employee->salarySourceLabel() }}</p>
                     <p><strong>Permission Group:</strong> {{ $employee->permissionGroupLabel() }}</p>
                     <p><strong>Shift Name:</strong> {{ $employee->shift?->name ?: '-' }}</p>

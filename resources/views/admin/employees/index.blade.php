@@ -333,10 +333,12 @@
                     </option>
                 @endforeach
             </select>
-            <select name="role">
+            <select name="role_id">
                 <option value="">All Roles</option>
-                @foreach(\App\Models\Employee::ROLES as $role)
-                    <option value="{{ $role }}" {{ request('role') == $role ? 'selected' : '' }}>{{ $role }}</option>
+                @foreach($roles as $role)
+                    <option value="{{ $role->id }}" {{ (int) request('role_id') === $role->id ? 'selected' : '' }}>
+                        {{ $role->name }}{{ $role->status === 'inactive' ? ' (Inactive)' : '' }}
+                    </option>
                 @endforeach
             </select>
             <select name="salary_source">
@@ -374,7 +376,7 @@
                         <td>{{ $employee->mobile ?: '-' }}</td>
                         <td>
                             <strong>{{ $employee->departmentName() }}</strong>
-                            <div class="employee-subtext">{{ $employee->role }}</div>
+                            <div class="employee-subtext">{{ $employee->roleName() }}</div>
                             <div class="employee-subtext">{{ $employee->salarySourceLabel() }}</div>
                         </td>
                         <td>{{ $employee->joining_date?->toDateString() ?: '-' }}</td>

@@ -13,7 +13,7 @@
         <p><strong>Email:</strong> {{ $employee->email ?: auth()->user()->email }}</p>
         <p><strong>Phone:</strong> {{ $employee->mobile ?: '-' }}</p>
         <p><strong>Department:</strong> {{ $employee->departmentName() }}</p>
-        <p><strong>Role:</strong> {{ $employee->role }}</p>
+        <p><strong>Role:</strong> {{ $employee->roleName() }}</p>
         <p><strong>Joining Date:</strong> {{ $employee->joining_date?->toDateString() ?: '-' }}</p>
         <p><strong>Confirmation Date:</strong> {{ $employee->confirmation_date?->toDateString() ?: '-' }}</p>
         <p><strong>Shift:</strong> {{ $primaryAssignment?->shift?->name ?: $employee->shift?->name ?: '-' }}</p>
