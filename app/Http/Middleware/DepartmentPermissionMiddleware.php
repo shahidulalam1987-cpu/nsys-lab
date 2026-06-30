@@ -80,6 +80,9 @@ class DepartmentPermissionMiddleware
             $request->is('admin/daily-reports*', 'admin/export/daily-reports')
                 => [$manage ? 'daily_reports.manage' : 'daily_reports.view'],
 
+            $request->is('admin/employee-submissions*')
+                => [$manage ? 'daily_reports.manage' : 'daily_reports.view'],
+
             $request->is('admin/facebook-dashboard', 'admin/business-managers*', 'admin/ad-accounts*', 'admin/ad-account-ledger*', 'admin/campaigns*', 'admin/payments*', 'admin/profit-history*', 'admin/export/profit-history', 'admin/export/payments')
                 => [$manage ? 'facebook.manage' : 'facebook.view'],
 

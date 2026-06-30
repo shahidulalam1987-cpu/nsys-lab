@@ -59,6 +59,11 @@ class DashboardController extends Controller
         $pendingWorkStatusCount = $employee->assignments
             ->where('status', 'active')
             ->count() > 0 && ! $todayWorkStatus ? 1 : 0;
+        $submissionAlerts = [
+            'pending' => $employee->dailySubmissions()->where('status', 'pending')->count(),
+            'approved' => $employee->dailySubmissions()->whereIn('status', ['approved', 'merged'])->count(),
+            'rejected' => $employee->dailySubmissions()->where('status', 'rejected')->count(),
+        ];
 
         return view('employee.dashboard', compact(
             'employee',
@@ -71,7 +76,8 @@ class DashboardController extends Controller
             'salarySummary',
             'latestNotices',
             'unreadNoticeCount',
-            'pendingWorkStatusCount'
+            'pendingWorkStatusCount',
+            'submissionAlerts'
         ));
     }
 }

@@ -53,6 +53,11 @@
     </style>
 </head>
 <body>
+    @php
+        $portalEmployee = auth()->user()->employee;
+        $canDailyOrders = $portalEmployee && (auth()->user()->hasRole('moderator') || str_contains(mb_strtolower($portalEmployee->roleName()), 'moderator'));
+        $canDailySpend = $portalEmployee && (auth()->user()->hasRole('facebook_manager') || in_array(mb_strtolower($portalEmployee->roleName()), ['ad manager', 'facebook manager'], true));
+    @endphp
     <div class="topbar">
         <div class="brand">NSYS Employee Portal</div>
         <form method="POST" action="/logout">
@@ -63,6 +68,8 @@
     <div class="layout">
         <div class="sidebar">
             <a class="{{ request()->is('employee/dashboard') ? 'active-menu' : '' }}" href="/employee/dashboard">Dashboard</a>
+            @if($canDailyOrders)<a class="{{ request()->is('employee/daily-orders*') ? 'active-menu' : '' }}" href="/employee/daily-orders">Daily Orders</a>@endif
+            @if($canDailySpend)<a class="{{ request()->is('employee/daily-spend*') ? 'active-menu' : '' }}" href="/employee/daily-spend">Daily Spend</a>@endif
             <a class="{{ request()->is('employee/work-status*') ? 'active-menu' : '' }}" href="/employee/work-status">My Work Status</a>
             <a class="{{ request()->is('employee/attendance*') ? 'active-menu' : '' }}" href="/employee/attendance">My Attendance</a>
             <a class="{{ request()->is('employee/salary*') ? 'active-menu' : '' }}" href="/employee/salary">My Salary</a>

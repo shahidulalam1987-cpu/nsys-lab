@@ -5,10 +5,16 @@ namespace App\Services;
 use App\Models\Employee;
 use App\Models\EmployeeAssignment;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 class AssignmentResolver
 {
     public function current(Employee $employee, ?Carbon $date = null): ?EmployeeAssignment
+    {
+        return $this->allCurrent($employee, $date)->first();
+    }
+
+    public function allCurrent(Employee $employee, ?Carbon $date = null): Collection
     {
         $date = ($date ?: now())->copy()->startOfDay();
 
@@ -22,6 +28,6 @@ class AssignmentResolver
             })
             ->latest('assigned_from')
             ->latest('id')
-            ->first();
+            ->get();
     }
 }

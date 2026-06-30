@@ -9,6 +9,7 @@ class DailyPerformanceReport extends Model
     protected $fillable = [
         'campaign_id',
         'report_date',
+        'status',
         'spend',
         'messages',
         'results',

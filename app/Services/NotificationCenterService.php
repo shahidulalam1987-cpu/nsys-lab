@@ -9,6 +9,7 @@ use App\Models\Client;
 use App\Models\DailyPerformanceReport;
 use App\Models\Employee;
 use App\Models\EmployeePayroll;
+use App\Models\EmployeeDailySubmission;
 use App\Models\EmployeeWorkStatus;
 use App\Models\FinanceAccount;
 use App\Models\FinanceLoan;
@@ -187,6 +188,19 @@ class NotificationCenterService
         $disabled = $accounts->where('status', 'disabled');
         $paymentIssue = $accounts->where('status', 'payment_issue');
         $endingSoon = Campaign::all()->filter(fn (Campaign $campaign) => $campaign->isEndingSoon());
+        $pendingOrders = EmployeeDailySubmission::where('status', 'pending')->where('submission_type', 'order')->count();
+        $pendingSpend = EmployeeDailySubmission::where('status', 'pending')->where('submission_type', 'spend')->count();
+        $readyToMerge = EmployeeDailySubmission::where('status', 'approved')
+            ->whereNotNull('campaign_id')
+            ->get()
+            ->groupBy(fn (EmployeeDailySubmission $submission) => implode(':', [
+                $submission->submission_date?->toDateString(),
+                $submission->client_id,
+                $submission->page_id,
+                $submission->campaign_id,
+            ]))
+            ->filter(fn ($group) => $group->pluck('submission_type')->unique()->count() === 2)
+            ->count();
 
         return array_values(array_filter([
             $this->alertIf($upcomingBilling->count(), 'facebook.billing_due', 'Facebook', 'warning', $upcomingBilling->count() . ' Ad Account Billing Due Soon', '/admin/ad-accounts', 'Facebook Team'),
@@ -197,6 +211,9 @@ class NotificationCenterService
             $this->alertIf($disabled->count(), 'facebook.disabled_accounts', 'Facebook', 'critical', $disabled->count() . ' Ad Accounts Disabled', '/admin/ad-accounts', 'Facebook Team'),
             $this->alertIf($paymentIssue->count(), 'facebook.payment_issue', 'Facebook', 'critical', $paymentIssue->count() . ' Payment Issue Ad Accounts', '/admin/ad-accounts', 'Facebook Team'),
             $this->alertIf($endingSoon->count(), 'facebook.campaign_ending_soon', 'Facebook', 'information', $endingSoon->count() . ' Campaigns Ending This Week', '/admin/campaigns', 'Facebook Team'),
+            $this->alertIf($pendingOrders, 'facebook.pending_employee_orders', 'Facebook', 'warning', $pendingOrders . ' Pending Order Submissions', '/admin/employee-submissions?status=pending&type=order', 'Facebook Team'),
+            $this->alertIf($pendingSpend, 'facebook.pending_employee_spend', 'Facebook', 'warning', $pendingSpend . ' Pending Spend Submissions', '/admin/employee-submissions?status=pending&type=spend', 'Facebook Team'),
+            $this->alertIf($readyToMerge, 'facebook.employee_reports_ready', 'Facebook', 'information', $readyToMerge . ' Employee Reports Ready to Merge', '/admin/employee-submissions?status=approved', 'Facebook Team'),
         ]));
     }
 

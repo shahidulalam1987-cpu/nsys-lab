@@ -13,6 +13,12 @@
     </div>
 
     <div class="stats-grid">
+        <div class="stat-card"><p>Submissions Pending</p><h2>{{ number_format($submissionAlerts['pending']) }}</h2></div>
+        <div class="stat-card"><p>Submissions Approved</p><h2>{{ number_format($submissionAlerts['approved']) }}</h2></div>
+        <div class="stat-card"><p>Correction Required</p><h2>{{ number_format($submissionAlerts['rejected']) }}</h2></div>
+    </div>
+
+    <div class="stats-grid">
         <div class="stat-card"><p>Upcoming Salary</p><h2>{{ $employee->salaryStatusLabel() === 'Upcoming' ? 'Yes' : 'No' }}</h2></div>
         <div class="stat-card"><p>Unread Notices</p><h2>{{ number_format($unreadNoticeCount) }}</h2></div>
         <div class="stat-card"><p>Pending Work Status</p><h2>{{ number_format($pendingWorkStatusCount) }}</h2></div>

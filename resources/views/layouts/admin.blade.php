@@ -464,6 +464,7 @@
             || request()->is('admin/client-pages*')
             || request()->is('admin/campaigns*')
             || request()->is('admin/daily-reports*')
+            || request()->is('admin/employee-submissions*')
             || request()->is('admin/profit-history*');
         $isAdminDashboard = request()->is('admin/dashboard') || request()->is('admin/notifications*');
         $notificationHeaderSummary = $canSystemTools
@@ -704,6 +705,7 @@
                 @endif
                 @if($authUser->hasPermission('daily_reports.view'))
                 <a class="{{ request()->is('admin/daily-reports*') ? 'active-menu' : '' }}" href="/admin/daily-reports">Daily Performance Entry</a>
+                <a class="{{ request()->is('admin/employee-submissions*') ? 'active-menu' : '' }}" href="/admin/employee-submissions">Employee Submissions</a>
                 @endif
                 @if($authUser->hasPermission('facebook.view'))
                 <a class="{{ request()->is('admin/profit-history') ? 'active-menu' : '' }}" href="/admin/profit-history">Analytics Dashboard</a>

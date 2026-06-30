@@ -44,6 +44,8 @@ use App\Http\Controllers\Admin\NotificationCenterController;
 use App\Http\Controllers\Admin\CampaignController;
 use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\EmployeeRoleController;
+use App\Http\Controllers\Admin\EmployeeDailySubmissionController as AdminEmployeeDailySubmissionController;
+use App\Http\Controllers\Employee\DailySubmissionController as EmployeeDailySubmissionController;
 
 Route::get('/', [DashboardController::class, 'index']);
 
@@ -314,6 +316,12 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::post('/admin/daily-reports/{dailyReport}/update', [DailyReportController::class, 'update']);
     Route::post('/admin/daily-reports/{dailyReport}/delete', [DailyReportController::class, 'destroy']);
     Route::get('/admin/daily-reports/{dailyReport}', [DailyReportController::class, 'show']);
+    Route::get('/admin/employee-submissions', [AdminEmployeeDailySubmissionController::class, 'index']);
+    Route::get('/admin/employee-submissions/{submission}/edit', [AdminEmployeeDailySubmissionController::class, 'edit']);
+    Route::put('/admin/employee-submissions/{submission}', [AdminEmployeeDailySubmissionController::class, 'update']);
+    Route::post('/admin/employee-submissions/{submission}/approve', [AdminEmployeeDailySubmissionController::class, 'approve']);
+    Route::post('/admin/employee-submissions/{submission}/reject', [AdminEmployeeDailySubmissionController::class, 'reject']);
+    Route::post('/admin/employee-submissions/{submission}/merge', [AdminEmployeeDailySubmissionController::class, 'merge']);
 
     Route::get('/admin/profit-history', [ProfitController::class, 'index']);
 });
@@ -337,6 +345,10 @@ Route::middleware(['auth', 'client', 'client.status'])->group(function () {
 
 Route::middleware(['auth', 'employee'])->group(function () {
     Route::get('/employee/dashboard', [EmployeeDashboardController::class, 'index']);
+    Route::get('/employee/daily-orders', [EmployeeDailySubmissionController::class, 'orders']);
+    Route::post('/employee/daily-orders', [EmployeeDailySubmissionController::class, 'storeOrder']);
+    Route::get('/employee/daily-spend', [EmployeeDailySubmissionController::class, 'spend']);
+    Route::post('/employee/daily-spend', [EmployeeDailySubmissionController::class, 'storeSpend']);
     Route::get('/employee/work-status', [EmployeeWorkStatusPortalController::class, 'index']);
     Route::get('/employee/attendance', [EmployeeAttendancePortalController::class, 'index']);
     Route::post('/employee/attendance', [EmployeeAttendancePortalController::class, 'store']);
