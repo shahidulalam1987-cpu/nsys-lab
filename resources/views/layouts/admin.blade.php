@@ -450,6 +450,10 @@
             || request()->is('admin/assignments*')
             || request()->is('admin/work-status*')
             || request()->is('admin/employee-notices*')
+            || request()->is('admin/employee-kpi*')
+            || request()->is('admin/leaderboard*')
+            || request()->is('admin/performance-targets*')
+            || request()->is('admin/bonuses*')
             || request()->is('admin/payroll*');
         $isTikTok = request()->is('admin/tiktok*');
         $isFinancialManagement = request()->is('admin/financial-management*')
@@ -465,8 +469,9 @@
             || request()->is('admin/campaigns*')
             || request()->is('admin/daily-reports*')
             || request()->is('admin/employee-submissions*')
+            || request()->is('admin/performance-verification*')
             || request()->is('admin/profit-history*');
-        $isAdminDashboard = request()->is('admin/dashboard') || request()->is('admin/notifications*');
+        $isAdminDashboard = request()->is('admin/dashboard') || request()->is('admin/notifications*') || request()->is('admin/executive-performance*');
         $notificationHeaderSummary = $canSystemTools
             ? app(\App\Services\NotificationCenterService::class)->summary()
             : ['unread' => 0];
@@ -650,7 +655,11 @@
                 @if($authUser->hasPermission('employee_roles.view'))
                 <a class="{{ request()->is('admin/employee-roles*') ? 'active-menu' : '' }}" href="/admin/employee-roles">Roles</a>
                 @endif
+                @if($authUser->hasPermission('kpi.view'))<a class="{{ request()->is('admin/employee-kpi*') ? 'active-menu' : '' }}" href="/admin/employee-kpi">Performance Dashboard</a>@endif
+                @if($authUser->hasPermission('leaderboard.view'))<a class="{{ request()->is('admin/leaderboard*') ? 'active-menu' : '' }}" href="/admin/leaderboard">Leaderboard</a>@endif
+                @if($authUser->hasPermission('targets.manage'))<a class="{{ request()->is('admin/performance-targets*') ? 'active-menu' : '' }}" href="/admin/performance-targets">Performance Targets</a>@endif
                 @endif
+                @if($authUser->hasPermission('bonus.view'))<a class="{{ request()->is('admin/bonuses*') ? 'active-menu' : '' }}" href="/admin/bonuses">Bonus Review</a>@endif
 
                 @if($authUser->hasPermission('assignments.view'))
                 <div class="sidebar-section-title">Assignments</div>
@@ -706,6 +715,7 @@
                 @if($authUser->hasPermission('daily_reports.view'))
                 <a class="{{ request()->is('admin/daily-reports*') ? 'active-menu' : '' }}" href="/admin/daily-reports">Daily Performance Entry</a>
                 <a class="{{ request()->is('admin/employee-submissions*') ? 'active-menu' : '' }}" href="/admin/employee-submissions">Employee Submissions</a>
+                @if($authUser->hasPermission('performance.view'))<a class="{{ request()->is('admin/performance-verification*') ? 'active-menu' : '' }}" href="/admin/performance-verification">Performance Verification</a>@endif
                 @endif
                 @if($authUser->hasPermission('facebook.view'))
                 <a class="{{ request()->is('admin/profit-history') ? 'active-menu' : '' }}" href="/admin/profit-history">Analytics Dashboard</a>
@@ -715,6 +725,7 @@
             @else
                 <div class="sidebar-section-title">Agency Dashboard</div>
                 <a class="{{ request()->is('admin/dashboard') ? 'active-menu' : '' }}" href="/admin/dashboard">Overview</a>
+                <a class="{{ request()->is('admin/executive-performance*') ? 'active-menu' : '' }}" href="/admin/executive-performance">Executive Performance</a>
                 <a class="sidebar-link-with-badge {{ request()->is('admin/notifications*') ? 'active-menu' : '' }}" href="/admin/notifications">
                     <span>Notification Center</span>
                     @if($notificationHeaderSummary['unread'] > 0)

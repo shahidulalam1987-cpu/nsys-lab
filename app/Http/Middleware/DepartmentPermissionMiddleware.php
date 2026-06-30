@@ -80,8 +80,17 @@ class DepartmentPermissionMiddleware
             $request->is('admin/daily-reports*', 'admin/export/daily-reports')
                 => [$manage ? 'daily_reports.manage' : 'daily_reports.view'],
 
-            $request->is('admin/employee-submissions*')
-                => [$manage ? 'daily_reports.manage' : 'daily_reports.view'],
+            $request->is('admin/employee-submissions/*/approve') => ['performance.approve'],
+            $request->is('admin/employee-submissions/*/merge') => ['performance.merge'],
+            $request->is('admin/employee-submissions*', 'admin/performance-verification*')
+                => [$manage ? 'performance.manage' : 'performance.view'],
+
+            $request->is('admin/employee-kpi*') => ['kpi.view'],
+            $request->is('admin/leaderboard*') => ['leaderboard.view'],
+            $request->is('admin/performance-targets*') => ['targets.manage'],
+            $request->is('admin/bonuses/*/approve') => ['bonus.approve'],
+            $request->is('admin/bonuses*') => [$manage ? 'bonus.manage' : 'bonus.view'],
+            $request->is('admin/executive-performance*') => ['dashboard.view'],
 
             $request->is('admin/facebook-dashboard', 'admin/business-managers*', 'admin/ad-accounts*', 'admin/ad-account-ledger*', 'admin/campaigns*', 'admin/payments*', 'admin/profit-history*', 'admin/export/profit-history', 'admin/export/payments')
                 => [$manage ? 'facebook.manage' : 'facebook.view'],

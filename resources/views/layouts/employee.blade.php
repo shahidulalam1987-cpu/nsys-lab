@@ -70,6 +70,7 @@
             <a class="{{ request()->is('employee/dashboard') ? 'active-menu' : '' }}" href="/employee/dashboard">Dashboard</a>
             @if($canDailyOrders)<a class="{{ request()->is('employee/daily-orders*') ? 'active-menu' : '' }}" href="/employee/daily-orders">Daily Orders</a>@endif
             @if($canDailySpend)<a class="{{ request()->is('employee/daily-spend*') ? 'active-menu' : '' }}" href="/employee/daily-spend">Daily Spend</a>@endif
+            <a class="{{ request()->is('employee/performance') ? 'active-menu' : '' }}" href="/employee/performance">My Performance</a>
             <a class="{{ request()->is('employee/work-status*') ? 'active-menu' : '' }}" href="/employee/work-status">My Work Status</a>
             <a class="{{ request()->is('employee/attendance*') ? 'active-menu' : '' }}" href="/employee/attendance">My Attendance</a>
             <a class="{{ request()->is('employee/salary*') ? 'active-menu' : '' }}" href="/employee/salary">My Salary</a>

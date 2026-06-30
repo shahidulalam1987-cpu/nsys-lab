@@ -10,6 +10,9 @@ use App\Models\DailyPerformanceReport;
 use App\Models\Employee;
 use App\Models\EmployeePayroll;
 use App\Models\EmployeeDailySubmission;
+use App\Models\EmployeeBonusEarning;
+use App\Models\EmployeeTarget;
+use App\Models\PerformanceVerification;
 use App\Models\EmployeeWorkStatus;
 use App\Models\FinanceAccount;
 use App\Models\FinanceLoan;
@@ -141,6 +144,25 @@ class NotificationCenterService
         $missingAssignment = $employees->filter(fn (Employee $employee) => $employee->status !== 'on_leave' && $employee->activeAssignments->isEmpty());
         $missingWorkStatus = $employees->filter(fn (Employee $employee) => $employee->status !== 'on_leave' && $employee->workStatuses->isEmpty());
         $finalSalaryPending = $this->terminatedEmployeesMissingFinalPayroll();
+        $missedTargets = EmployeeTarget::with('employee')
+            ->where('status', 'active')
+            ->whereNotNull('employee_id')
+            ->whereDate('start_date', '<=', today())
+            ->where(fn ($query) => $query->whereNull('end_date')->orWhereDate('end_date', '>=', today()))
+            ->get()
+            ->filter(function (EmployeeTarget $target) {
+                if (! $target->employee) return false;
+                [$from, $to] = match ($target->period_type) {
+                    'daily' => [today(), today()], 'weekly' => [now()->startOfWeek(), now()->endOfWeek()],
+                    default => [now()->startOfMonth(), now()->endOfMonth()],
+                };
+                $kpi = app(PerformanceOperationsService::class)->employeeKpi($target->employee, $from, $to);
+                $value = match ($target->target_type) {
+                    'orders' => $kpi['confirmed_orders'], 'spend' => $kpi['approved_spend'],
+                    'max_cpo' => $kpi['average_cpo'], 'approval_rate' => $kpi['approval_rate'], default => 0,
+                };
+                return $target->target_type === 'max_cpo' ? $value > (float) $target->target_value : $value < (float) $target->target_value;
+            });
 
         return array_values(array_filter([
             $this->alertIf($upcoming->count(), 'employee.upcoming_salary', 'Employee', 'warning', $upcoming->count() . ' Upcoming Salaries', '/admin/payroll?status=upcoming', 'HR Team'),
@@ -155,6 +177,7 @@ class NotificationCenterService
             $this->alertIf($onLeave->count(), 'employee.on_leave', 'Employee', 'information', $onLeave->count() . ' Employees On Leave', '/admin/employees?status=on_leave', 'HR Team'),
             $this->alertIf($missingAssignment->count(), 'employee.missing_assignment', 'Employee', 'warning', $missingAssignment->count() . ' Employees Missing Assignment', '/admin/assignments', 'HR Team'),
             $this->alertIf($missingWorkStatus->count(), 'employee.missing_work_status', 'Employee', 'warning', $missingWorkStatus->count() . ' Employees Missing Today Work Status', '/admin/work-status', 'HR Team'),
+            $this->alertIf($missedTargets->count(), 'employee.performance_target_missed', 'Employee', 'warning', $missedTargets->count() . ' Employee Performance Targets Missed', '/admin/performance-targets', 'HR Team'),
         ]));
     }
 
@@ -201,6 +224,7 @@ class NotificationCenterService
             ]))
             ->filter(fn ($group) => $group->pluck('submission_type')->unique()->count() === 2)
             ->count();
+        $mismatches = PerformanceVerification::where('status', 'mismatch')->count();
 
         return array_values(array_filter([
             $this->alertIf($upcomingBilling->count(), 'facebook.billing_due', 'Facebook', 'warning', $upcomingBilling->count() . ' Ad Account Billing Due Soon', '/admin/ad-accounts', 'Facebook Team'),
@@ -214,6 +238,7 @@ class NotificationCenterService
             $this->alertIf($pendingOrders, 'facebook.pending_employee_orders', 'Facebook', 'warning', $pendingOrders . ' Pending Order Submissions', '/admin/employee-submissions?status=pending&type=order', 'Facebook Team'),
             $this->alertIf($pendingSpend, 'facebook.pending_employee_spend', 'Facebook', 'warning', $pendingSpend . ' Pending Spend Submissions', '/admin/employee-submissions?status=pending&type=spend', 'Facebook Team'),
             $this->alertIf($readyToMerge, 'facebook.employee_reports_ready', 'Facebook', 'information', $readyToMerge . ' Employee Reports Ready to Merge', '/admin/employee-submissions?status=approved', 'Facebook Team'),
+            $this->alertIf($mismatches, 'facebook.performance_mismatch', 'Facebook', 'critical', $mismatches . ' Performance Reports Marked Mismatch', '/admin/performance-verification?status=mismatch', 'Facebook Team'),
         ]));
     }
 
@@ -229,6 +254,7 @@ class NotificationCenterService
             ->whereMonth('transaction_date', now()->month)
             ->whereYear('transaction_date', now()->year)
             ->count();
+        $pendingBonuses = EmployeeBonusEarning::where('status', 'pending')->count();
 
         return array_values(array_filter([
             $this->fundingAlert($balances->get('binance'), 'finance.low_binance', 'Binance Balance Below 200 USD'),
@@ -238,6 +264,7 @@ class NotificationCenterService
             $this->alertIf($upcomingLoanDue->count(), 'finance.loan_due', 'Finance', 'warning', $upcomingLoanDue->count() . ' Loans Due Soon', '/admin/finance/loans', 'Finance Team'),
             $this->alertIf($overdueLoan->count(), 'finance.loan_overdue', 'Finance', 'critical', $overdueLoan->count() . ' Loans Overdue', '/admin/finance/loans', 'Finance Team'),
             $this->alertIf($highFees, 'finance.high_card_fees', 'Finance', 'warning', $highFees . ' High Card Fee Transactions This Month', '/admin/facebook-financial/card-transactions', 'Finance Team'),
+            $this->alertIf($pendingBonuses, 'employee.bonus_pending', 'Employee', 'warning', $pendingBonuses . ' Bonus Earnings Pending Approval', '/admin/bonuses', 'HR Team'),
         ]));
     }
 

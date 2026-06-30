@@ -10,6 +10,9 @@ class DailyPerformanceReport extends Model
         'campaign_id',
         'report_date',
         'status',
+        'merged_by',
+        'merged_at',
+        'source_submission_ids',
         'spend',
         'messages',
         'results',
@@ -33,6 +36,8 @@ class DailyPerformanceReport extends Model
     {
         return [
             'report_date' => 'date',
+            'merged_at' => 'datetime',
+            'source_submission_ids' => 'array',
             'spend' => 'decimal:2',
             'fee_usd' => 'decimal:2',
             'extra_charge_usd' => 'decimal:2',

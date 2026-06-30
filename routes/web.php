@@ -46,6 +46,13 @@ use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\EmployeeRoleController;
 use App\Http\Controllers\Admin\EmployeeDailySubmissionController as AdminEmployeeDailySubmissionController;
 use App\Http\Controllers\Employee\DailySubmissionController as EmployeeDailySubmissionController;
+use App\Http\Controllers\Admin\PerformanceVerificationController;
+use App\Http\Controllers\Admin\EmployeeKpiController;
+use App\Http\Controllers\Admin\LeaderboardController;
+use App\Http\Controllers\Admin\PerformanceTargetController;
+use App\Http\Controllers\Admin\BonusController;
+use App\Http\Controllers\Admin\ExecutivePerformanceController;
+use App\Http\Controllers\Employee\PerformanceController as EmployeePerformanceController;
 
 Route::get('/', [DashboardController::class, 'index']);
 
@@ -322,6 +329,23 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::post('/admin/employee-submissions/{submission}/approve', [AdminEmployeeDailySubmissionController::class, 'approve']);
     Route::post('/admin/employee-submissions/{submission}/reject', [AdminEmployeeDailySubmissionController::class, 'reject']);
     Route::post('/admin/employee-submissions/{submission}/merge', [AdminEmployeeDailySubmissionController::class, 'merge']);
+    Route::get('/admin/performance-verification', [PerformanceVerificationController::class, 'index']);
+    Route::get('/admin/performance-verification/export', [PerformanceVerificationController::class, 'export']);
+    Route::post('/admin/performance-verification/{submission}/mismatch', [PerformanceVerificationController::class, 'markMismatch']);
+    Route::get('/admin/employee-kpi', [EmployeeKpiController::class, 'index']);
+    Route::get('/admin/employee-kpi/export', [EmployeeKpiController::class, 'export']);
+    Route::get('/admin/leaderboard', [LeaderboardController::class, 'index']);
+    Route::get('/admin/leaderboard/export', [LeaderboardController::class, 'export']);
+    Route::get('/admin/performance-targets', [PerformanceTargetController::class, 'index']);
+    Route::post('/admin/performance-targets', [PerformanceTargetController::class, 'store']);
+    Route::delete('/admin/performance-targets/{target}', [PerformanceTargetController::class, 'destroy']);
+    Route::get('/admin/bonuses', [BonusController::class, 'index']);
+    Route::post('/admin/bonuses/rules', [BonusController::class, 'storeRule']);
+    Route::post('/admin/bonuses/rules/{rule}/evaluate', [BonusController::class, 'evaluate']);
+    Route::post('/admin/bonuses/{earning}/approve', [BonusController::class, 'approve']);
+    Route::post('/admin/bonuses/{earning}/reject', [BonusController::class, 'reject']);
+    Route::get('/admin/bonuses/export', [BonusController::class, 'export']);
+    Route::get('/admin/executive-performance', [ExecutivePerformanceController::class, 'index']);
 
     Route::get('/admin/profit-history', [ProfitController::class, 'index']);
 });
@@ -349,6 +373,7 @@ Route::middleware(['auth', 'employee'])->group(function () {
     Route::post('/employee/daily-orders', [EmployeeDailySubmissionController::class, 'storeOrder']);
     Route::get('/employee/daily-spend', [EmployeeDailySubmissionController::class, 'spend']);
     Route::post('/employee/daily-spend', [EmployeeDailySubmissionController::class, 'storeSpend']);
+    Route::get('/employee/performance', [EmployeePerformanceController::class, 'index']);
     Route::get('/employee/work-status', [EmployeeWorkStatusPortalController::class, 'index']);
     Route::get('/employee/attendance', [EmployeeAttendancePortalController::class, 'index']);
     Route::post('/employee/attendance', [EmployeeAttendancePortalController::class, 'store']);

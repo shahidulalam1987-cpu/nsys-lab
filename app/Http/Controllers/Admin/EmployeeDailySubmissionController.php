@@ -7,7 +7,9 @@ use App\Models\Campaign;
 use App\Models\ClientPage;
 use App\Models\DailyPerformanceReport;
 use App\Models\EmployeeDailySubmission;
+use App\Models\PerformanceVerification;
 use App\Services\ActivityLogger;
+use App\Services\PerformanceOperationsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -75,17 +77,19 @@ class EmployeeDailySubmissionController extends Controller
 
     public function approve(Request $request, EmployeeDailySubmission $submission)
     {
-        if (! in_array($submission->status, ['pending', 'rejected'], true)) {
-            return back()->withErrors(['submission' => 'Only pending or rejected submissions can be approved.']);
-        }
-
-        $submission->update([
-            'status' => 'approved',
-            'reviewed_by' => auth()->id(),
-            'reviewed_at' => now(),
-            'admin_note' => $request->input('admin_note'),
-        ]);
-        app(ActivityLogger::class)->log('Facebook', 'Employee Submission Approved', 'Submission #'.$submission->id, $request);
+        DB::transaction(function () use ($submission, $request) {
+            $locked = EmployeeDailySubmission::whereKey($submission->id)->lockForUpdate()->firstOrFail();
+            if (! in_array($locked->status, ['pending', 'rejected'], true)) {
+                throw ValidationException::withMessages(['submission' => 'Only pending or rejected submissions can be approved.']);
+            }
+            $locked->update([
+                'status' => 'approved',
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now(),
+                'admin_note' => $request->input('admin_note'),
+            ]);
+            app(ActivityLogger::class)->log('Facebook', 'Employee Submission Approved', 'Submission #'.$submission->id, $request);
+        });
 
         return back()->with('success', 'Submission approved successfully.');
     }
@@ -93,17 +97,19 @@ class EmployeeDailySubmissionController extends Controller
     public function reject(Request $request, EmployeeDailySubmission $submission)
     {
         $data = $request->validate(['admin_note' => ['required', 'string']]);
-        if ($submission->status === 'merged') {
-            return back()->withErrors(['submission' => 'Merged submissions cannot be rejected.']);
-        }
-
-        $submission->update([
-            'status' => 'rejected',
-            'reviewed_by' => auth()->id(),
-            'reviewed_at' => now(),
-            'admin_note' => $data['admin_note'],
-        ]);
-        app(ActivityLogger::class)->log('Facebook', 'Employee Submission Rejected', 'Submission #'.$submission->id, $request);
+        DB::transaction(function () use ($submission, $data, $request) {
+            $locked = EmployeeDailySubmission::whereKey($submission->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status === 'merged') {
+                throw ValidationException::withMessages(['submission' => 'Merged submissions cannot be rejected.']);
+            }
+            $locked->update([
+                'status' => 'rejected',
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now(),
+                'admin_note' => $data['admin_note'],
+            ]);
+            app(ActivityLogger::class)->log('Facebook', 'Employee Submission Rejected', 'Submission #'.$submission->id, $request);
+        });
 
         return back()->with('success', 'Submission rejected successfully.');
     }
@@ -128,27 +134,39 @@ class EmployeeDailySubmissionController extends Controller
             $order = $group->where('submission_type', 'order')->sortByDesc('id')->first();
             $spend = $group->where('submission_type', 'spend')->sortByDesc('id')->first();
 
-            if (! $order && ! $spend) {
-                throw ValidationException::withMessages(['submission' => 'No approved submissions are available to merge.']);
+            if (! $order || ! $spend) {
+                throw ValidationException::withMessages(['submission' => 'Both approved order and approved spend submissions are required before merge.']);
             }
 
             $report = DailyPerformanceReport::firstOrNew([
                 'campaign_id' => $submission->campaign_id,
                 'report_date' => $submission->submission_date,
             ]);
-            if ($order) {
-                $report->orders = $order->orders ?? 0;
+            $sourceIds = $group->pluck('id')->sort()->values()->all();
+            if ($report->exists && $report->source_submission_ids === $sourceIds) {
+                throw ValidationException::withMessages(['submission' => 'This performance group has already been merged.']);
             }
-            if ($spend) {
-                $report->spend = $spend->dollar_spend ?? 0;
-                $report->cpm = $spend->cpm ?? 0;
-                $report->cpc = $spend->cpc ?? 0;
-            }
-            $report->status = $order && $spend ? 'admin_approved' : 'partial';
+            $report->orders = $order->orders ?? 0;
+            $report->spend = $spend->dollar_spend ?? 0;
+            $report->cpm = $spend->cpm ?? 0;
+            $report->cpc = $spend->cpc ?? 0;
+            $report->status = 'admin_approved';
+            $report->merged_by = auth()->id();
+            $report->merged_at = now();
+            $report->source_submission_ids = $sourceIds;
             $report->notes = trim(collect([$report->notes, 'Employee submission merge approved by '.auth()->user()->name.'.'])->filter()->implode("\n"));
             $report->save();
 
             $group->each->update(['status' => 'merged']);
+            $operations = app(PerformanceOperationsService::class);
+            PerformanceVerification::updateOrCreate(['group_key' => $operations->groupKey($submission)], [
+                'performance_date' => $submission->submission_date,
+                'client_id' => $submission->client_id,
+                'page_id' => $submission->page_id,
+                'campaign_id' => $submission->campaign_id,
+                'status' => 'merged',
+                'marked_by' => auth()->id(),
+            ]);
             app(ActivityLogger::class)->log('Facebook', 'Employee Submissions Merged', 'Daily performance #'.$report->id, $request);
 
             return $report;
