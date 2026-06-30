@@ -10,6 +10,7 @@ use App\Models\Employee;
 use App\Models\EmployeeWorkStatus;
 use App\Models\Shift;
 use App\Services\ActivityLogger;
+use App\Services\AssignmentResolver;
 use App\Services\WorkStatusCycleService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -65,7 +66,7 @@ class EmployeeWorkStatusController extends Controller
             ->get();
         $assignmentDefaults = $employees
             ->mapWithKeys(function (Employee $employee) {
-                $assignment = $employee->activeAssignments->sortByDesc('assigned_from')->first();
+                $assignment = app(AssignmentResolver::class)->current($employee);
 
                 return [$employee->id => [
                     'employee_id' => $employee->id,
@@ -107,6 +108,8 @@ class EmployeeWorkStatusController extends Controller
             return $this->storeDateRange($data, $request);
         }
 
+        $employee = Employee::findOrFail($data['employee_id']);
+        $this->ensureWorkDateAllowed($employee, Carbon::parse($data['work_date']), (bool) ($data['confirm_after_last_working_date'] ?? false));
         $workStatus = $this->saveWorkStatusForDate($data, $data['work_date']);
 
         app(ActivityLogger::class)->log('Work Status', 'Work Status Created', 'Work status #' . $workStatus->id . ' saved for ' . $workStatus->work_date?->toDateString() . '.', $request);
@@ -172,6 +175,12 @@ class EmployeeWorkStatusController extends Controller
         $fromDate = Carbon::parse($data['from_date'])->startOfDay();
         $toDate = Carbon::parse($data['to_date'])->startOfDay();
 
+        if ($employee->salaryEligibilityDate() && $fromDate->lt($employee->salaryEligibilityDate())) {
+            throw ValidationException::withMessages([
+                'from_date' => 'Work Status cannot be added before the employee confirmation date.',
+            ]);
+        }
+
         if ($employee->last_working_date && ! ($data['confirm_after_last_working_date'] ?? false)) {
             $lastWorkingDate = $employee->last_working_date->copy()->startOfDay();
 
@@ -186,18 +195,19 @@ class EmployeeWorkStatusController extends Controller
         $updated = 0;
         $skipped = 0;
 
-        for ($date = $fromDate->copy(); $date->lte($toDate); $date->addDay()) {
-            if ($employee->last_working_date
-                && $date->gt($employee->last_working_date->copy()->startOfDay())
-                && ! ($data['confirm_after_last_working_date'] ?? false)) {
-                $skipped++;
-                continue;
+        DB::transaction(function () use ($employee, $data, $fromDate, $toDate, &$created, &$updated, &$skipped) {
+            for ($date = $fromDate->copy(); $date->lte($toDate); $date->addDay()) {
+                if ($employee->last_working_date
+                    && $date->gt($employee->last_working_date->copy()->startOfDay())
+                    && ! ($data['confirm_after_last_working_date'] ?? false)) {
+                    $skipped++;
+                    continue;
+                }
+
+                $workStatus = $this->saveWorkStatusForDate($data, $date->toDateString());
+                $workStatus->wasRecentlyCreated ? $created++ : $updated++;
             }
-
-            $workStatus = $this->saveWorkStatusForDate($data, $date->toDateString());
-
-            $workStatus->wasRecentlyCreated ? $created++ : $updated++;
-        }
+        });
 
         app(ActivityLogger::class)->log(
             'Work Status',
@@ -267,6 +277,7 @@ class EmployeeWorkStatusController extends Controller
             'salary_count_value' => ['nullable', 'numeric', 'min:0', 'max:1'],
             'note' => ['nullable', 'string', 'max:500'],
         ]);
+        $this->ensureOperationalHierarchy(array_merge($data, ['client_id' => $data['client_id'] ?? null]));
 
         $workStatus->fill([
             'client_id' => $data['client_id'] ?? null,
@@ -400,7 +411,41 @@ class EmployeeWorkStatusController extends Controller
             }
         }
 
+        $this->ensureOperationalHierarchy($data);
+
         return $data;
+    }
+
+    private function ensureWorkDateAllowed(Employee $employee, Carbon $date, bool $allowAfterLastWorkingDate): void
+    {
+        $date = $date->copy()->startOfDay();
+
+        if ($employee->salaryEligibilityDate() && $date->lt($employee->salaryEligibilityDate())) {
+            throw ValidationException::withMessages(['work_date' => 'Work Status cannot be added before the employee confirmation date.']);
+        }
+
+        if ($employee->last_working_date && $date->gt($employee->last_working_date) && ! $allowAfterLastWorkingDate) {
+            throw ValidationException::withMessages(['work_date' => 'Work Status cannot be added after the employee last working date without override confirmation.']);
+        }
+    }
+
+    private function ensureOperationalHierarchy(array $data): void
+    {
+        $clientId = isset($data['client_id']) ? (int) $data['client_id'] : null;
+        $page = ! empty($data['client_page_id']) ? ClientPage::find($data['client_page_id']) : null;
+        $campaign = ! empty($data['campaign_id']) ? Campaign::find($data['campaign_id']) : null;
+
+        if ($page && $clientId && (int) $page->client_id !== $clientId) {
+            throw ValidationException::withMessages(['client_page_id' => 'Selected page does not belong to the selected client.']);
+        }
+
+        if ($campaign && $clientId && (int) $campaign->client_id !== $clientId) {
+            throw ValidationException::withMessages(['campaign_id' => 'Selected campaign does not belong to the selected client.']);
+        }
+
+        if ($campaign && $page && (int) $campaign->client_page_id !== (int) $page->id) {
+            throw ValidationException::withMessages(['campaign_id' => 'Selected campaign does not belong to the selected page.']);
+        }
     }
 
     private function safeReturnTo(?string $returnTo): ?string

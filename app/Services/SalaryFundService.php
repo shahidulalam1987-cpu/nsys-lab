@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Client;
 use App\Models\EmployeePayroll;
-use App\Models\SalaryDay;
 use App\Models\SalaryPayment;
 use Carbon\Carbon;
 
@@ -14,32 +13,21 @@ class SalaryFundService
     {
         $monthStart = Carbon::parse($month ?: now()->format('Y-m-01'))->startOfMonth();
         $monthEnd = $monthStart->copy()->endOfMonth();
-        $salaryMonthDays = EmployeePayroll::FIXED_SALARY_MONTH_DAYS;
-
-        $salaryDays = SalaryDay::with('employee')
+        $payrolls = EmployeePayroll::current()
+            ->with('employee')
             ->where('client_id', $client->id)
-            ->whereBetween('date', [$monthStart->toDateString(), $monthEnd->toDateString()])
-            ->orderBy('date')
+            ->whereDate('salary_month', $monthStart->toDateString())
+            ->orderBy('employee_id')
             ->get();
 
-        $employeeRows = $salaryDays
+        $employeeRows = $payrolls
             ->groupBy('employee_id')
-            ->map(function ($days) use ($salaryMonthDays) {
-                $employee = $days->first()->employee;
-                $countedDays = $days->where('is_counted', true)->count();
-                $nonCountedDays = $days->where('is_counted', false)->count();
-                $dailySalary = $employee
-                    ? round((float) $employee->monthly_salary / $salaryMonthDays, 2)
-                    : 0;
-                $salary = $employee && $countedDays >= $salaryMonthDays
-                    ? round((float) $employee->monthly_salary, 2)
-                    : round($dailySalary * $countedDays, 2);
-
+            ->map(function ($rows) {
                 return [
-                    'employee' => $employee,
-                    'counted_days' => $countedDays,
-                    'non_counted_days' => $nonCountedDays,
-                    'required_salary' => $salary,
+                    'employee' => $rows->first()->employee,
+                    'counted_days' => (float) $rows->sum('working_days'),
+                    'non_counted_days' => (float) $rows->sum('non_working_days'),
+                    'required_salary' => (float) $rows->sum('payable_salary'),
                 ];
             })
             ->values();
@@ -57,7 +45,7 @@ class SalaryFundService
         return [
             'month' => $monthStart,
             'employee_rows' => $employeeRows,
-            'salary_days' => $salaryDays,
+            'salary_days' => collect(),
             'payments' => $payments,
             'summary' => [
                 'total_salary_required' => $requiredSalary,
@@ -65,8 +53,8 @@ class SalaryFundService
                 'pending_payment' => $pendingPaid,
                 'current_due' => max($netBalance, 0),
                 'available_balance' => max($netBalance * -1, 0),
-                'counted_days' => $salaryDays->where('is_counted', true)->count(),
-                'non_counted_days' => $salaryDays->where('is_counted', false)->count(),
+                'counted_days' => (float) $payrolls->sum('working_days'),
+                'non_counted_days' => (float) $payrolls->sum('non_working_days'),
             ],
         ];
     }

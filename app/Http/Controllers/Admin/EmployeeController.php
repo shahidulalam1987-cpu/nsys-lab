@@ -11,10 +11,12 @@ use App\Models\Shift;
 use App\Models\User;
 use App\Services\ActivityLogger;
 use App\Services\ClientFundDashboardService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class EmployeeController extends Controller
 {
@@ -321,7 +323,7 @@ class EmployeeController extends Controller
 
     private function validatedEmployee(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'user_id' => ['nullable', 'exists:users,id'],
             'name' => ['required', 'string', 'max:255'],
             'mobile' => ['nullable', 'string', 'max:50'],
@@ -359,6 +361,28 @@ class EmployeeController extends Controller
             'mobile_banking_info' => ['nullable', 'string'],
             'admin_note' => ['nullable', 'string'],
         ]);
+
+        $joiningDate = Carbon::parse($data['joining_date'])->startOfDay();
+        $confirmationDate = ! empty($data['confirmation_date']) ? Carbon::parse($data['confirmation_date'])->startOfDay() : null;
+        $lastWorkingDate = ! empty($data['last_working_date']) ? Carbon::parse($data['last_working_date'])->startOfDay() : null;
+
+        if ($confirmationDate?->lt($joiningDate)) {
+            throw ValidationException::withMessages(['confirmation_date' => 'Confirmation date cannot be before joining date.']);
+        }
+
+        if ($lastWorkingDate?->lt($joiningDate)) {
+            throw ValidationException::withMessages(['last_working_date' => 'Last working date cannot be before joining date.']);
+        }
+
+        if ($data['status'] === 'active' && ! $confirmationDate) {
+            throw ValidationException::withMessages(['confirmation_date' => 'Confirmation date is required for an active employee.']);
+        }
+
+        if ($data['status'] === 'terminated' && ! $lastWorkingDate) {
+            throw ValidationException::withMessages(['last_working_date' => 'Last working date is required for a terminated employee.']);
+        }
+
+        return $data;
     }
 
     private function storeEmployeeFiles(Request $request, array &$data, string $employeeId, ?Employee $employee = null): void
@@ -438,8 +462,8 @@ class EmployeeController extends Controller
         $finalSettlementDuePayrolls = $finalSettlementPayrolls->filter(fn ($payroll) => $payroll->isFinalSettlementDue());
 
         return [
-            'working_days' => $employee->salaryDays->where('is_counted', true)->count(),
-            'non_working_days' => $employee->salaryDays->where('is_counted', false)->count(),
+            'working_days' => (float) $payrolls->sum('working_days'),
+            'non_working_days' => (float) $payrolls->sum('non_working_days'),
             'total_payable_salary' => (float) $payrolls->sum('payable_salary'),
             'total_paid_salary' => (float) $payrolls->sum('paid_amount'),
             'current_salary_due' => $payrolls->sum(fn ($payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),

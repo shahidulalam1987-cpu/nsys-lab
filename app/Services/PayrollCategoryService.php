@@ -46,7 +46,10 @@ class PayrollCategoryService
         self::NOT_SALARY_ELIGIBLE => 100,
     ];
 
-    public function __construct(private PayrollEstimateService $payrollEstimator)
+    public function __construct(
+        private PayrollEstimateService $payrollEstimator,
+        private AssignmentResolver $assignmentResolver
+    )
     {
     }
 
@@ -79,7 +82,7 @@ class PayrollCategoryService
                 'estimate' => $this->payrollEstimator->estimateCycle(
                     $employee,
                     $employee->last_working_date,
-                    $employee->isAgencyInternal() ? null : $employee->activeAssignments->first()?->client
+                    $employee->isAgencyInternal() ? null : $this->assignmentResolver->current($employee, $employee->last_working_date)?->client
                 ),
             ]);
         }
@@ -123,7 +126,7 @@ class PayrollCategoryService
             return $this->category(self::NOT_SALARY_ELIGIBLE);
         }
 
-        $client = $employee->isAgencyInternal() ? null : $employee->activeAssignments->first()?->client;
+        $client = $employee->isAgencyInternal() ? null : $this->assignmentResolver->current($employee, $today)?->client;
         $currentSalaryDate = $employee->currentSalaryDueDate($today);
         $currentPayroll = $this->payrollForCycle($payrolls, $currentSalaryDate);
         $upcomingSalaryDate = $employee->nextSalaryDate();

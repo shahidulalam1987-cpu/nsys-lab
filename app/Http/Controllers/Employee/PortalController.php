@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Employee;
 use App\Http\Controllers\Controller;
 use App\Models\EmployeeNotice;
 use App\Models\EmployeeNoticeRead;
+use App\Services\AssignmentResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -48,7 +49,7 @@ class PortalController extends Controller
             ->employee()
             ->with(['shift', 'assignments.client', 'assignments.page', 'assignments.shift'])
             ->firstOrFail();
-        $primaryAssignment = $employee->assignments->where('status', 'active')->sortByDesc('assigned_from')->first();
+        $primaryAssignment = app(AssignmentResolver::class)->current($employee);
 
         return view('employee.profile', compact('employee', 'primaryAssignment'));
     }

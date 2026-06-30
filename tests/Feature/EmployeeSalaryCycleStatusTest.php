@@ -386,6 +386,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
             'payable_salary' => 14000,
             'paid_amount' => 0,
             'payment_status' => 'unpaid',
+            'is_final_settlement' => true,
         ]);
 
         $response = $this->actingAs($admin)->get('/admin/payroll?status=due&employee_scope=terminated');
@@ -506,6 +507,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
             'payable_salary' => 12000,
             'paid_amount' => 0,
             'payment_status' => 'unpaid',
+            'is_final_settlement' => true,
         ]);
 
         $response = $this->actingAs($admin)->get('/admin/payroll?status=due&employee_scope=terminated');
@@ -727,6 +729,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
             'paid_amount' => 1000.02,
             'payment_status' => 'paid',
             'payroll_status' => 'paid',
+            'is_final_settlement' => true,
         ]);
         $payroll->update(['is_current' => null]);
 

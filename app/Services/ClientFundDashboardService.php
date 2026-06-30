@@ -3,8 +3,6 @@
 namespace App\Services;
 
 use App\Models\Client;
-use App\Models\Employee;
-use App\Models\EmployeeAssignment;
 use App\Models\EmployeePayroll;
 use App\Models\SalaryPayment;
 use Carbon\Carbon;
@@ -12,9 +10,12 @@ use Illuminate\Support\Collection;
 
 class ClientFundDashboardService
 {
-    public function __construct(private PayrollEstimateService $payrollEstimator)
-    {
-    }
+    private ?Collection $payrollStages = null;
+
+    public function __construct(
+        private PayrollCategoryService $payrollCategory,
+        private AssignmentResolver $assignmentResolver
+    ) {}
 
     public function dashboard(): array
     {
@@ -54,7 +55,7 @@ class ClientFundDashboardService
     public function sidebarBadges(): array
     {
         $dashboard = $this->dashboard();
-        $payrollCounts = app(PayrollCategoryService::class)->queueCounts();
+        $payrollCounts = $this->payrollCategory->queueCounts();
 
         return [
             'upcoming_salary_count' => $payrollCounts['upcoming'],
@@ -142,103 +143,69 @@ class ClientFundDashboardService
 
     private function unpaidSalaryForClient(Client $client): array
     {
-        $employeeIds = collect();
-        $amount = (float) $client->employeePayrolls->sum(function (EmployeePayroll $payroll) use ($employeeIds) {
-            if (! in_array($payroll->calculated_status, ['unpaid', 'partial'], true)) {
-                return 0;
-            }
-
-            if ($payroll->employee_id) {
-                $employeeIds->push($payroll->employee_id);
-            }
-
-            return max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0);
-        });
-
-        foreach ($this->activeAssignmentsForClient($client) as $assignment) {
-            $employee = $assignment->employee;
-            $dueDate = $employee?->currentSalaryDueDate();
-
-            if (! $employee || $employee->status === 'terminated' || ! $dueDate || ! $dueDate->lt(now()->startOfDay())) {
-                continue;
-            }
-
-            $hasPayrollForCycle = $client->employeePayrolls->contains(
-                fn (EmployeePayroll $payroll) => $payroll->employee_id === $employee->id
-                    && $payroll->salary_month?->copy()->startOfMonth()->toDateString() === $dueDate->copy()->startOfMonth()->toDateString()
-            );
-
-            if (! $hasPayrollForCycle) {
-                $employeeIds->push($employee->id);
-                $amount += (float) $this->payrollEstimator
-                    ->estimateCycle($employee, $dueDate, $client)['estimated_payable_salary'];
-            }
-        }
+        $categories = [
+            PayrollCategoryService::PENDING_WORK_STATUS,
+            PayrollCategoryService::SALARY_READY,
+            PayrollCategoryService::GENERATED,
+            PayrollCategoryService::UNPAID,
+            PayrollCategoryService::FINAL_SETTLEMENT_PENDING,
+            PayrollCategoryService::FINAL_SETTLEMENT_UNPAID,
+        ];
+        $rows = $this->stagesForClient($client)
+            ->filter(fn (array $row) => in_array(data_get($row, 'stage.category'), $categories, true));
 
         return [
-            'amount' => $amount,
-            'employee_count' => $employeeIds->unique()->count(),
+            'amount' => (float) $rows->sum(fn (array $row) => $this->stageAmount($row['stage'])),
+            'employee_count' => $rows->pluck('employee.id')->unique()->count(),
         ];
     }
 
     private function upcomingSalaryForClient(Client $client): array
     {
-        $today = now()->startOfDay();
-        $until = $today->copy()->addDays(5);
-        $employeeIds = collect();
-        $amount = 0.0;
-        $nearestDueDate = null;
-
-        foreach ($this->activeAssignmentsForClient($client) as $assignment) {
-            $employee = $assignment->employee;
-            $dueDate = $employee?->nextSalaryDate();
-
-            if (! $employee || $employee->status === 'terminated' || ! $dueDate || ! $dueDate->betweenIncluded($today, $until)) {
-                continue;
-            }
-
-            $payroll = $client->employeePayrolls
-                ->where('employee_id', $employee->id)
-                ->filter(fn (EmployeePayroll $payroll) => $payroll->salary_month?->copy()->startOfMonth()->toDateString() === $dueDate->copy()->startOfMonth()->toDateString())
-                ->sortByDesc('id')
-                ->first();
-
-            if ($payroll && $payroll->calculated_status === 'paid') {
-                continue;
-            }
-
-            $employeeIds->push($employee->id);
-            $amount += $payroll
-                ? max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)
-                : (float) $this->payrollEstimator
-                    ->estimateCycle($employee, $dueDate, $client)['estimated_payable_salary'];
-            $nearestDueDate = $nearestDueDate && $nearestDueDate->lte($dueDate)
-                ? $nearestDueDate
-                : $dueDate->copy();
-        }
+        $rows = $this->payrollCategory->upcomingCycles()
+            ->filter(fn (array $row) => $this->stageClientId($row['employee'], $row['salary_date'], data_get($row, 'payroll')) === $client->id);
+        $nearestDueDate = $rows->min('salary_date');
 
         return [
-            'amount' => $amount,
-            'employee_count' => $employeeIds->unique()->count(),
+            'amount' => (float) $rows->sum(fn (array $row) => $this->stageAmount($row)),
+            'employee_count' => $rows->pluck('employee.id')->unique()->count(),
             'due_text' => $nearestDueDate
                 ? 'Due in ' . now()->startOfDay()->diffInDays($nearestDueDate) . ' Days'
                 : 'No Upcoming Salary',
         ];
     }
 
-    private function activeAssignmentsForClient(Client $client): Collection
+    private function stagesForClient(Client $client): Collection
     {
-        $today = now()->toDateString();
+        $this->payrollStages ??= $this->payrollCategory->employeeStages();
 
-        return EmployeeAssignment::with(['employee.payrolls' => fn ($query) => $query->current()])
-            ->where('client_id', $client->id)
-            ->where('status', 'active')
-            ->whereDate('assigned_from', '<=', $today)
-            ->where(function ($query) use ($today) {
-                $query->whereNull('assigned_to')
-                    ->orWhereDate('assigned_to', '>=', $today);
-            })
-            ->get();
+        return $this->payrollStages->filter(function (array $row) use ($client) {
+            $stage = $row['stage'];
+            $payroll = data_get($stage, 'payroll');
+            $date = data_get($stage, 'salary_date') ?: $payroll?->salaryDueDate();
+
+            return $this->stageClientId($row['employee'], $date, $payroll) === $client->id;
+        });
+    }
+
+    private function stageClientId($employee, $date, ?EmployeePayroll $payroll): ?int
+    {
+        if ($payroll?->client_id) {
+            return (int) $payroll->client_id;
+        }
+
+        $assignmentDate = $date ? Carbon::parse($date) : now();
+
+        return $this->assignmentResolver->current($employee, $assignmentDate)?->client_id;
+    }
+
+    private function stageAmount(array $stage): float
+    {
+        $payroll = data_get($stage, 'payroll');
+
+        return $payroll
+            ? max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)
+            : (float) data_get($stage, 'estimate.estimated_payable_salary', 0);
     }
 
     public function ledgerExportRows(Client $client, array $filters = []): Collection

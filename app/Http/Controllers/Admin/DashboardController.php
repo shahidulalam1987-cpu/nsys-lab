@@ -63,16 +63,29 @@ class DashboardController extends Controller
         $clientFundSummary = $clientFundDashboard['summary'];
         $netAvailableFund = (float) ($clientFundSummary['available_balance'] ?? 0) - (float) ($clientFundSummary['upcoming_salary'] ?? 0);
         $clientFundRows = $clientFundDashboard['rows'];
-        $employeeSalaryDue = (float) EmployeePayroll::current()
-            ->whereColumn('paid_amount', '<', 'payable_salary')
-            ->get()
-            ->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0));
+        $payrollStages = $payrollCategoryService->employeeStages();
+        $dueCategories = [
+            PayrollCategoryService::PENDING_WORK_STATUS,
+            PayrollCategoryService::SALARY_READY,
+            PayrollCategoryService::GENERATED,
+            PayrollCategoryService::UNPAID,
+            PayrollCategoryService::FINAL_SETTLEMENT_PENDING,
+            PayrollCategoryService::FINAL_SETTLEMENT_UNPAID,
+        ];
+        $dueStages = $payrollStages->filter(fn (array $row) => in_array(data_get($row, 'stage.category'), $dueCategories, true));
+        $employeeSalaryDue = (float) $dueStages->sum(fn (array $row) => $this->stageDueAmount($row['stage']));
         $employeePayrolls = EmployeePayroll::current()->with(['employee', 'client'])->get();
         $upcomingCycles = $payrollCategoryService->upcomingCycles();
-        $unpaidPayrolls = $employeePayrolls
-            ->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('due') && $payroll->employee?->status !== 'terminated');
-        $finalSettlementPayrolls = $employeePayrolls
-            ->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue());
+        $unpaidStages = $payrollStages->filter(fn (array $row) => in_array(data_get($row, 'stage.category'), [
+            PayrollCategoryService::PENDING_WORK_STATUS,
+            PayrollCategoryService::SALARY_READY,
+            PayrollCategoryService::GENERATED,
+            PayrollCategoryService::UNPAID,
+        ], true));
+        $finalSettlementStages = $payrollStages->filter(fn (array $row) => in_array(data_get($row, 'stage.category'), [
+            PayrollCategoryService::FINAL_SETTLEMENT_PENDING,
+            PayrollCategoryService::FINAL_SETTLEMENT_UNPAID,
+        ], true));
         $adAccounts = AdAccount::all();
         $facebookBillingAlerts = $adAccounts
             ->filter(fn (AdAccount $account) => in_array($account->billingStatus(), ['upcoming', 'overdue'], true))
@@ -94,10 +107,10 @@ class DashboardController extends Controller
         $employeeAlerts = [
             'upcoming_count' => $upcomingCycles->count(),
             'upcoming_amount' => (float) $upcomingCycles->sum(fn (array $cycle) => (float) data_get($cycle, 'estimate.estimated_payable_salary', 0)),
-            'unpaid_count' => $unpaidPayrolls->count(),
-            'unpaid_amount' => (float) $unpaidPayrolls->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
-            'final_settlement_count' => $finalSettlementPayrolls->count(),
-            'final_settlement_amount' => (float) $finalSettlementPayrolls->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
+            'unpaid_count' => $unpaidStages->count(),
+            'unpaid_amount' => (float) $unpaidStages->sum(fn (array $row) => $this->stageDueAmount($row['stage'])),
+            'final_settlement_count' => $finalSettlementStages->count(),
+            'final_settlement_amount' => (float) $finalSettlementStages->sum(fn (array $row) => $this->stageDueAmount($row['stage'])),
         ];
         $facebookAlerts = [
             'upcoming_billing_accounts' => $upcomingBillingAccounts,
@@ -274,13 +287,22 @@ class DashboardController extends Controller
         $pendingSalaryPayments = SalaryPayment::where('status', 'pending')->sum('amount');
         $recentEmployees = Employee::latest()->take(5)->get();
         $recentSalaryPayments = SalaryPayment::with('client')->latest()->take(5)->get();
-        $employeePayrolls = EmployeePayroll::current()->with('employee')->get();
+        $payrollStages = $payrollCategoryService->employeeStages();
+        $unpaidStages = $payrollStages->filter(fn (array $row) => in_array(data_get($row, 'stage.category'), [
+            PayrollCategoryService::PENDING_WORK_STATUS,
+            PayrollCategoryService::SALARY_READY,
+            PayrollCategoryService::GENERATED,
+            PayrollCategoryService::UNPAID,
+        ], true));
+        $finalSettlementStages = $payrollStages->filter(fn (array $row) => in_array(data_get($row, 'stage.category'), [
+            PayrollCategoryService::FINAL_SETTLEMENT_PENDING,
+            PayrollCategoryService::FINAL_SETTLEMENT_UNPAID,
+        ], true));
         $employeeDashboardAlerts = [
             'upcoming_count' => $payrollCategoryService->upcomingCycles()->count(),
-            'unpaid_count' => $employeePayrolls->filter(fn (EmployeePayroll $payroll) => $payroll->matchesStatusFilter('due') && $payroll->employee?->status !== 'terminated')->count(),
-            'final_settlement_count' => $employeePayrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue())->count(),
-            'final_settlement_amount' => (float) $employeePayrolls->filter(fn (EmployeePayroll $payroll) => $payroll->isFinalSettlementDue())
-                ->sum(fn (EmployeePayroll $payroll) => max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)),
+            'unpaid_count' => $unpaidStages->count(),
+            'final_settlement_count' => $finalSettlementStages->count(),
+            'final_settlement_amount' => (float) $finalSettlementStages->sum(fn (array $row) => $this->stageDueAmount($row['stage'])),
         ];
 
         return view('admin.employee-dashboard', compact(
@@ -317,5 +339,14 @@ class DashboardController extends Controller
             'recentClients',
             'recentClientPayments'
         ));
+    }
+
+    private function stageDueAmount(array $stage): float
+    {
+        $payroll = data_get($stage, 'payroll');
+
+        return $payroll
+            ? max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)
+            : (float) data_get($stage, 'estimate.estimated_payable_salary', 0);
     }
 }

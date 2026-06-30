@@ -240,6 +240,11 @@ class FinanceManagementController extends Controller
 
         DB::transaction(function () use ($loan, $data, $request) {
             $lockedLoan = FinanceLoan::whereKey($loan->id)->lockForUpdate()->firstOrFail();
+
+            if ((float) $data['amount'] > (float) $lockedLoan->remaining_balance) {
+                throw ValidationException::withMessages(['amount' => 'Repayment cannot exceed the remaining loan balance.']);
+            }
+
             $repayment = $lockedLoan->repayments()->create($data);
             $lockedLoan->paid_amount = (float) $lockedLoan->paid_amount + (float) $data['amount'];
             $lockedLoan->save();

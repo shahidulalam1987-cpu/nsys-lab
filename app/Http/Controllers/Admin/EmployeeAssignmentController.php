@@ -55,6 +55,7 @@ class EmployeeAssignmentController extends Controller
         }
 
         $data = $this->validatedData($request, requirePage: ! $employee->isAgencyInternal(), employee: $employee);
+        $this->ensureHierarchyMatches($data);
         $this->ensureNoDuplicateActivePageAssignment($data);
 
         $assignment = EmployeeAssignment::create($data);
@@ -82,6 +83,7 @@ class EmployeeAssignmentController extends Controller
     {
         $employee = Employee::findOrFail($request->input('employee_id', $assignment->employee_id));
         $data = $this->validatedData($request, requirePage: ! $employee->isAgencyInternal(), assignment: $assignment, employee: $employee);
+        $this->ensureHierarchyMatches($data);
         $this->ensureNoDuplicateActivePageAssignment($data, $assignment);
 
         $assignment->update($data);
@@ -106,6 +108,7 @@ class EmployeeAssignmentController extends Controller
         ]);
         $data['employee_id'] = $employee->id;
 
+        $this->ensureHierarchyMatches($data);
         $this->ensureNoDuplicateActivePageAssignment($data);
 
         $assignedTo = $data['assigned_to'] ?? null;
@@ -142,6 +145,7 @@ class EmployeeAssignmentController extends Controller
         $data['employee_id'] = $assignment->employee_id;
         $data['client_id'] = $assignment->client_id;
 
+        $this->ensureHierarchyMatches($data);
         $this->ensureNoDuplicateActivePageAssignment($data, $assignment);
 
         $assignment->update(collect($data)->except(['employee_id', 'client_id'])->all());
@@ -217,6 +221,25 @@ class EmployeeAssignmentController extends Controller
             throw ValidationException::withMessages([
                 'client_page_id' => 'This employee already has an active assignment for this page.',
             ]);
+        }
+    }
+
+    private function ensureHierarchyMatches(array $data): void
+    {
+        $clientId = isset($data['client_id']) ? (int) $data['client_id'] : null;
+        $page = ! empty($data['client_page_id']) ? ClientPage::find($data['client_page_id']) : null;
+        $campaign = ! empty($data['campaign_id']) ? Campaign::find($data['campaign_id']) : null;
+
+        if ($page && $clientId && (int) $page->client_id !== $clientId) {
+            throw ValidationException::withMessages(['client_page_id' => 'Selected page does not belong to the selected client.']);
+        }
+
+        if ($campaign && $clientId && (int) $campaign->client_id !== $clientId) {
+            throw ValidationException::withMessages(['campaign_id' => 'Selected campaign does not belong to the selected client.']);
+        }
+
+        if ($campaign && $page && (int) $campaign->client_page_id !== (int) $page->id) {
+            throw ValidationException::withMessages(['campaign_id' => 'Selected campaign does not belong to the selected page.']);
         }
     }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Models\EmployeeAssignment;
 use App\Models\EmployeeAttendance;
+use App\Services\AssignmentResolver;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -27,7 +28,7 @@ class AttendanceController extends Controller
             ->whereDate('attendance_date', '>=', now()->startOfMonth()->toDateString())
             ->whereDate('attendance_date', '<=', now()->endOfMonth()->toDateString())
             ->get();
-        $primaryAssignment = $employee->assignments->where('status', 'active')->sortByDesc('assigned_from')->first();
+        $primaryAssignment = app(AssignmentResolver::class)->current($employee);
         $summary = [
             'present_days' => $monthlyAttendances->where('status', 'present')->count(),
             'late_days' => $monthlyAttendances->where('is_late', true)->count(),
@@ -131,16 +132,7 @@ class AttendanceController extends Controller
 
     private function activeAssignment(Employee $employee, string $date): ?EmployeeAssignment
     {
-        return EmployeeAssignment::where('employee_id', $employee->id)
-            ->with('shift')
-            ->where('status', 'active')
-            ->whereDate('assigned_from', '<=', $date)
-            ->where(function ($query) use ($date) {
-                $query->whereNull('assigned_to')
-                    ->orWhereDate('assigned_to', '>=', $date);
-            })
-            ->latest('assigned_from')
-            ->first();
+        return app(AssignmentResolver::class)->current($employee, Carbon::parse($date));
     }
 
     private function isLate($shift): bool

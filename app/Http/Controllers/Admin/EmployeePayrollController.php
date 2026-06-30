@@ -9,6 +9,7 @@ use App\Models\EmployeePayroll;
 use App\Models\EmployeeWorkStatus;
 use App\Models\FinanceAccount;
 use App\Services\ActivityLogger;
+use App\Services\AssignmentResolver;
 use App\Services\ClientFundDashboardService;
 use App\Services\FinanceLedgerService;
 use App\Services\PayrollCategoryService;
@@ -18,15 +19,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class EmployeePayrollController extends Controller
 {
     public function __construct(
         private PayrollEstimateService $payrollEstimator,
-        private PayrollCategoryService $payrollCategory
-    )
-    {
-    }
+        private PayrollCategoryService $payrollCategory,
+        private AssignmentResolver $assignmentResolver
+    ) {}
 
     public function index(Request $request)
     {
@@ -145,12 +146,10 @@ class EmployeePayrollController extends Controller
             $employee = $employees->firstWhere('id', (int) $request->integer('employee_id'));
 
             if ($employee) {
-                $assignment = $employee->activeAssignments
-                    ->sortByDesc(fn ($item) => ($item->assigned_from?->format('Y-m-d') ?? '') . ':' . str_pad((string) $item->id, 12, '0', STR_PAD_LEFT))
-                    ->first();
                 $salaryDate = $request->filled('salary_date') ? Carbon::parse($request->input('salary_date'))->startOfDay() : null;
                 $cycleStart = $request->filled('cycle_start') ? Carbon::parse($request->input('cycle_start'))->startOfDay() : null;
                 $cycleEnd = $request->filled('cycle_end') ? Carbon::parse($request->input('cycle_end'))->startOfDay() : $salaryDate?->copy();
+                $assignment = $this->assignmentResolver->current($employee, $cycleEnd ?: now());
                 $clientId = $employee->isAgencyInternal()
                     ? null
                     : ($request->filled('client_id') ? (int) $request->integer('client_id') : $assignment?->client_id);
@@ -210,6 +209,7 @@ class EmployeePayrollController extends Controller
             'client_id' => ['nullable', 'exists:clients,id'],
             'calculation_type' => ['required', Rule::in(['date_to_date', 'monthly_cycle'])],
             'salary_month' => ['nullable', 'required_if:calculation_type,monthly_cycle', 'date_format:Y-m'],
+            'salary_date' => ['nullable', 'date'],
             'from_date' => ['nullable', 'required_if:calculation_type,date_to_date', 'date'],
             'to_date' => ['nullable', 'required_if:calculation_type,date_to_date', 'date', 'after_or_equal:from_date'],
             'use_work_status_records' => ['nullable', 'boolean'],
@@ -251,6 +251,14 @@ class EmployeePayrollController extends Controller
 
         $calculation = $this->calculatePayroll($employee, $data);
         $client = isset($data['client_id']) ? Client::find($data['client_id']) : null;
+        $paidAmount = (float) ($data['paid_amount'] ?? 0);
+
+        if ($paidAmount > 0) {
+            throw ValidationException::withMessages([
+                'paid_amount' => 'Generate salary with Paid Salary set to zero. Use Confirm Payment after payroll approval.',
+            ]);
+        }
+
         if ((float) $calculation['payable_salary'] <= 0
             && ! $this->payrollEstimator->hasWorkStatusRecordsForPeriod(
                 $employee,
@@ -262,11 +270,11 @@ class EmployeePayrollController extends Controller
                 ->withInput()
                 ->withErrors(['work_status' => 'Work Status records are required before salary generation.']);
         }
-        $existingPayroll = $this->existingPayrollForPeriod(
-            (int) $data['employee_id'],
-            isset($data['client_id']) ? (int) $data['client_id'] : null,
-            $calculation['salary_month']
-        );
+        $cycleDueDate = $request->filled('salary_date')
+            ? Carbon::parse($request->input('salary_date'))
+            : $this->cycleDueDate($employee, $calculation['to_date']);
+        $clientId = isset($data['client_id']) ? (int) $data['client_id'] : null;
+        $existingPayroll = $this->existingPayrollForCycleDate((int) $data['employee_id'], $clientId, $cycleDueDate);
 
         if ($existingPayroll && empty($data['confirm_regenerate'])) {
             return view('admin.payroll.duplicate-warning', [
@@ -277,12 +285,19 @@ class EmployeePayrollController extends Controller
             ]);
         }
 
-        $paidAmount = (float) ($data['paid_amount'] ?? 0);
         $paymentStatus = EmployeePayroll::paymentStatusFor(null, $calculation['payable_salary'], $paidAmount);
         $this->validatePaymentWorkflow($request, $paidAmount);
         $paymentSnapshot = $this->employeePaymentSnapshot($employee);
 
-        $payroll = EmployeePayroll::create(array_merge([
+        $payroll = DB::transaction(function () use ($data, $employee, $calculation, $paidAmount, $paymentStatus, $paymentSnapshot, $existingPayroll, $request, $cycleDueDate, $clientId) {
+            if ($existingPayroll) {
+                $existingPayroll->update([
+                    'is_current' => false,
+                    'cycle_key' => null,
+                ]);
+            }
+
+            $payroll = EmployeePayroll::create(array_merge([
             'employee_id' => $data['employee_id'],
             'client_id' => $data['client_id'] ?? null,
             'salary_source' => $employee->defaultSalarySource(),
@@ -297,6 +312,9 @@ class EmployeePayrollController extends Controller
             'daily_salary' => $calculation['daily_salary'],
             'salary_day_adjustments' => $calculation['salary_day_adjustments'],
             'salary_month' => $calculation['salary_month']->toDateString(),
+            'cycle_due_date' => $cycleDueDate->toDateString(),
+            'cycle_key' => EmployeePayroll::cycleKey($employee->id, $clientId, $cycleDueDate),
+            'is_final_settlement' => $employee->status === 'terminated',
             'payable_salary' => $calculation['payable_salary'],
             'payroll_employee_name' => $employee->name,
             'payroll_employee_code' => $employee->employee_id,
@@ -313,27 +331,27 @@ class EmployeePayrollController extends Controller
             'is_current' => true,
             'regenerated_from_id' => $existingPayroll?->id,
             'note' => $data['note'] ?? null,
-        ], $paymentSnapshot));
+            ], $paymentSnapshot));
 
-        if ($existingPayroll) {
-            $existingPayroll->update([
-                'is_current' => false,
-                'superseded_by_id' => $payroll->id,
-            ]);
-        }
+            if ($existingPayroll) {
+                $existingPayroll->update(['superseded_by_id' => $payroll->id]);
+            }
 
-        $payroll->markAudit(
-            $existingPayroll ? 'salary_regenerated' : 'salary_generated',
-            auth()->id(),
-            $existingPayroll ? 'Regenerated from salary #' . $existingPayroll->id : null
-        );
+            $payroll->markAudit(
+                $existingPayroll ? 'salary_regenerated' : 'salary_generated',
+                auth()->id(),
+                $existingPayroll ? 'Regenerated from salary #' . $existingPayroll->id : null
+            );
 
-        app(ActivityLogger::class)->log(
-            'Payroll',
-            $existingPayroll ? 'Salary Regenerated' : 'Salary Generated',
-            'Salary #' . $payroll->id . ' generated for ' . ($payroll->employee?->name ?? 'employee') . '.',
-            $request
-        );
+            app(ActivityLogger::class)->log(
+                'Payroll',
+                $existingPayroll ? 'Salary Regenerated' : 'Salary Generated',
+                'Salary #' . $payroll->id . ' generated for ' . $employee->name . '.',
+                $request
+            );
+
+            return $payroll;
+        });
 
         return redirect($data['return_to'] ?? ('/admin/payroll/' . $payroll->id))
             ->with('success', 'Employee payroll saved successfully.');
@@ -392,7 +410,19 @@ class EmployeePayrollController extends Controller
                     continue;
                 }
 
-                $payroll = EmployeePayroll::create(array_merge([
+                $rowEmployee = $previewRow['employee'];
+                $rowClientId = $previewRow['client']?->id;
+                $rowCycleDueDate = $salaryDate ?: $this->cycleDueDate($rowEmployee, $periodEnd);
+
+                $payroll = DB::transaction(function () use ($previewRow, $periodStart, $periodEnd, $existingPayroll, $request, $rowEmployee, $rowClientId, $rowCycleDueDate) {
+                    if ($existingPayroll) {
+                        $existingPayroll->update([
+                            'is_current' => false,
+                            'cycle_key' => null,
+                        ]);
+                    }
+
+                    $payroll = EmployeePayroll::create(array_merge([
                     'employee_id' => $previewRow['employee']->id,
                     'client_id' => $previewRow['client']?->id,
                     'salary_source' => $previewRow['employee']->defaultSalarySource(),
@@ -407,6 +437,9 @@ class EmployeePayrollController extends Controller
                     'daily_salary' => $previewRow['daily_salary'],
                     'salary_day_adjustments' => $previewRow['adjustments'],
                     'salary_month' => $periodStart->copy()->startOfMonth()->toDateString(),
+                    'cycle_due_date' => $rowCycleDueDate->toDateString(),
+                    'cycle_key' => EmployeePayroll::cycleKey($rowEmployee->id, $rowClientId, $rowCycleDueDate),
+                    'is_final_settlement' => $rowEmployee->status === 'terminated',
                     'payable_salary' => $previewRow['payable_salary'],
                     'payroll_employee_name' => $previewRow['employee']->name,
                     'payroll_employee_code' => $previewRow['employee']->employee_id,
@@ -419,27 +452,27 @@ class EmployeePayrollController extends Controller
                     'is_current' => true,
                     'regenerated_from_id' => $existingPayroll?->id,
                     'note' => 'Generated from Work Status records.',
-                ], $this->employeePaymentSnapshot($previewRow['employee'])));
+                    ], $this->employeePaymentSnapshot($previewRow['employee'])));
 
-                if ($existingPayroll) {
-                    $existingPayroll->update([
-                        'is_current' => false,
-                        'superseded_by_id' => $payroll->id,
-                    ]);
-                }
+                    if ($existingPayroll) {
+                        $existingPayroll->update(['superseded_by_id' => $payroll->id]);
+                    }
 
-                $payroll->markAudit(
-                    $existingPayroll ? 'salary_regenerated' : 'salary_generated',
-                    auth()->id(),
-                    'Generated from Work Status records.'
-                );
+                    $payroll->markAudit(
+                        $existingPayroll ? 'salary_regenerated' : 'salary_generated',
+                        auth()->id(),
+                        'Generated from Work Status records.'
+                    );
 
-                app(ActivityLogger::class)->log(
-                    'Payroll',
-                    $existingPayroll ? 'Salary Regenerated' : 'Salary Generated',
-                    'Salary #' . $payroll->id . ' generated from Work Status records.',
-                    $request
-                );
+                    app(ActivityLogger::class)->log(
+                        'Payroll',
+                        $existingPayroll ? 'Salary Regenerated' : 'Salary Generated',
+                        'Salary #' . $payroll->id . ' generated from Work Status records.',
+                        $request
+                    );
+
+                    return $payroll;
+                });
 
                 $existingPayroll ? $regenerated++ : $created++;
             }
@@ -521,7 +554,13 @@ class EmployeePayrollController extends Controller
             'note' => ['nullable', 'string'],
         ]);
 
-        $paidAmount = (float) ($data['paid_amount'] ?? 0);
+        $paidAmount = (float) ($data['paid_amount'] ?? $payroll->paid_amount);
+
+        if (round($paidAmount, 2) !== round((float) $payroll->paid_amount, 2)) {
+            throw ValidationException::withMessages([
+                'paid_amount' => 'Paid Salary can only be changed through Confirm Payment or Reverse Payment.',
+            ]);
+        }
         $this->validatePaymentWorkflow($request, $paidAmount);
 
         $paymentProof = $payroll->payment_proof;
@@ -1121,7 +1160,7 @@ class EmployeePayrollController extends Controller
 
                 return [
                     'employee' => trim(($employee->employee_id ?: '-') . ' ' . $employee->name),
-                    'client' => $employee->activeAssignments->first()?->client?->company_name ?: '-',
+                    'client' => $this->assignmentResolver->current($employee, $salaryDate ?: now())?->client?->company_name ?: '-',
                     'salary_source' => $employee->salarySourceLabel(),
                     'salary_period' => $salaryDate?->format('Y-m') ?: '-',
                     'salary_date' => $salaryDate?->toDateString() ?: '-',
@@ -1144,7 +1183,7 @@ class EmployeePayrollController extends Controller
             return null;
         }
 
-        return $employee->activeAssignments->first()?->client;
+        return $this->assignmentResolver->current($employee)?->client;
     }
 
     private function workStatusPreviewRows(array $filters): array
@@ -1222,6 +1261,21 @@ class EmployeePayrollController extends Controller
             )
             ->get()
             ->first(fn (EmployeePayroll $payroll) => $payroll->matchesSalaryCycleDate($salaryDate));
+    }
+
+    private function cycleDueDate(Employee $employee, Carbon $periodEnd): Carbon
+    {
+        if ($employee->status === 'terminated' && $employee->last_working_date) {
+            return $employee->last_working_date->copy()->startOfDay();
+        }
+
+        $dueDate = $employee->salaryDateForMonth($periodEnd->copy());
+
+        if ($dueDate && $dueDate->lt($periodEnd)) {
+            $dueDate = $employee->salaryDateForMonth($periodEnd->copy()->addMonthNoOverflow());
+        }
+
+        return ($dueDate ?: $periodEnd)->copy()->startOfDay();
     }
 
     private function calculatePayroll(Employee $employee, array $data): array

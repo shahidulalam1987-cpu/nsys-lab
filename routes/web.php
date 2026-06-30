@@ -108,7 +108,7 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::get('/admin/invoices/create', [InvoiceController::class, 'create']);
     Route::post('/admin/invoices', [InvoiceController::class, 'store']);
     Route::get('/admin/invoices/{id}/pdf', [InvoiceController::class, 'downloadPdf']);
-    Route::get('/admin/invoices/{id}/status/{status}', [InvoiceController::class, 'updateStatus']);
+    Route::post('/admin/invoices/{id}/status/{status}', [InvoiceController::class, 'updateStatus']);
 
     Route::get('/admin/employees', [EmployeeController::class, 'index']);
     Route::get('/admin/employees/create', [EmployeeController::class, 'create']);

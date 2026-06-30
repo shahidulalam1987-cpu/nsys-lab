@@ -469,6 +469,7 @@
         <form method="POST" action="/admin/payroll" id="salary-generate-form" enctype="multipart/form-data">
             @csrf
             <input type="hidden" name="generation_mode" value="manual">
+            <input type="hidden" name="salary_date" value="{{ $quickSalaryDate }}">
             @if($quickSalaryContext)<input type="hidden" name="return_to" value="/admin/payroll?status=due">@endif
 
             <div class="salary-section">

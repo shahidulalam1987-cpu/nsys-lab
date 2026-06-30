@@ -40,6 +40,9 @@ class EmployeePayroll extends Model
         'daily_salary',
         'salary_day_adjustments',
         'salary_month',
+        'cycle_due_date',
+        'cycle_key',
+        'is_final_settlement',
         'payable_salary',
         'payroll_salary_amount',
         'paid_amount',
@@ -81,6 +84,8 @@ class EmployeePayroll extends Model
             'salary_period_from' => 'date',
             'salary_period_to' => 'date',
             'salary_month' => 'date',
+            'cycle_due_date' => 'date',
+            'is_final_settlement' => 'boolean',
             'working_days' => 'decimal:2',
             'non_working_days' => 'decimal:2',
             'month_days' => 'integer',
@@ -515,12 +520,13 @@ class EmployeePayroll extends Model
             return false;
         }
 
-        $lastWorkingDate = $employee->last_working_date;
-        $isCurrent = $this->is_current || $this->is_current === null;
+        if ($this->is_final_settlement) {
+            return true;
+        }
 
-        return $isCurrent
-            || (float) $this->paid_amount < (float) $this->payable_salary
-            || $this->salary_month?->copy()->startOfMonth()->toDateString() === $lastWorkingDate->copy()->startOfMonth()->toDateString()
+        $lastWorkingDate = $employee->last_working_date;
+
+        return $this->salary_month?->copy()->startOfMonth()->toDateString() === $lastWorkingDate->copy()->startOfMonth()->toDateString()
             || ($this->salary_period_from
                 && $this->salary_period_to
                 && $lastWorkingDate->betweenIncluded($this->salary_period_from, $this->salary_period_to));
@@ -559,6 +565,10 @@ class EmployeePayroll extends Model
 
     public function salaryDueDate(): ?\Carbon\Carbon
     {
+        if ($this->cycle_due_date) {
+            return $this->cycle_due_date->copy()->startOfDay();
+        }
+
         $employee = $this->relationLoaded('employee')
             ? $this->employee
             : $this->employee()->first();
@@ -580,6 +590,11 @@ class EmployeePayroll extends Model
 
         return $dueDate
             ?: ($this->isFinalSettlementPayroll() ? $employee->last_working_date : null);
+    }
+
+    public static function cycleKey(int $employeeId, ?int $clientId, \Carbon\Carbon $cycleDueDate): string
+    {
+        return implode(':', [$employeeId, $clientId ?: 'agency', $cycleDueDate->toDateString()]);
     }
 
     public function daysUntilDue(?\Carbon\Carbon $asOf = null): ?int

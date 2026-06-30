@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Employee;
 use App\Http\Controllers\Controller;
 use App\Models\EmployeeNotice;
 use App\Models\EmployeeNoticeRead;
+use App\Services\AssignmentResolver;
 
 class DashboardController extends Controller
 {
@@ -17,7 +18,6 @@ class DashboardController extends Controller
                 'assignments.client',
                 'assignments.page',
                 'assignments.shift',
-                'salaryDays.client',
                 'payrolls.client',
                 'attendances.client',
                 'attendances.shift',
@@ -43,8 +43,8 @@ class DashboardController extends Controller
             'client_issue' => $monthlyWorkStatuses->where('status', 'client_issue')->count(),
             'boosting_off' => $monthlyWorkStatuses->where('status', 'boosting_off')->count(),
         ];
-        $activeAssignments = $employee->assignments->where('status', 'active');
-        $primaryAssignment = $activeAssignments->sortByDesc('assigned_from')->first();
+        $primaryAssignment = app(AssignmentResolver::class)->current($employee);
+        $activeAssignments = $primaryAssignment ? collect([$primaryAssignment]) : collect();
         $payrolls = $employee->payrolls->sortByDesc('salary_month');
         $currentPayrolls = $payrolls->filter(fn ($payroll) => $payroll->is_current);
         $salarySummary = [

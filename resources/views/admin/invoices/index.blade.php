@@ -47,9 +47,9 @@
 
                     <br><br>
 
-                    <a class="btn btn-success" href="/admin/invoices/{{ $invoice->id }}/status/paid">Paid</a>
-                    <a class="btn btn-danger" href="/admin/invoices/{{ $invoice->id }}/status/overdue">Overdue</a>
-                    <a class="btn" href="/admin/invoices/{{ $invoice->id }}/status/sent">Sent</a>
+                    <form method="POST" action="/admin/invoices/{{ $invoice->id }}/status/paid" style="display:inline">@csrf<button class="btn btn-success" type="submit">Paid</button></form>
+                    <form method="POST" action="/admin/invoices/{{ $invoice->id }}/status/overdue" style="display:inline">@csrf<button class="btn btn-danger" type="submit">Overdue</button></form>
+                    <form method="POST" action="/admin/invoices/{{ $invoice->id }}/status/sent" style="display:inline">@csrf<button class="btn" type="submit">Sent</button></form>
                 </td>
             </tr>
         @empty

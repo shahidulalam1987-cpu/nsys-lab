@@ -24,7 +24,8 @@ class SalaryMonthSheetService
                 $end = $paymentMonth->copy()->endOfMonth();
 
                 $query->whereBetween('payment_confirmed_at', [$start, $end])
-                    ->orWhereBetween('paid_at', [$start, $end]);
+                    ->orWhereBetween('paid_at', [$start, $end])
+                    ->orWhereBetween('payment_date', [$start->toDateString(), $end->toDateString()]);
             }))
             ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
             ->when($filters['client_id'] ?? null, fn ($query, $clientId) => $query->where('client_id', $clientId))

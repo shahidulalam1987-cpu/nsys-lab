@@ -32,9 +32,7 @@ class EmployeePayrollDateRangeTest extends TestCase
             'to_date' => '2026-06-10',
             'working_days' => 10,
             'non_working_days' => 0,
-            'paid_amount' => 5000,
-            'payment_method' => 'bKash',
-            'payment_date' => '2026-06-10',
+            'paid_amount' => 0,
             'note' => 'Date range salary',
         ]);
 
@@ -48,7 +46,7 @@ class EmployeePayrollDateRangeTest extends TestCase
         $this->assertSame('2026-06-01', $payroll->salary_period_from->toDateString());
         $this->assertSame('2026-06-10', $payroll->salary_period_to->toDateString());
         $this->assertSame('2026-06-01', $payroll->salary_month->toDateString());
-        $this->assertSame('partial', $payroll->calculated_status);
+        $this->assertSame('upcoming', $payroll->calculated_status);
         $this->assertSame(10000.0, (float) $payroll->payable_salary);
         $this->assertSame(30, $payroll->month_days);
         $this->assertSame(1000.0, (float) $payroll->daily_salary);
@@ -60,8 +58,8 @@ class EmployeePayrollDateRangeTest extends TestCase
             'working_days' => 10,
             'non_working_days' => 0,
             'payable_salary' => 10000,
-            'paid_amount' => 5000,
-            'status' => 'partial',
+            'paid_amount' => 0,
+            'status' => 'unpaid',
         ]);
     }
 
@@ -255,15 +253,13 @@ class EmployeePayrollDateRangeTest extends TestCase
             'to_date' => '2026-06-30',
             'working_days' => 30,
             'non_working_days' => 0,
-            'paid_amount' => 10000,
-            'payment_method' => 'Bank Transfer',
-            'payment_date' => '2026-06-30',
+            'paid_amount' => 0,
         ]);
 
         $payroll = $employee->payrolls()->first();
 
         $this->assertSame(10000.0, (float) $payroll->payable_salary);
-        $this->assertSame('paid', $payroll->calculated_status);
+        $this->assertSame('upcoming', $payroll->calculated_status);
 
         $this->actingAs($admin)->post('/admin/payroll', [
             'employee_id' => $employee->id,
@@ -514,7 +510,7 @@ class EmployeePayrollDateRangeTest extends TestCase
         ]);
     }
 
-    public function test_admin_can_mark_upcoming_salary_paid_with_payment_proof(): void
+    public function test_admin_cannot_mark_salary_paid_through_general_edit(): void
     {
         Storage::fake('public');
 
@@ -547,13 +543,12 @@ class EmployeePayrollDateRangeTest extends TestCase
             'note' => 'Salary paid',
         ]);
 
-        $response->assertRedirect('/admin/payroll/' . $payroll->id);
+        $response->assertSessionHasErrors(['paid_amount']);
         $payroll->refresh();
 
-        $this->assertSame('paid', $payroll->calculated_status);
-        $this->assertSame('TXN-123', $payroll->transaction_id);
-        $this->assertNotNull($payroll->payment_proof);
-        Storage::disk('public')->assertExists($payroll->payment_proof);
+        $this->assertSame('upcoming', $payroll->calculated_status);
+        $this->assertNull($payroll->transaction_id);
+        $this->assertNull($payroll->payment_proof);
     }
 
     public function test_paid_salary_status_requires_payment_details(): void
@@ -574,7 +569,7 @@ class EmployeePayrollDateRangeTest extends TestCase
             'paid_amount' => 30000,
         ]);
 
-        $response->assertSessionHasErrors(['payment_method', 'payment_date']);
+        $response->assertSessionHasErrors(['paid_amount']);
     }
 
     public function test_admin_can_generate_monthly_cycle_salary_without_requiring_salary_days(): void

@@ -40,4 +40,10 @@ class SalaryPayment extends Model
     {
         return $this->belongsTo(FinanceAccount::class);
     }
+
+    public function financeLedgers()
+    {
+        return $this->hasMany(FinanceAccountLedger::class, 'reference_id')
+            ->where('reference_type', self::class);
+    }
 }

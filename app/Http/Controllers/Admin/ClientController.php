@@ -75,6 +75,22 @@ class ClientController extends Controller
 
     public function destroy(Client $client)
     {
+        $hasHistory = $client->payments()->exists()
+            || $client->dailyReports()->exists()
+            || $client->messages()->exists()
+            || $client->employeeAssignments()->exists()
+            || $client->pages()->exists()
+            || $client->adAccounts()->exists()
+            || $client->campaigns()->exists()
+            || $client->salaryDays()->exists()
+            || $client->salaryPayments()->exists()
+            || $client->employeePayrolls()->exists();
+
+        if ($hasHistory) {
+            return redirect('/admin/clients')
+                ->withErrors(['client' => 'This client has operational or financial history and cannot be deleted. Set the client inactive instead.']);
+        }
+
         $client->delete();
 
         return redirect('/admin/clients');
