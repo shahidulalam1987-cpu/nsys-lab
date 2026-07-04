@@ -60,7 +60,7 @@
 
             <div class="stat-card">
                 <p>Avg Cost / Order</p>
-                <h2>BDT {{ number_format($avgCostPerOrder, 2) }}</h2>
+                <h2>USD {{ number_format($avgCostPerOrder, 2) }}</h2>
             </div>
 
             <div class="stat-card">
@@ -129,6 +129,11 @@
         </div>
 
         <div class="stat-card">
+            <p>Today Cost Per Order</p>
+            <h2>USD {{ number_format($todayCostPerOrder, 2) }}</h2>
+        </div>
+
+        <div class="stat-card">
             <p>Approved Payment</p>
             <h2>BDT {{ number_format($approvedPayments, 2) }}</h2>
         </div>
@@ -147,21 +152,25 @@
     </div>
 
     <div class="card">
-        <h3>Today Page Reports</h3>
+        <h3>Today Modern Performance</h3>
 
         @if($todayReports->count())
             <table>
                 <tr>
-                    <th>Page Name</th>
-                    <th>Dollar Spend</th>
+                    <th>Page</th>
+                    <th>Campaign</th>
+                    <th>Spend</th>
                     <th>Orders</th>
+                    <th>Cost Per Order</th>
                 </tr>
 
                 @foreach($todayReports as $report)
                     <tr>
-                        <td>{{ $report->page_name }}</td>
-                        <td>${{ number_format($report->dollar_spend, 2) }}</td>
+                        <td>{{ $report->campaign?->page?->page_name ?: '-' }}</td>
+                        <td>{{ $report->campaign?->campaign_name ?: '-' }}</td>
+                        <td>USD {{ number_format($report->spend, 2) }}</td>
                         <td>{{ $report->orders }}</td>
+                        <td>USD {{ number_format($report->cpp, 2) }}</td>
                     </tr>
                 @endforeach
             </table>
@@ -173,30 +182,59 @@
     </div>
 
     <div class="card">
-        <h3>Recent Reports</h3>
+        <h3>Recent Modern Performance History</h3>
 
         <table>
             <tr>
                 <th>Date</th>
                 <th>Page</th>
-                <th>Dollar Spend</th>
+                <th>Campaign</th>
+                <th>Spend</th>
                 <th>Orders</th>
+                <th>Cost Per Order</th>
             </tr>
 
             @forelse($recentReports as $report)
                 <tr>
                     <td>{{ $report->report_date }}</td>
-                    <td>{{ $report->page_name }}</td>
-                    <td>${{ number_format($report->dollar_spend, 2) }}</td>
+                    <td>{{ $report->campaign?->page?->page_name ?: '-' }}</td>
+                    <td>{{ $report->campaign?->campaign_name ?: '-' }}</td>
+                    <td>USD {{ number_format($report->spend, 2) }}</td>
                     <td>{{ $report->orders }}</td>
+                    <td>USD {{ number_format($report->cpp, 2) }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="4">No reports found.</td>
+                    <td colspan="6">No modern performance reports found.</td>
                 </tr>
             @endforelse
         </table>
     </div>
+
+    <div class="stats-grid">
+        <div class="card">
+            <h3>Page-wise Performance</h3>
+            <div class="table-wrap"><table><thead><tr><th>Page</th><th>Spend</th><th>Orders</th><th>CPO</th></tr></thead><tbody>
+                @forelse($pagePerformance as $row)<tr><td>{{ $row['label'] }}</td><td>USD {{ number_format($row['spend'], 2) }}</td><td>{{ $row['orders'] }}</td><td>USD {{ number_format($row['cpp'], 2) }}</td></tr>@empty<tr><td colspan="4">No page performance found.</td></tr>@endforelse
+            </tbody></table></div>
+        </div>
+        <div class="card">
+            <h3>Campaign-wise Performance</h3>
+            <div class="table-wrap"><table><thead><tr><th>Campaign</th><th>Spend</th><th>Orders</th><th>CPO</th></tr></thead><tbody>
+                @forelse($campaignPerformance as $row)<tr><td>{{ $row['label'] }}</td><td>USD {{ number_format($row['spend'], 2) }}</td><td>{{ $row['orders'] }}</td><td>USD {{ number_format($row['cpp'], 2) }}</td></tr>@empty<tr><td colspan="4">No campaign performance found.</td></tr>@endforelse
+            </tbody></table></div>
+        </div>
+    </div>
+
+    @if($legacyReports->isNotEmpty())
+        <div class="card table-wrap">
+            <h3>Legacy Reports</h3>
+            <p>Historical reports from the previous reporting system.</p>
+            <table><thead><tr><th>Date</th><th>Page</th><th>Spend</th><th>Orders</th></tr></thead><tbody>
+                @foreach($legacyReports as $report)<tr><td>{{ $report->report_date }}</td><td>{{ $report->page_name }}</td><td>USD {{ number_format($report->dollar_spend, 2) }}</td><td>{{ $report->orders }}</td></tr>@endforeach
+            </tbody></table>
+        </div>
+    @endif
 
     <div class="card">
         <h3>Recent Payments</h3>

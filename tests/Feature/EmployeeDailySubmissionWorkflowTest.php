@@ -131,6 +131,77 @@ class EmployeeDailySubmissionWorkflowTest extends TestCase
         $this->assertDatabaseCount('daily_performance_reports', 0);
     }
 
+    public function test_approved_order_alone_does_not_show_on_client_dashboard(): void
+    {
+        $scope = $this->campaignScope('Order Only');
+        $clientUser = $this->clientUser($scope['client']);
+        [, $moderator] = $this->employeeUser('moderator', 'Moderator');
+        $this->submission($moderator, $scope, 'order', ['status' => 'approved', 'orders' => 12]);
+
+        $this->actingAs($clientUser)->get('/client/dashboard')
+            ->assertOk()->assertSee('No report submitted today.')->assertDontSee('Order Only Campaign');
+    }
+
+    public function test_approved_spend_alone_does_not_show_on_client_dashboard(): void
+    {
+        $scope = $this->campaignScope('Spend Only');
+        $clientUser = $this->clientUser($scope['client']);
+        [, $manager] = $this->employeeUser('facebook_manager', 'Manager');
+        $this->submission($manager, $scope, 'spend', ['status' => 'approved', 'dollar_spend' => 120]);
+
+        $this->actingAs($clientUser)->get('/client/dashboard')
+            ->assertOk()->assertSee('No report submitted today.')->assertDontSee('Spend Only Campaign');
+    }
+
+    public function test_approved_pair_is_hidden_until_merge_then_visible_in_client_dashboard_and_report(): void
+    {
+        $scope = $this->campaignScope('Merged Client');
+        $clientUser = $this->clientUser($scope['client']);
+        [, $moderator] = $this->employeeUser('moderator', 'Moderator');
+        [, $manager] = $this->employeeUser('facebook_manager', 'Manager');
+        $order = $this->submission($moderator, $scope, 'order', ['status' => 'approved', 'orders' => 12]);
+        $this->submission($manager, $scope, 'spend', ['status' => 'approved', 'dollar_spend' => 120]);
+
+        $this->actingAs($clientUser)->get('/client/dashboard')->assertDontSee('Merged Client Campaign');
+        $this->actingAs($this->admin())->post('/admin/employee-submissions/'.$order->id.'/merge')->assertRedirect();
+        $this->actingAs($clientUser)->get('/client/dashboard')
+            ->assertOk()->assertSee('Merged Client Campaign')->assertSee('USD 10.00');
+        $this->actingAs($clientUser)->get('/client/performance-reports')
+            ->assertOk()->assertSee('Merged Client Campaign')->assertSee('USD 120.00');
+    }
+
+    public function test_existing_report_requires_explicit_replace_confirmation(): void
+    {
+        $scope = $this->campaignScope('Replace Guard');
+        [, $moderator] = $this->employeeUser('moderator', 'Moderator');
+        [, $manager] = $this->employeeUser('facebook_manager', 'Manager');
+        $order = $this->submission($moderator, $scope, 'order', ['status' => 'approved', 'orders' => 12]);
+        $this->submission($manager, $scope, 'spend', ['status' => 'approved', 'dollar_spend' => 120]);
+        $report = DailyPerformanceReport::create([
+            'campaign_id' => $scope['campaign']->id, 'report_date' => today(), 'spend' => 25, 'orders' => 5,
+        ]);
+
+        $this->actingAs($this->admin())->post('/admin/employee-submissions/'.$order->id.'/merge')
+            ->assertSessionHasErrors('submission');
+        $this->assertSame('25.00', $report->fresh()->spend);
+
+        $this->actingAs($this->admin())->post('/admin/employee-submissions/'.$order->id.'/merge', ['replace' => 1])
+            ->assertRedirect();
+        $this->assertSame('120.00', $report->fresh()->spend);
+    }
+
+    public function test_client_cannot_see_another_clients_modern_performance(): void
+    {
+        $own = $this->campaignScope('Own Client');
+        $other = $this->campaignScope('Private Client');
+        $clientUser = $this->clientUser($own['client']);
+        DailyPerformanceReport::create(['campaign_id' => $own['campaign']->id, 'report_date' => today(), 'spend' => 10, 'orders' => 2]);
+        DailyPerformanceReport::create(['campaign_id' => $other['campaign']->id, 'report_date' => today(), 'spend' => 999, 'orders' => 99]);
+
+        $this->actingAs($clientUser)->get('/client/performance-reports')
+            ->assertOk()->assertSee('Own Client Campaign')->assertDontSee('Private Client Campaign')->assertDontSee('999.00');
+    }
+
     public function test_employee_sees_only_own_submission_status_and_idor_is_blocked(): void
     {
         $scope = $this->campaignScope('Own Page');
@@ -280,5 +351,13 @@ class EmployeeDailySubmissionWorkflowTest extends TestCase
     private function admin(): User
     {
         return User::factory()->create(['role' => 'admin', 'status' => 'active']);
+    }
+
+    private function clientUser(Client $client): User
+    {
+        $user = User::factory()->create(['role' => 'client', 'status' => 'active']);
+        $client->update(['user_id' => $user->id]);
+
+        return $user;
     }
 }

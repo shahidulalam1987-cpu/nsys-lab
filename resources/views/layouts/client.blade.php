@@ -341,6 +341,7 @@
         <a class="{{ request()->is('client/salary-payments/create') ? 'active-menu' : '' }}" href="/client/salary-payments/create">Submit Payment</a>
     @else
         <a class="{{ request()->is('client/dashboard') ? 'active-menu' : '' }}" href="/client/dashboard">Dashboard</a>
+        <a class="{{ request()->is('client/performance-reports') ? 'active-menu' : '' }}" href="/client/performance-reports">Performance Reports</a>
         <a class="{{ request()->is('client/statement') ? 'active-menu' : '' }}" href="/client/statement">Statement</a>
         <a class="{{ request()->is('client/payments') ? 'active-menu' : '' }}" href="/client/payments">Payment History</a>
         <a class="{{ request()->is('client/payments/create') ? 'active-menu' : '' }}" href="/client/payments/create">Submit Payment</a>

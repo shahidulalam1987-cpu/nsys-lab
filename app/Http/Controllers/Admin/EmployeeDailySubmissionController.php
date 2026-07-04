@@ -5,11 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Campaign;
 use App\Models\ClientPage;
-use App\Models\DailyPerformanceReport;
 use App\Models\EmployeeDailySubmission;
-use App\Models\PerformanceVerification;
 use App\Services\ActivityLogger;
-use App\Services\PerformanceOperationsService;
+use App\Services\DailyPerformanceMergeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -17,7 +15,7 @@ use Illuminate\Validation\ValidationException;
 
 class EmployeeDailySubmissionController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, DailyPerformanceMergeService $mergeService)
     {
         $filters = $request->validate([
             'status' => ['nullable', Rule::in(array_keys(EmployeeDailySubmission::STATUSES))],
@@ -32,6 +30,9 @@ class EmployeeDailySubmissionController extends Controller
             ->latest('submission_date')
             ->latest()
             ->get();
+        $submissions->each(function (EmployeeDailySubmission $submission) use ($mergeService) {
+            $submission->merge_state = $mergeService->state($submission);
+        });
         $counts = EmployeeDailySubmission::selectRaw('status, submission_type, COUNT(*) total')
             ->groupBy('status', 'submission_type')
             ->get();
@@ -114,63 +115,11 @@ class EmployeeDailySubmissionController extends Controller
         return back()->with('success', 'Submission rejected successfully.');
     }
 
-    public function merge(Request $request, EmployeeDailySubmission $submission)
+    public function merge(Request $request, EmployeeDailySubmission $submission, DailyPerformanceMergeService $mergeService)
     {
-        if ($submission->status !== 'approved') {
-            return back()->withErrors(['submission' => 'Only approved submissions can be merged.']);
-        }
-        if (! $submission->campaign_id) {
-            return back()->withErrors(['submission' => 'Assign a campaign before merging this submission.']);
-        }
-
-        $report = DB::transaction(function () use ($submission, $request) {
-            $group = EmployeeDailySubmission::whereDate('submission_date', $submission->submission_date)
-                ->where('client_id', $submission->client_id)
-                ->where('page_id', $submission->page_id)
-                ->where('campaign_id', $submission->campaign_id)
-                ->where('status', 'approved')
-                ->lockForUpdate()
-                ->get();
-            $order = $group->where('submission_type', 'order')->sortByDesc('id')->first();
-            $spend = $group->where('submission_type', 'spend')->sortByDesc('id')->first();
-
-            if (! $order || ! $spend) {
-                throw ValidationException::withMessages(['submission' => 'Both approved order and approved spend submissions are required before merge.']);
-            }
-
-            $report = DailyPerformanceReport::firstOrNew([
-                'campaign_id' => $submission->campaign_id,
-                'report_date' => $submission->submission_date,
-            ]);
-            $sourceIds = $group->pluck('id')->sort()->values()->all();
-            if ($report->exists && $report->source_submission_ids === $sourceIds) {
-                throw ValidationException::withMessages(['submission' => 'This performance group has already been merged.']);
-            }
-            $report->orders = $order->orders ?? 0;
-            $report->spend = $spend->dollar_spend ?? 0;
-            $report->cpm = $spend->cpm ?? 0;
-            $report->cpc = $spend->cpc ?? 0;
-            $report->status = 'admin_approved';
-            $report->merged_by = auth()->id();
-            $report->merged_at = now();
-            $report->source_submission_ids = $sourceIds;
-            $report->notes = trim(collect([$report->notes, 'Employee submission merge approved by '.auth()->user()->name.'.'])->filter()->implode("\n"));
-            $report->save();
-
-            $group->each->update(['status' => 'merged']);
-            $operations = app(PerformanceOperationsService::class);
-            PerformanceVerification::updateOrCreate(['group_key' => $operations->groupKey($submission)], [
-                'performance_date' => $submission->submission_date,
-                'client_id' => $submission->client_id,
-                'page_id' => $submission->page_id,
-                'campaign_id' => $submission->campaign_id,
-                'status' => 'merged',
-                'marked_by' => auth()->id(),
-            ]);
-            app(ActivityLogger::class)->log('Facebook', 'Employee Submissions Merged', 'Daily performance #'.$report->id, $request);
-
-            return $report;
-        });
+        $data = $request->validate(['replace' => ['nullable', 'boolean']]);
+        $report = $mergeService->merge($submission, $request->user(), (bool) ($data['replace'] ?? false));
+        app(ActivityLogger::class)->log('Facebook', 'Employee Submissions Merged', 'Daily performance #'.$report->id, $request);
 
         return redirect('/admin/daily-reports/'.$report->id)->with('success', 'Employee submissions merged into Daily Performance.');
     }

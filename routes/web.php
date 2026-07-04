@@ -352,6 +352,7 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
 
 Route::middleware(['auth', 'client', 'client.status'])->group(function () {
     Route::get('/client/dashboard', [ClientDashboardController::class, 'index']);
+    Route::get('/client/performance-reports', [ClientDashboardController::class, 'performanceReport']);
     Route::get('/client/employee-dashboard', [ClientDashboardController::class, 'employeeDepartment']);
     Route::get('/client/statement', [ClientDashboardController::class, 'statement']);
 

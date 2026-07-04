@@ -237,7 +237,7 @@ class NotificationCenterService
             $this->alertIf($endingSoon->count(), 'facebook.campaign_ending_soon', 'Facebook', 'information', $endingSoon->count() . ' Campaigns Ending This Week', '/admin/campaigns', 'Facebook Team'),
             $this->alertIf($pendingOrders, 'facebook.pending_employee_orders', 'Facebook', 'warning', $pendingOrders . ' Pending Order Submissions', '/admin/employee-submissions?status=pending&type=order', 'Facebook Team'),
             $this->alertIf($pendingSpend, 'facebook.pending_employee_spend', 'Facebook', 'warning', $pendingSpend . ' Pending Spend Submissions', '/admin/employee-submissions?status=pending&type=spend', 'Facebook Team'),
-            $this->alertIf($readyToMerge, 'facebook.employee_reports_ready', 'Facebook', 'information', $readyToMerge . ' Employee Reports Ready to Merge', '/admin/employee-submissions?status=approved', 'Facebook Team'),
+            $this->alertIf($readyToMerge, 'facebook.employee_reports_ready', 'Facebook', 'information', $readyToMerge . ' Ready to Merge Performance Report'.($readyToMerge === 1 ? '' : 's'), '/admin/employee-submissions?status=approved', 'Facebook Team'),
             $this->alertIf($mismatches, 'facebook.performance_mismatch', 'Facebook', 'critical', $mismatches . ' Performance Reports Marked Mismatch', '/admin/performance-verification?status=mismatch', 'Facebook Team'),
         ]));
     }
