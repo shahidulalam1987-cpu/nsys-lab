@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\EmployeeWorkStatus;
 use App\Models\User;
 use App\Services\SalaryStatementService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -18,6 +19,8 @@ class EmployeePayrollDateRangeTest extends TestCase
 
     public function test_admin_can_generate_salary_by_date_range_without_salary_days(): void
     {
+        $this->travelTo(Carbon::parse('2026-06-29 12:00:00'));
+
         $admin = $this->user('admin');
         $client = $this->client();
         $employee = $this->employee([
@@ -239,6 +242,8 @@ class EmployeePayrollDateRangeTest extends TestCase
 
     public function test_payable_salary_uses_fixed_thirty_day_daily_rate(): void
     {
+        $this->travelTo(Carbon::parse('2026-06-29 12:00:00'));
+
         $admin = $this->user('admin');
         $client = $this->client();
         $employee = $this->employee([
@@ -478,6 +483,8 @@ class EmployeePayrollDateRangeTest extends TestCase
 
     public function test_admin_can_create_upcoming_salary_without_payment_details(): void
     {
+        $this->travelTo(Carbon::parse('2026-06-29 12:00:00'));
+
         $admin = $this->user('admin');
         $client = $this->client();
         $employee = $this->employee([
@@ -512,6 +519,8 @@ class EmployeePayrollDateRangeTest extends TestCase
 
     public function test_admin_cannot_mark_salary_paid_through_general_edit(): void
     {
+        $this->travelTo(Carbon::parse('2026-06-29 12:00:00'));
+
         Storage::fake('public');
 
         $admin = $this->user('admin');
@@ -574,6 +583,8 @@ class EmployeePayrollDateRangeTest extends TestCase
 
     public function test_admin_can_generate_monthly_cycle_salary_without_requiring_salary_days(): void
     {
+        $this->travelTo(Carbon::parse('2026-06-29 12:00:00'));
+
         $admin = $this->user('admin');
         $client = $this->client();
         $employee = $this->employee([
