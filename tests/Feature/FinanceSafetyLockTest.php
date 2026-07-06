@@ -123,7 +123,8 @@ class FinanceSafetyLockTest extends TestCase
         $account = $this->account(['current_balance' => 1000]);
 
         $this->actingAs($admin)->post('/admin/finance/accounts/' . $account->id . '/update', $this->accountData([
-            'current_balance' => 1400,
+            'adjustment_type' => 'credit',
+            'adjustment_amount' => 400,
             'adjustment_reason' => 'Bank statement reconciliation.',
         ]));
 
@@ -131,11 +132,111 @@ class FinanceSafetyLockTest extends TestCase
         $this->assertDatabaseHas('finance_account_ledgers', [
             'finance_account_id' => $account->id,
             'transaction_type' => 'manual_adjustment',
+            'direction' => 'credit',
             'amount' => 400,
             'previous_balance' => 1000,
             'new_balance' => 1400,
             'note' => 'Bank statement reconciliation.',
             'created_by' => $admin->id,
+        ]);
+    }
+
+    public function test_debit_adjustment_updates_balance_and_snapshot(): void
+    {
+        $admin = $this->admin();
+        $account = $this->account(['current_balance' => 1000]);
+
+        $this->actingAs($admin)->post('/admin/finance/accounts/' . $account->id . '/update', $this->accountData([
+            'adjustment_type' => 'debit',
+            'adjustment_amount' => 250,
+            'adjustment_reason' => 'Bank correction entry.',
+        ]))->assertSessionHas('success');
+
+        $this->assertSame(750.0, (float) $account->fresh()->current_balance);
+        $this->assertDatabaseHas('finance_account_ledgers', [
+            'finance_account_id' => $account->id,
+            'transaction_type' => 'manual_adjustment',
+            'direction' => 'debit',
+            'amount' => 250,
+            'previous_balance' => 1000,
+            'new_balance' => 750,
+            'note' => 'Bank correction entry.',
+        ]);
+    }
+
+    public function test_zero_adjustment_is_rejected(): void
+    {
+        $account = $this->account(['current_balance' => 1000]);
+
+        $this->actingAs($this->admin())->post('/admin/finance/accounts/' . $account->id . '/update', $this->accountData([
+            'adjustment_type' => 'credit',
+            'adjustment_amount' => 0,
+            'adjustment_reason' => 'Zero correction.',
+        ]))->assertSessionHasErrors('adjustment_amount');
+
+        $this->assertSame(1000.0, (float) $account->fresh()->current_balance);
+        $this->assertDatabaseCount('finance_account_ledgers', 0);
+    }
+
+    public function test_negative_adjustment_is_rejected(): void
+    {
+        $account = $this->account(['current_balance' => 1000]);
+
+        $this->actingAs($this->admin())->post('/admin/finance/accounts/' . $account->id . '/update', $this->accountData([
+            'adjustment_type' => 'debit',
+            'adjustment_amount' => -50,
+            'adjustment_reason' => 'Invalid correction.',
+        ]))->assertSessionHasErrors('adjustment_amount');
+
+        $this->assertSame(1000.0, (float) $account->fresh()->current_balance);
+        $this->assertDatabaseCount('finance_account_ledgers', 0);
+    }
+
+    public function test_adjustment_reason_is_required_and_has_minimum_length(): void
+    {
+        $account = $this->account(['current_balance' => 1000]);
+        $payload = $this->accountData(['adjustment_type' => 'credit', 'adjustment_amount' => 100]);
+
+        $this->actingAs($this->admin())->post('/admin/finance/accounts/' . $account->id . '/update', $payload)
+            ->assertSessionHasErrors('adjustment_reason');
+        $this->actingAs($this->admin())->post('/admin/finance/accounts/' . $account->id . '/update', array_merge($payload, ['adjustment_reason' => 'Four']))
+            ->assertSessionHasErrors('adjustment_reason');
+
+        $this->assertSame(1000.0, (float) $account->fresh()->current_balance);
+        $this->assertDatabaseCount('finance_account_ledgers', 0);
+    }
+
+    public function test_edit_form_shows_read_only_balance_and_adjustment_controls(): void
+    {
+        $account = $this->account(['current_balance' => 4916.56]);
+
+        $this->actingAs($this->admin())->get('/admin/finance/accounts/' . $account->id . '/edit')
+            ->assertOk()
+            ->assertSee('Current ledger balance. This value cannot be edited directly.')
+            ->assertSee('BDT 4,916.56')
+            ->assertSee('Credit (Increase Balance)')
+            ->assertSee('Debit (Decrease Balance)')
+            ->assertDontSee('name="current_balance"', false);
+    }
+
+    public function test_controller_cannot_overwrite_current_balance_directly(): void
+    {
+        $account = $this->account(['current_balance' => 1000]);
+
+        $this->actingAs($this->admin())->post('/admin/finance/accounts/' . $account->id . '/update', $this->accountData([
+            'current_balance' => 999999,
+            'adjustment_type' => 'credit',
+            'adjustment_amount' => 100,
+            'adjustment_reason' => 'Controlled ledger adjustment.',
+        ]))->assertSessionHas('success');
+
+        $this->assertSame(1100.0, (float) $account->fresh()->current_balance);
+        $this->assertDatabaseHas('finance_account_ledgers', [
+            'finance_account_id' => $account->id,
+            'transaction_type' => 'manual_adjustment',
+            'amount' => 100,
+            'previous_balance' => 1000,
+            'new_balance' => 1100,
         ]);
     }
 

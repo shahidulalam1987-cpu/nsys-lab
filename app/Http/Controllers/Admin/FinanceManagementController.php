@@ -87,55 +87,39 @@ class FinanceManagementController extends Controller
 
     public function updateAccount(Request $request, FinanceAccount $account)
     {
-        $data = $this->validatedAccount($request);
-        $newBalance = round((float) $data['current_balance'], 2);
-        $currentBalance = round((float) $account->current_balance, 2);
+        $data = $this->validatedAccountUpdate($request);
 
-        if ($newBalance !== $currentBalance) {
-            $request->validate([
-                'adjustment_reason' => ['required', 'string', 'max:1000'],
-            ]);
-        }
-
-        DB::transaction(function () use ($account, $data, $newBalance, $request) {
+        $ledger = DB::transaction(function () use ($account, $data, $request) {
             $lockedAccount = FinanceAccount::whereKey($account->id)->lockForUpdate()->firstOrFail();
-            $previousBalance = round((float) $lockedAccount->current_balance, 2);
-            $metadata = $data;
-            unset($metadata['current_balance']);
-
-            if ($newBalance !== $previousBalance && ! $request->filled('adjustment_reason')) {
-                throw ValidationException::withMessages([
-                    'adjustment_reason' => 'Balance adjustment reason is required.',
-                ]);
-            }
+            $metadata = collect($data)->except(['adjustment_type', 'adjustment_amount', 'adjustment_reason'])->all();
 
             $lockedAccount->update($metadata);
 
-            if ($newBalance > $previousBalance) {
-                app(FinanceLedgerService::class)->credit($lockedAccount, $newBalance - $previousBalance, [
-                    'transaction_type' => 'manual_adjustment',
-                    'currency' => $lockedAccount->currency,
-                    'reference_type' => FinanceAccount::class,
-                    'reference_id' => $lockedAccount->id,
-                    'description' => $request->string('adjustment_reason')->toString(),
-                    'transaction_reference' => 'finance-account:' . $lockedAccount->id,
-                    'created_by' => $request->user()?->id,
-                ]);
-            } elseif ($newBalance < $previousBalance) {
-                app(FinanceLedgerService::class)->debit($lockedAccount, $previousBalance - $newBalance, [
-                    'transaction_type' => 'manual_adjustment',
-                    'currency' => $lockedAccount->currency,
-                    'reference_type' => FinanceAccount::class,
-                    'reference_id' => $lockedAccount->id,
-                    'description' => $request->string('adjustment_reason')->toString(),
-                    'transaction_reference' => 'finance-account:' . $lockedAccount->id,
-                    'created_by' => $request->user()?->id,
-                    'allow_negative' => true,
-                ]);
-            }
+            $context = [
+                'transaction_type' => 'manual_adjustment',
+                'currency' => $lockedAccount->currency,
+                'reference_type' => FinanceAccount::class,
+                'reference_id' => $lockedAccount->id,
+                'description' => $data['adjustment_reason'],
+                'transaction_reference' => 'finance-account:' . $lockedAccount->id,
+                'created_by' => $request->user()?->id,
+            ];
+
+            return $data['adjustment_type'] === 'credit'
+                ? app(FinanceLedgerService::class)->credit($lockedAccount, (float) $data['adjustment_amount'], $context)
+                : app(FinanceLedgerService::class)->debit($lockedAccount, (float) $data['adjustment_amount'], array_merge($context, ['allow_negative' => true]));
         });
 
-        return redirect('/admin/finance/accounts')->with('success', 'Finance account updated successfully.');
+        $sign = $data['adjustment_type'] === 'credit' ? '+' : '-';
+
+        return redirect('/admin/finance/accounts')->with('success', sprintf(
+            'Finance Account Updated Successfully | Adjustment: %s%s %s | Ledger Created: Manual Adjustment | New Balance: %s %s',
+            $sign,
+            $ledger->currency,
+            number_format((float) $data['adjustment_amount'], 2),
+            $ledger->currency,
+            number_format((float) $ledger->new_balance, 2)
+        ));
     }
 
     public function destroyAccount(FinanceAccount $account)
@@ -414,6 +398,22 @@ class FinanceManagementController extends Controller
             'current_balance' => ['required', 'numeric'],
             'status' => ['required', Rule::in(array_keys(FinanceAccount::STATUSES))],
             'note' => ['nullable', 'string'],
+        ]);
+    }
+
+    private function validatedAccountUpdate(Request $request): array
+    {
+        return $request->validate([
+            'account_type' => ['required', Rule::in(array_keys(FinanceAccount::TYPES))],
+            'account_name' => ['required', 'string', 'max:255'],
+            'provider_name' => ['nullable', 'string', 'max:255'],
+            'account_number' => ['nullable', 'string', 'max:255'],
+            'currency' => ['required', Rule::in(array_keys(FinanceAccount::CURRENCIES))],
+            'status' => ['required', Rule::in(array_keys(FinanceAccount::STATUSES))],
+            'note' => ['nullable', 'string'],
+            'adjustment_type' => ['required', Rule::in(['credit', 'debit'])],
+            'adjustment_amount' => ['required', 'numeric', 'gt:0'],
+            'adjustment_reason' => ['required', 'string', 'min:5', 'max:1000'],
         ]);
     }
 
