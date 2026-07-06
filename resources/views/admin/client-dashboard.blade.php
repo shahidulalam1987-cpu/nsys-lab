@@ -1,8 +1,13 @@
 @extends('layouts.admin')
 
 @section('content')
-    <h1>Clients</h1>
+    <h1>Client Management Dashboard</h1>
     <p>Client management, client portal access, and employee salary fund overview.</p>
+
+    @php
+        $clientBalance = $clientFundSummary['available_balance'];
+        $isClientDue = $clientBalance < 0;
+    @endphp
 
     <div class="stats-grid">
         <div class="stat-card">
@@ -10,26 +15,39 @@
             <h2>{{ number_format($totalClients) }}</h2>
         </div>
         <div class="stat-card">
-            <p>Funds</p>
+            <p>Total Received</p>
             <h2>BDT {{ number_format($clientFundSummary['total_fund_received'], 2) }}</h2>
         </div>
         <div class="stat-card">
-            <p>Payments</p>
+            <p>Pending Payments</p>
             <h2>BDT {{ number_format($pendingClientPayments, 2) }}</h2>
             <p>Pending</p>
         </div>
-        <div class="stat-card">
-            <p>Balance</p>
-            <h2>BDT {{ number_format($clientFundSummary['available_balance'], 2) }}</h2>
+        <div class="stat-card" style="border-color:{{ $isClientDue ? '#f97316' : '#22c55e' }};">
+            <p>Current Client Balance</p>
+            <h2 style="color:{{ $isClientDue ? '#fb923c' : '#22c55e' }};">BDT {{ number_format(abs($clientBalance), 2) }}</h2>
+            <p style="color:{{ $isClientDue ? '#fb923c' : '#22c55e' }};">{{ $isClientDue ? 'Due' : 'Available' }}</p>
         </div>
     </div>
 
     <div class="card">
-        <a class="btn" href="/admin/clients">Client List</a>
-        <a class="btn" href="/admin/salary-payments/create">Receive Payment</a>
-        <a class="btn" href="/admin/salary-payments/pending">Pending Payments</a>
-        <a class="btn" href="/admin/salary-payments">Payment History</a>
-        <a class="btn" href="/admin/client-users">Client Users</a>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:18px;">
+            <div>
+                <h3 style="margin-top:0;">Clients</h3>
+                <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                    <a class="btn" href="/admin/clients">Client List</a>
+                    <a class="btn" href="/admin/client-users">Client Users</a>
+                </div>
+            </div>
+            <div>
+                <h3 style="margin-top:0;">Payments</h3>
+                <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                    <a class="btn" href="/admin/salary-payments/create">Receive Payment</a>
+                    <a class="btn" href="/admin/salary-payments/pending">Pending Payments</a>
+                    <a class="btn" href="/admin/salary-payments">Payment History</a>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="card">
@@ -39,7 +57,7 @@
                 <tr>
                     <th>Client</th>
                     <th>Status</th>
-                    <th>Rate</th>
+                    <th>Client Rate (BDT/USD)</th>
                     <th>Action</th>
                 </tr>
                 @forelse($recentClients as $client)
