@@ -90,6 +90,15 @@ class ExecutiveDashboardPhase1Test extends TestCase
         $response->assertSee('Trend Charts');
         $response->assertSee('Quick Actions');
         $response->assertSee('Global Search');
+        $response->assertSee("Today's Business Snapshot", false);
+        $response->assertSee('Business Health');
+        $response->assertSee('Clickable KPI Drilldown');
+        $response->assertSee('Highest Revenue Client');
+        $response->assertSee('Highest Growth Client');
+        $response->assertSee('Recent Activity Timeline');
+        $response->assertSee('executiveTrendChart');
+        $response->assertSee('href="/admin/payroll?status=generated"', false);
+        $response->assertSee('href="/admin/salary-payments/pending"', false);
     }
 
     public function test_only_super_admin_or_agency_owner_can_access_executive_dashboard(): void
@@ -117,7 +126,9 @@ class ExecutiveDashboardPhase1Test extends TestCase
 
         $csv->assertOk();
         $csv->assertDownload('executive-dashboard.csv');
-        $this->assertStringContainsString('Today,"Total Orders"', $csv->streamedContent());
+        $csvContent = $csv->streamedContent();
+        $this->assertStringContainsString('Export,Company,"NSYS Lab"', $csvContent);
+        $this->assertStringContainsString('Today,"Total Orders"', $csvContent);
 
         $excel->assertOk();
         $excel->assertHeader('Content-Type', 'application/vnd.ms-excel');
@@ -125,6 +136,42 @@ class ExecutiveDashboardPhase1Test extends TestCase
 
         $pdf->assertOk();
         $pdf->assertSee('Executive Dashboard');
+    }
+
+    public function test_executive_dashboard_phase_two_empty_snapshot_state(): void
+    {
+        $this->travelTo(now()->setDate(2026, 7, 7)->setTime(12, 0));
+
+        $response = $this->actingAs($this->admin())->get('/admin/executive-performance');
+
+        $response->assertOk();
+        $response->assertSee('No business activity today');
+        $response->assertSee('No approved Daily Performance Report is available for the selected period.');
+        $response->assertSee('No recent activity.');
+    }
+
+    public function test_executive_dashboard_phase_two_alerts_and_filters(): void
+    {
+        $this->travelTo(now()->setDate(2026, 7, 7)->setTime(12, 0));
+        [$client] = $this->campaignScope();
+        SalaryPayment::create([
+            'client_id' => $client->id,
+            'salary_month' => today(),
+            'amount' => 1200,
+            'payment_method' => 'Bank',
+            'transaction_id' => 'PENDING-EXEC',
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($this->admin())->get('/admin/executive-performance?period=7_days');
+
+        $response->assertOk();
+        $response->assertSee('7 Days');
+        $response->assertSee('Pending Client Payments');
+        $response->assertSee('Client fund payments need approval.');
+        $response->assertSee('No approved Daily Performance Report is available for the selected period.');
+        $response->assertSee('No assignments found.');
+        $response->assertSee('labels:', false);
     }
 
     private function admin(): User
