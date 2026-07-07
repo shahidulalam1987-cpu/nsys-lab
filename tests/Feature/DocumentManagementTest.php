@@ -44,6 +44,9 @@ class DocumentManagementTest extends TestCase
         $document = ManagedDocument::firstOrFail();
         Storage::disk('local')->assertExists($document->current_file_path);
         Storage::disk('public')->assertMissing($document->current_file_path);
+        $this->assertStringStartsWith('managed-documents/', $document->current_file_path);
+        $this->assertStringNotContainsString('storage/', $document->current_file_path);
+        $this->get('/storage/' . $document->current_file_path)->assertForbidden();
         $this->assertSame(Employee::class, $document->owner_record_type);
         $this->assertSame($employee->id, $document->owner_record_id);
         $this->assertSame(1, $document->versions()->count());
@@ -230,6 +233,39 @@ class DocumentManagementTest extends TestCase
 
         $this->actingAs($admin)
             ->get('/admin/documents/' . $document->id . '/versions/' . $version->id . '/preview')
+            ->assertOk();
+    }
+
+    public function test_existing_public_disk_document_can_still_download_through_controller(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        $admin = $this->admin();
+        Storage::disk('public')->put('managed-documents/legacy/legacy.pdf', 'legacy file');
+
+        $document = ManagedDocument::create([
+            'title' => 'Legacy Public Document',
+            'category' => 'General',
+            'uploaded_by' => $admin->id,
+            'uploaded_at' => now(),
+            'file_type' => 'pdf',
+            'file_size' => 11,
+            'version' => 1,
+            'status' => 'active',
+            'current_file_path' => 'managed-documents/legacy/legacy.pdf',
+            'original_file_name' => 'legacy.pdf',
+        ]);
+        $document->versions()->create([
+            'version' => 1,
+            'file_path' => 'managed-documents/legacy/legacy.pdf',
+            'original_file_name' => 'legacy.pdf',
+            'file_type' => 'pdf',
+            'file_size' => 11,
+            'uploaded_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/documents/' . $document->id . '/download')
             ->assertOk();
     }
 
