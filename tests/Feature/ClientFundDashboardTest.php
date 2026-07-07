@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Client;
+use App\Models\ClientFundLedger;
 use App\Models\Employee;
 use App\Models\SalaryPayment;
 use App\Models\User;
@@ -29,6 +30,8 @@ class ClientFundDashboardTest extends TestCase
             'status' => 'approved',
             'approved_at' => now(),
         ]);
+        $this->ledger($client, 'employee_salary', 'credit', 8000, 'PROFILE-FUND');
+        $this->ledger($client, 'employee_salary', 'credit', 20000, 'APPROVED-1');
         SalaryPayment::create([
             'client_id' => $client->id,
             'salary_month' => '2026-06-11',
@@ -46,36 +49,34 @@ class ClientFundDashboardTest extends TestCase
             'status' => 'pending',
         ]);
 
-        $employee->payrolls()->create([
+        $payroll = $employee->payrolls()->create([
             'client_id' => $client->id,
             'salary_month' => '2026-06-01',
             'payable_salary' => 15000,
             'paid_amount' => 10000,
             'status' => 'partial',
         ]);
-        $employee->payrolls()->create([
+        $this->ledger($client, 'employee_salary', 'debit', 10000, 'PAYROLL-' . $payroll->id);
+        $otherPayroll = $employee->payrolls()->create([
             'client_id' => $otherClient->id,
             'salary_month' => '2026-06-01',
             'payable_salary' => 8000,
             'paid_amount' => 8000,
             'status' => 'paid',
         ]);
+        $this->ledger($otherClient, 'employee_salary', 'debit', 8000, 'PAYROLL-' . $otherPayroll->id, true);
 
         $response = $this->actingAs($admin)->get('/admin/client-fund');
 
         $response->assertOk();
-        $response->assertSee('Client Fund Dashboard');
-        $response->assertSee('Total Fund Received');
-        $response->assertSee('BDT 20,000.00');
-        $response->assertSee('Total Salary Used');
+        $response->assertSee('Client Dual Fund Dashboard');
+        $response->assertSee('Salary Fund Received');
+        $response->assertSee('BDT 28,000.00');
+        $response->assertSee('Salary Fund Used');
         $response->assertSee('BDT 18,000.00');
-        $response->assertSee('Available Balance');
-        $response->assertSee('BDT 2,000.00');
-        $response->assertSee('Pending Client Payments');
-        $response->assertSee('BDT 8,000.00');
-        $response->assertSee('Unpaid Salary Due');
-        $response->assertSee('BDT 5,000.00');
-        $response->assertSee('Upcoming Salary This Week');
+        $response->assertSee('Salary Fund Balance');
+        $response->assertSee('BDT 10,000.00');
+        $response->assertSee('Ads Fund Received');
         $response->assertSee('Fund Client A');
         $response->assertSee('/admin/client-fund/' . $client->id . '/details', false);
     }
@@ -95,7 +96,8 @@ class ClientFundDashboardTest extends TestCase
             'status' => 'approved',
             'approved_at' => now(),
         ]);
-        $employee->payrolls()->create([
+        $this->ledger($client, 'employee_salary', 'credit', 10000, 'LEDGER-CREDIT');
+        $payroll = $employee->payrolls()->create([
             'client_id' => $client->id,
             'salary_month' => '2026-06-01',
             'payment_date' => '2026-06-06',
@@ -105,6 +107,7 @@ class ClientFundDashboardTest extends TestCase
             'paid_amount' => 2000,
             'status' => 'paid',
         ]);
+        $this->ledger($client, 'employee_salary', 'debit', 2000, 'PAYROLL-' . $payroll->id);
 
         $response = $this->actingAs($admin)->get('/admin/client-fund/' . $client->id . '/details');
 
@@ -112,8 +115,8 @@ class ClientFundDashboardTest extends TestCase
         $response->assertSee('Client Fund Details');
         $response->assertSee('Ledger Client');
         $response->assertSee('Transaction Ledger');
-        $response->assertSee('Client Fund Received');
-        $response->assertSee('Employee Salary Paid');
+        $response->assertSee('Employee Salary Fund Credit');
+        $response->assertSee('Employee Salary Fund Debit');
         $response->assertSee('BDT 10,000.00');
         $response->assertSee('BDT 2,000.00');
         $response->assertSee('BDT 8,000.00');
@@ -134,7 +137,8 @@ class ClientFundDashboardTest extends TestCase
             'status' => 'approved',
             'approved_at' => now(),
         ]);
-        $employee->payrolls()->create([
+        $this->ledger($client, 'employee_salary', 'credit', 12000, 'FILTER-CREDIT');
+        $payroll = $employee->payrolls()->create([
             'client_id' => $client->id,
             'salary_month' => '2026-06-01',
             'payment_date' => '2026-06-05',
@@ -142,23 +146,24 @@ class ClientFundDashboardTest extends TestCase
             'paid_amount' => 3000,
             'status' => 'paid',
         ]);
+        $this->ledger($client, 'employee_salary', 'debit', 3000, 'PAYROLL-' . $payroll->id);
 
-        $response = $this->actingAs($admin)->get('/admin/client-fund/' . $client->id . '/details?type=Employee%20Salary%20Paid');
+        $response = $this->actingAs($admin)->get('/admin/client-fund/' . $client->id . '/details?fund_type=employee_salary');
 
         $response->assertOk();
-        $response->assertSee('Employee Salary Paid');
-        $response->assertDontSee('FILTER-CREDIT');
+        $response->assertSee('Employee Salary Fund Debit');
+        $response->assertSee('FILTER-CREDIT');
 
-        $csv = $this->actingAs($admin)->get('/admin/client-fund/' . $client->id . '/details/export/csv?type=Employee%20Salary%20Paid');
-        $excel = $this->actingAs($admin)->get('/admin/client-fund/' . $client->id . '/details/export/excel?type=Employee%20Salary%20Paid');
+        $csv = $this->actingAs($admin)->get('/admin/client-fund/' . $client->id . '/details/export/csv?fund_type=employee_salary');
+        $excel = $this->actingAs($admin)->get('/admin/client-fund/' . $client->id . '/details/export/excel?fund_type=employee_salary');
 
         $csv->assertOk();
         $csv->assertDownload('client-fund-ledger-' . $client->id . '.csv');
-        $this->assertStringContainsString('Employee Salary Paid', $csv->streamedContent());
+        $this->assertStringContainsString('Employee Salary Fund Debit', $csv->streamedContent());
 
         $excel->assertOk();
         $excel->assertHeader('Content-Type', 'application/vnd.ms-excel');
-        $excel->assertSee('Employee Salary Paid');
+        $excel->assertSee('Employee Salary Fund Debit');
     }
 
     public function test_admin_can_export_client_fund_dashboard_csv_and_excel(): void
@@ -174,6 +179,7 @@ class ClientFundDashboardTest extends TestCase
             'status' => 'approved',
             'approved_at' => now(),
         ]);
+        $this->ledger($client, 'employee_salary', 'credit', 7000, 'EXPORT-1');
 
         $csv = $this->actingAs($admin)->get('/admin/client-fund/export/csv');
         $excel = $this->actingAs($admin)->get('/admin/client-fund/export/excel');
@@ -230,6 +236,7 @@ class ClientFundDashboardTest extends TestCase
             'status' => 'approved',
             'approved_at' => now(),
         ]);
+        $this->ledger($client, 'employee_salary', 'credit', 8000, 'PROFILE-FUND');
 
         $response = $this->actingAs($admin)->get('/admin/employees/' . $employee->id);
 
@@ -290,6 +297,32 @@ class ClientFundDashboardTest extends TestCase
             'joining_date' => '2026-06-01',
             'status' => 'active',
             'monthly_salary' => 30000,
+        ]);
+    }
+
+    private function ledger(Client $client, string $fundType, string $direction, float $amount, string $reference, bool $allowNegative = false): ClientFundLedger
+    {
+        $balanceBefore = (float) ClientFundLedger::where('client_id', $client->id)
+            ->where('fund_type', $fundType)
+            ->selectRaw("COALESCE(SUM(CASE WHEN direction = 'credit' THEN amount_bdt ELSE -amount_bdt END), 0) as balance")
+            ->value('balance');
+        $balanceAfter = $direction === 'credit'
+            ? $balanceBefore + $amount
+            : $balanceBefore - $amount;
+
+        if (! $allowNegative) {
+            $this->assertGreaterThanOrEqual(0, $balanceAfter);
+        }
+
+        return ClientFundLedger::create([
+            'client_id' => $client->id,
+            'fund_type' => $fundType,
+            'direction' => $direction,
+            'amount_bdt' => $amount,
+            'balance_before' => $balanceBefore,
+            'balance_after' => $balanceAfter,
+            'reference' => $reference,
+            'description' => $direction === 'credit' ? 'Test fund credit.' : 'Test fund debit.',
         ]);
     }
 }

@@ -106,25 +106,28 @@
 
     <div class="client-fund-grid">
         <div class="client-fund-card">
-            <p>Total Fund Received</p>
+            <p>Salary Fund Received</p>
             <h2>BDT {{ number_format($row['fund_received'], 2) }}</h2>
         </div>
         <div class="client-fund-card">
-            <p>Total Salary Used</p>
+            <p>Salary Fund Used</p>
             <h2>BDT {{ number_format($row['salary_used'], 2) }}</h2>
         </div>
         <div class="client-fund-card {{ $row['balance_class'] }}">
-            <p>Available Balance</p>
+            <p>Salary Fund Balance</p>
             <h2>BDT {{ number_format($row['available_balance'], 2) }}</h2>
         </div>
         <div class="client-fund-card">
-            <p>Pending Payments</p>
-            <h2>BDT {{ number_format($row['pending_payments'], 2) }}</h2>
+            <p>Ads Fund Received</p>
+            <h2>BDT {{ number_format($row['ads_received'] ?? 0, 2) }}</h2>
         </div>
         <div class="client-fund-card">
-            <p>Unpaid Salary Due</p>
-            <h2>BDT {{ number_format($row['unpaid_salary_due'], 2) }}</h2>
-            <p style="margin-top:6px;">{{ number_format($row['unpaid_employee_count']) }} Employees</p>
+            <p>Ads Fund Balance</p>
+            <h2>BDT {{ number_format($row['ads_balance'] ?? 0, 2) }}</h2>
+        </div>
+        <div class="client-fund-card">
+            <p>Combined Balance</p>
+            <h2>BDT {{ number_format($row['combined_balance'] ?? 0, 2) }}</h2>
         </div>
     </div>
 
@@ -140,12 +143,11 @@
                 <input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}">
             </label>
             <label>
-                Transaction Type
-                <select name="type">
-                    <option value="">All Transactions</option>
-                    @foreach(['Client Fund Received', 'Employee Salary Paid'] as $type)
-                        <option value="{{ $type }}" {{ ($filters['type'] ?? '') === $type ? 'selected' : '' }}>{{ $type }}</option>
-                    @endforeach
+                Fund Type
+                <select name="fund_type">
+                    <option value="">All Funds</option>
+                    <option value="employee_salary" {{ ($filters['fund_type'] ?? '') === 'employee_salary' ? 'selected' : '' }}>Employee Salary Fund</option>
+                    <option value="facebook_ads" {{ ($filters['fund_type'] ?? '') === 'facebook_ads' ? 'selected' : '' }}>Facebook Ads Fund</option>
                 </select>
             </label>
             <div class="ledger-actions">
@@ -163,6 +165,7 @@
                 <tr>
                     <th>Date</th>
                     <th>Type</th>
+                    <th>Reference</th>
                     <th>Description</th>
                     <th>Credit</th>
                     <th>Debit</th>
@@ -172,13 +175,14 @@
                     <tr>
                         <td>{{ $entry['date'] }}</td>
                         <td>{{ $entry['type'] }}</td>
+                        <td>{{ $entry['reference'] ?: '-' }}</td>
                         <td>{{ $entry['description'] }}</td>
                         <td>{{ $entry['credit'] > 0 ? 'BDT ' . number_format($entry['credit'], 2) : '-' }}</td>
                         <td>{{ $entry['debit'] > 0 ? 'BDT ' . number_format($entry['debit'], 2) : '-' }}</td>
                         <td>BDT {{ number_format($entry['running_balance'], 2) }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="6">No client fund transactions found.</td></tr>
+                    <tr><td colspan="7">No client fund transactions found.</td></tr>
                 @endforelse
             </table>
         </div>

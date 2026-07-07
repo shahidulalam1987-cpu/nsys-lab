@@ -1,8 +1,8 @@
 @extends('layouts.admin')
 
 @section('content')
-    <h1>Client Fund Dashboard</h1>
-    <p>Track client salary fund received, employee salary usage, pending client payments, and unpaid salary due.</p>
+    <h1>Client Dual Fund Dashboard</h1>
+    <p>Track Employee Salary Fund and Facebook Ads Fund separately for every client.</p>
     <p>
         <a class="btn" href="/admin/client-fund/export/csv">Export CSV</a>
         <a class="btn" href="/admin/client-fund/export/excel">Export Excel</a>
@@ -98,34 +98,28 @@
 
     <div class="client-fund-grid">
         <div class="client-fund-card">
-            <p>Total Fund Received</p>
+            <p>Salary Fund Received</p>
             <h2>BDT {{ number_format($summary['total_fund_received'], 2) }}</h2>
         </div>
         <div class="client-fund-card">
-            <p>Total Salary Used</p>
+            <p>Salary Fund Used</p>
             <h2>BDT {{ number_format($summary['total_salary_used'], 2) }}</h2>
         </div>
         <div class="client-fund-card {{ $clientFundDashboardService->balanceClass($summary['available_balance']) }}">
-            <p>Available Balance</p>
+            <p>Salary Fund Balance</p>
             <h2>BDT {{ number_format($summary['available_balance'], 2) }}</h2>
         </div>
         <div class="client-fund-card">
-            <p>Pending Client Payments</p>
-            <h2>BDT {{ number_format($summary['pending_client_payments'], 2) }}</h2>
-            <p style="margin-top:6px;">{{ number_format($summary['pending_client_payment_count']) }} pending</p>
+            <p>Ads Fund Received</p>
+            <h2>BDT {{ number_format($summary['ads_fund_received'] ?? 0, 2) }}</h2>
         </div>
         <div class="client-fund-card">
-            <p>Unpaid Salary Due</p>
-            <h2>BDT {{ number_format($summary['unpaid_salary_due'], 2) }}</h2>
-            <p style="margin-top:6px;">{{ number_format($summary['unpaid_employee_count']) }} Employees</p>
-            @if($summary['unpaid_salary_due'] > 0)
-                <span class="alert-badge">Needs attention</span>
-            @endif
+            <p>Ads Fund Spent</p>
+            <h2>BDT {{ number_format($summary['ads_fund_spent'] ?? 0, 2) }}</h2>
         </div>
         <div class="client-fund-card">
-            <p>Upcoming Salary This Week</p>
-            <h2>BDT {{ number_format($summary['upcoming_salary'], 2) }}</h2>
-            <p style="margin-top:6px;">{{ number_format($summary['upcoming_employee_count']) }} Employees</p>
+            <p>Combined Client Balance</p>
+            <h2>BDT {{ number_format($summary['combined_client_balance'] ?? 0, 2) }}</h2>
         </div>
     </div>
 
@@ -135,12 +129,14 @@
             <table class="client-fund-table">
                 <tr>
                     <th>Client</th>
-                    <th>Total Fund Received</th>
+                    <th>Salary Received</th>
                     <th>Salary Used</th>
-                    <th>Available Balance</th>
+                    <th>Salary Balance</th>
+                    <th>Ads Received</th>
+                    <th>Ads Spent</th>
+                    <th>Ads Balance</th>
+                    <th>Combined Balance</th>
                     <th>Pending Payments</th>
-                    <th>Unpaid Salary Due</th>
-                    <th>Upcoming Salary</th>
                     <th>Action</th>
                 </tr>
                 @forelse($rows as $row)
@@ -149,26 +145,18 @@
                         <td>BDT {{ number_format($row['fund_received'], 2) }}</td>
                         <td>BDT {{ number_format($row['salary_used'], 2) }}</td>
                         <td class="{{ $row['balance_class'] }}">BDT {{ number_format($row['available_balance'], 2) }}</td>
+                        <td>BDT {{ number_format($row['ads_received'] ?? 0, 2) }}</td>
+                        <td>BDT {{ number_format($row['ads_spent'] ?? 0, 2) }}</td>
+                        <td>BDT {{ number_format($row['ads_balance'] ?? 0, 2) }}</td>
+                        <td>BDT {{ number_format($row['combined_balance'] ?? 0, 2) }}</td>
                         <td>
                             BDT {{ number_format($row['pending_payments'], 2) }}
                             <div style="color:#a9b7cf; font-size:12px;">{{ number_format($row['pending_payment_count']) }} pending</div>
                         </td>
-                        <td>
-                            BDT {{ number_format($row['unpaid_salary_due'], 2) }}
-                            <div style="color:#a9b7cf; font-size:12px;">{{ number_format($row['unpaid_employee_count']) }} employees</div>
-                        </td>
-                        <td>
-                            @if($row['upcoming_salary'] > 0)
-                                BDT {{ number_format($row['upcoming_salary'], 2) }}
-                                <div style="color:#a9b7cf; font-size:12px;">{{ $row['upcoming_due_text'] }}</div>
-                            @else
-                                No Upcoming Salary
-                            @endif
-                        </td>
                         <td><a class="btn" href="/admin/client-fund/{{ $row['client']->id }}/details">View Details</a></td>
                     </tr>
                 @empty
-                    <tr><td colspan="8">No client fund data found.</td></tr>
+                    <tr><td colspan="10">No client fund data found.</td></tr>
                 @endforelse
             </table>
         </div>

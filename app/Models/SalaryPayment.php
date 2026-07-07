@@ -8,6 +8,7 @@ class SalaryPayment extends Model
 {
     protected $fillable = [
         'client_id',
+        'fund_type',
         'finance_account_id',
         'salary_month',
         'amount',

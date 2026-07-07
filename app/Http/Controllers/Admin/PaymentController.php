@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Models\Client;
+use App\Services\ClientAdsFundService;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
@@ -57,6 +58,7 @@ class PaymentController extends Controller
         $payment->reject_reason = null;
         $payment->approved_at = now();
         $payment->save();
+        app(ClientAdsFundService::class)->creditDeposit($payment);
 
         if ($payment->invoice) {
             $payment->invoice->update([

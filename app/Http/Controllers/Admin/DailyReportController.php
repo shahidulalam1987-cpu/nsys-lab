@@ -9,7 +9,9 @@ use App\Models\Campaign;
 use App\Models\Client;
 use App\Models\ClientPage;
 use App\Models\DailyPerformanceReport;
+use App\Services\ClientAdsFundService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -63,8 +65,13 @@ class DailyReportController extends Controller
             ]);
         }
 
-        $report = $existing ?: new DailyPerformanceReport();
-        $report->fill($data)->save();
+        $report = DB::transaction(function () use ($existing, $data) {
+            $report = $existing ?: new DailyPerformanceReport();
+            $report->fill($data)->save();
+            app(ClientAdsFundService::class)->syncPerformanceDebit($report);
+
+            return $report;
+        });
 
         return redirect('/admin/daily-reports/' . $report->id)
             ->with('success', $existing ? 'Existing performance report updated successfully.' : 'Daily performance saved successfully.');
@@ -103,7 +110,10 @@ class DailyReportController extends Controller
             ]);
         }
 
-        $dailyReport->update($data);
+        DB::transaction(function () use ($dailyReport, $data) {
+            $dailyReport->update($data);
+            app(ClientAdsFundService::class)->syncPerformanceDebit($dailyReport);
+        });
 
         return redirect('/admin/daily-reports/' . $dailyReport->id)->with('success', 'Daily performance updated successfully.');
     }
@@ -161,23 +171,26 @@ class DailyReportController extends Controller
                 continue;
             }
 
-            $report = $existing ?: new DailyPerformanceReport();
-            $report->fill([
-                'campaign_id' => $data['campaign_id'],
-                'report_date' => $date,
-                'spend' => $data['spend'],
-                'card_provider' => $data['card_provider'] ?? null,
-                'fee_usd' => $data['fee_usd'] ?? 0,
-                'extra_charge_usd' => $data['extra_charge_usd'] ?? 0,
-                'messages' => $data['messages'] ?? 0,
-                'results' => $data['results'] ?? 0,
-                'leads' => $data['leads'] ?? 0,
-                'orders' => $data['orders'],
-                'reach' => $data['reach'] ?? 0,
-                'impressions' => $data['impressions'] ?? 0,
-                'clicks' => $data['clicks'] ?? 0,
-                'notes' => $data['notes'] ?? null,
-            ])->save();
+            DB::transaction(function () use ($existing, $data, $date) {
+                $report = $existing ?: new DailyPerformanceReport();
+                $report->fill([
+                    'campaign_id' => $data['campaign_id'],
+                    'report_date' => $date,
+                    'spend' => $data['spend'],
+                    'card_provider' => $data['card_provider'] ?? null,
+                    'fee_usd' => $data['fee_usd'] ?? 0,
+                    'extra_charge_usd' => $data['extra_charge_usd'] ?? 0,
+                    'messages' => $data['messages'] ?? 0,
+                    'results' => $data['results'] ?? 0,
+                    'leads' => $data['leads'] ?? 0,
+                    'orders' => $data['orders'],
+                    'reach' => $data['reach'] ?? 0,
+                    'impressions' => $data['impressions'] ?? 0,
+                    'clicks' => $data['clicks'] ?? 0,
+                    'notes' => $data['notes'] ?? null,
+                ])->save();
+                app(ClientAdsFundService::class)->syncPerformanceDebit($report);
+            });
 
             $existing ? $updated++ : $created++;
         }

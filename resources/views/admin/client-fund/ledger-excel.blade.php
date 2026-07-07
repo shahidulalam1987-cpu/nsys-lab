@@ -9,6 +9,7 @@
         <tr>
             <th>Date</th>
             <th>Type</th>
+            <th>Reference</th>
             <th>Description</th>
             <th>Credit</th>
             <th>Debit</th>
@@ -18,6 +19,7 @@
             <tr>
                 <td>{{ $row['date'] }}</td>
                 <td>{{ $row['type'] }}</td>
+                <td>{{ $row['reference'] }}</td>
                 <td>{{ $row['description'] }}</td>
                 <td>{{ number_format($row['credit'], 2, '.', '') }}</td>
                 <td>{{ number_format($row['debit'], 2, '.', '') }}</td>

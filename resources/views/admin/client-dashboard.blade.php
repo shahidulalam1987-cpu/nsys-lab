@@ -5,7 +5,7 @@
     <p>Client management, client portal access, and employee salary fund overview.</p>
 
     @php
-        $clientBalance = $clientFundSummary['available_balance'];
+        $clientBalance = $clientFundSummary['combined_client_balance'] ?? $clientFundSummary['available_balance'];
         $isClientDue = $clientBalance < 0;
     @endphp
 
@@ -15,16 +15,23 @@
             <h2>{{ number_format($totalClients) }}</h2>
         </div>
         <div class="stat-card">
-            <p>Total Received</p>
+            <p>Salary Fund Received</p>
             <h2>BDT {{ number_format($clientFundSummary['total_fund_received'], 2) }}</h2>
         </div>
         <div class="stat-card">
-            <p>Pending Payments</p>
-            <h2>BDT {{ number_format($pendingClientPayments, 2) }}</h2>
-            <p>Pending</p>
+            <p>Ads Fund Received</p>
+            <h2>BDT {{ number_format($clientFundSummary['ads_fund_received'] ?? 0, 2) }}</h2>
+        </div>
+        <div class="stat-card">
+            <p>Salary Fund Balance</p>
+            <h2>BDT {{ number_format($clientFundSummary['available_balance'], 2) }}</h2>
+        </div>
+        <div class="stat-card">
+            <p>Ads Fund Balance</p>
+            <h2>BDT {{ number_format($clientFundSummary['ads_fund_balance'] ?? 0, 2) }}</h2>
         </div>
         <div class="stat-card" style="border-color:{{ $isClientDue ? '#f97316' : '#22c55e' }};">
-            <p>Current Client Balance</p>
+            <p>Combined Client Balance</p>
             <h2 style="color:{{ $isClientDue ? '#fb923c' : '#22c55e' }};">BDT {{ number_format(abs($clientBalance), 2) }}</h2>
             <p style="color:{{ $isClientDue ? '#fb923c' : '#22c55e' }};">{{ $isClientDue ? 'Due' : 'Available' }}</p>
         </div>

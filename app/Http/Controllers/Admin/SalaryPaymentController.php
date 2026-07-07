@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Client;
+use App\Models\ClientFundLedger;
 use App\Models\FinanceAccount;
 use App\Models\FinanceAccountLedger;
 use App\Models\SalaryPayment;
 use App\Services\ActivityLogger;
+use App\Services\ClientFundLedgerService;
+use App\Services\ClientSalaryFundService;
 use App\Services\FinanceLedgerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -45,6 +48,7 @@ class SalaryPaymentController extends Controller
     {
         $data = $request->validate([
             'client_id' => ['required', 'exists:clients,id'],
+            'fund_type' => ['required', 'in:employee_salary,facebook_ads'],
             'amount' => ['required', 'numeric', 'min:1'],
             'payment_method' => ['required', 'string', 'max:100'],
             'transaction_id' => ['required', 'string', 'max:255'],
@@ -71,6 +75,7 @@ class SalaryPaymentController extends Controller
 
             if ($payment->status === 'approved') {
                 $this->creditClientPayment($payment, $request);
+                $this->creditSelectedClientFund($payment);
             }
 
             return $payment;
@@ -115,6 +120,7 @@ class SalaryPaymentController extends Controller
                 'rejected_at' => null,
                 'reject_reason' => null,
             ]);
+            $this->creditSelectedClientFund($payment->fresh('client'));
 
             return $payment;
         });
@@ -133,6 +139,7 @@ class SalaryPaymentController extends Controller
         $payment = DB::transaction(function () use ($id, $request) {
             $payment = SalaryPayment::whereKey($id)->lockForUpdate()->firstOrFail();
             $this->reverseClientPaymentIfNeeded($payment, $request, 'Client payment rejected.');
+            $this->reverseClientFundIfNeeded($payment, $request, 'Client payment rejected.');
             $payment->update([
                 'status' => 'rejected',
                 'rejected_at' => now(),
@@ -153,6 +160,7 @@ class SalaryPaymentController extends Controller
         DB::transaction(function () use ($payment) {
             $lockedPayment = SalaryPayment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
             $this->reverseClientPaymentIfNeeded($lockedPayment, request(), 'Client payment deleted.');
+            $this->reverseClientFundIfNeeded($lockedPayment, request(), 'Client payment deleted.');
             $lockedPayment->delete();
         });
 
@@ -173,6 +181,62 @@ class SalaryPaymentController extends Controller
             'ledger_date' => $payment->salary_month,
             'description' => 'Client payment received - ' . ($payment->client?->company_name ?: 'Client') . '.',
             'transaction_reference' => $payment->transaction_id,
+            'created_by' => $request->user()?->id,
+        ]);
+    }
+
+    private function creditSelectedClientFund(SalaryPayment $payment): void
+    {
+        $payment->loadMissing('client');
+
+        if (! $payment->client) {
+            return;
+        }
+
+        if ($payment->fund_type === ClientFundLedger::FUND_EMPLOYEE_SALARY) {
+            app(ClientSalaryFundService::class)->creditDeposit($payment);
+
+            return;
+        }
+
+        app(ClientFundLedgerService::class)->creditOnce($payment->client, ClientFundLedger::FUND_FACEBOOK_ADS, (float) $payment->amount, $payment, [
+            'reference' => $payment->transaction_id ?: 'client-payment:' . $payment->id,
+            'description' => 'Client Ads Fund Deposit - ' . $payment->client->company_name . '.',
+            'created_by' => auth()->id(),
+        ]);
+    }
+
+    private function reverseClientFundIfNeeded(SalaryPayment $payment, Request $request, string $description): void
+    {
+        $payment->loadMissing('client');
+        if (! $payment->client) {
+            return;
+        }
+
+        $fundType = $payment->fund_type ?: ClientFundLedger::FUND_EMPLOYEE_SALARY;
+        $ledgerService = app(ClientFundLedgerService::class);
+        $creditExists = \App\Models\ClientFundLedger::query()
+            ->where('source_type', SalaryPayment::class)
+            ->where('source_id', $payment->id)
+            ->where('fund_type', $fundType)
+            ->where('direction', ClientFundLedger::DIRECTION_CREDIT)
+            ->exists();
+        $debitExists = \App\Models\ClientFundLedger::query()
+            ->where('source_type', SalaryPayment::class)
+            ->where('source_id', $payment->id)
+            ->where('fund_type', $fundType)
+            ->where('direction', ClientFundLedger::DIRECTION_DEBIT)
+            ->exists();
+
+        if (! $creditExists || $debitExists) {
+            return;
+        }
+
+        $ledgerService->debit($payment->client, $fundType, (float) $payment->amount, [
+            'source_type' => SalaryPayment::class,
+            'source_id' => $payment->id,
+            'reference' => $payment->transaction_id ?: 'client-payment:' . $payment->id,
+            'description' => $description,
             'created_by' => $request->user()?->id,
         ]);
     }

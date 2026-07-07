@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Client;
+use App\Models\ClientFundLedger;
 use App\Models\Employee;
 use App\Models\EmployeePayroll;
 use App\Models\EmployeeWorkStatus;
@@ -11,6 +12,8 @@ use App\Models\FinanceAccount;
 use App\Services\ActivityLogger;
 use App\Services\AssignmentResolver;
 use App\Services\ClientFundDashboardService;
+use App\Services\ClientFundLedgerService;
+use App\Services\ClientSalaryFundService;
 use App\Services\FinanceLedgerService;
 use App\Services\PayrollCategoryService;
 use App\Services\PayrollEstimateService;
@@ -713,6 +716,8 @@ class EmployeePayrollController extends Controller
                 'reversed_by' => null,
                 'reversal_note' => null,
             ]);
+            $payroll->refresh();
+            app(ClientSalaryFundService::class)->debitPayroll($payroll);
 
             $payroll->markAudit('salary_paid', auth()->id(), 'Paid from ' . $account->account_name . '.');
         });
@@ -776,6 +781,13 @@ class EmployeePayrollController extends Controller
                 'activity_module' => 'Payroll',
                 'activity_action' => 'Salary Payment Reversal Ledger Created',
             ]);
+            if ($payroll->client) {
+                app(ClientFundLedgerService::class)->creditOnce($payroll->client, ClientFundLedger::FUND_EMPLOYEE_SALARY, $amount, $payroll, [
+                    'reference' => $payroll->transaction_id ?: 'payroll:' . $payroll->id,
+                    'description' => 'Salary payment reversed - ' . $payroll->snapshotEmployeeName() . '.',
+                    'created_by' => auth()->id(),
+                ]);
+            }
 
             $payroll->update([
                 'payroll_status' => 'approved',

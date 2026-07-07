@@ -5,6 +5,26 @@
 
     <p>{{ $client->company_name }} | Today: {{ $today }}</p>
 
+    <div class="card">
+        <h3>Employee Salary Fund</h3>
+        <div class="stats-grid">
+            <div class="stat-card"><p>Received</p><h2>BDT {{ number_format($funds['salary']['received'], 2) }}</h2></div>
+            <div class="stat-card"><p>Used</p><h2>BDT {{ number_format($funds['salary']['used'], 2) }}</h2></div>
+            <div class="stat-card"><p>Balance</p><h2 style="color:{{ $funds['salary']['balance'] < 0 ? '#ef4444' : '#22c55e' }};">BDT {{ number_format($funds['salary']['balance'], 2) }}</h2></div>
+        </div>
+        <a class="btn" href="/client/salary-fund">Salary Fund History</a>
+    </div>
+
+    <div class="card">
+        <h3>Facebook Ads Fund</h3>
+        <div class="stats-grid">
+            <div class="stat-card"><p>Received</p><h2>BDT {{ number_format($funds['ads']['received'], 2) }}</h2></div>
+            <div class="stat-card"><p>Spent</p><h2>BDT {{ number_format($funds['ads']['used'], 2) }}</h2></div>
+            <div class="stat-card"><p>Balance</p><h2 style="color:{{ $funds['ads']['balance'] < 0 ? '#ef4444' : '#22c55e' }};">BDT {{ number_format($funds['ads']['balance'], 2) }}</h2></div>
+        </div>
+        <a class="btn" href="/client/statement">Ads Fund History</a>
+    </div>
+
     @if($availableBalance < 5000)
         <div class="card" style="border-color:#ef4444;">
             <h3 style="color:#ef4444;">Low Balance Warning</h3>

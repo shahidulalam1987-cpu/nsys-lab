@@ -6,6 +6,7 @@ use App\Models\AdAccount;
 use App\Models\BusinessManager;
 use App\Models\Campaign;
 use App\Models\Client;
+use App\Models\ClientFundLedger;
 use App\Models\ClientPage;
 use App\Models\DailyPerformanceReport;
 use App\Models\User;
@@ -180,6 +181,16 @@ class DailyPerformancePhase4Test extends TestCase
             'client_rate' => 120,
             'buy_rate' => 100,
             'status' => 'active',
+        ]);
+        ClientFundLedger::create([
+            'client_id' => $client->id,
+            'fund_type' => ClientFundLedger::FUND_FACEBOOK_ADS,
+            'direction' => ClientFundLedger::DIRECTION_CREDIT,
+            'amount_bdt' => 100000,
+            'balance_before' => 0,
+            'balance_after' => 100000,
+            'reference' => 'TEST-ADS-FUND',
+            'description' => 'Test ads fund deposit.',
         ]);
         $bm = BusinessManager::create([
             'bm_name' => 'Performance BM',

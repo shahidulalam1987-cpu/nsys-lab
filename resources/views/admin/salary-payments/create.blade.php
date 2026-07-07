@@ -29,6 +29,13 @@
                 </select>
             </p>
 
+            <p>Payment Purpose<br>
+                <select name="fund_type" required>
+                    <option value="employee_salary" {{ old('fund_type', 'employee_salary') === 'employee_salary' ? 'selected' : '' }}>Employee Salary Fund</option>
+                    <option value="facebook_ads" {{ old('fund_type') === 'facebook_ads' ? 'selected' : '' }}>Facebook Ads Fund</option>
+                </select>
+            </p>
+
             <p>Amount (BDT)<br><input type="number" step="0.01" min="1" name="amount" value="{{ old('amount') }}" required></p>
             <p>Receive Into Finance Account<br>
                 <select name="finance_account_id" required>

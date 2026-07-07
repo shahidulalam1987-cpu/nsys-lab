@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Client;
+use App\Models\ClientFundLedger;
 use App\Models\EmployeePayroll;
 use App\Models\SalaryPayment;
 use Carbon\Carbon;
@@ -14,7 +15,8 @@ class ClientFundDashboardService
 
     public function __construct(
         private PayrollCategoryService $payrollCategory,
-        private AssignmentResolver $assignmentResolver
+        private AssignmentResolver $assignmentResolver,
+        private ClientFundSummaryService $fundSummary
     ) {}
 
     public function dashboard(): array
@@ -25,13 +27,19 @@ class ClientFundDashboardService
         $rows = $clients->map(fn (Client $client) => $this->clientSummary($client));
         $totalFundReceived = (float) $rows->sum('fund_received');
         $totalSalaryUsed = (float) $rows->sum('salary_used');
+        $totalAdsReceived = (float) $rows->sum('ads_received');
+        $totalAdsSpent = (float) $rows->sum('ads_spent');
 
         return [
             'rows' => $rows,
             'summary' => [
                 'total_fund_received' => $totalFundReceived,
                 'total_salary_used' => $totalSalaryUsed,
-                'available_balance' => $totalFundReceived - $totalSalaryUsed,
+                'available_balance' => (float) $rows->sum('available_balance'),
+                'ads_fund_received' => $totalAdsReceived,
+                'ads_fund_spent' => $totalAdsSpent,
+                'ads_fund_balance' => (float) $rows->sum('ads_balance'),
+                'combined_client_balance' => (float) $rows->sum('combined_balance'),
                 'pending_client_payments' => (float) $rows->sum('pending_payments'),
                 'pending_client_payment_count' => (int) $rows->sum('pending_payment_count'),
                 'unpaid_salary_due' => (float) $rows->sum('unpaid_salary_due'),
@@ -79,14 +87,7 @@ class ClientFundDashboardService
 
     public function clientAvailableBalance(int $clientId): float
     {
-        $fundReceived = (float) SalaryPayment::where('client_id', $clientId)
-            ->where('status', 'approved')
-            ->sum('amount');
-        $salaryUsed = (float) EmployeePayroll::current()
-            ->where('client_id', $clientId)
-            ->sum('paid_amount');
-
-        return $fundReceived - $salaryUsed;
+        return app(ClientSalaryFundService::class)->balance($clientId);
     }
 
     public function clientBalanceMap(): array
@@ -103,6 +104,10 @@ class ClientFundDashboardService
             'fund_received' => $row['fund_received'],
             'salary_used' => $row['salary_used'],
             'balance' => $row['available_balance'],
+            'ads_received' => $row['ads_received'],
+            'ads_spent' => $row['ads_spent'],
+            'ads_balance' => $row['ads_balance'],
+            'combined_balance' => $row['combined_balance'],
             'pending_payments' => $row['pending_payments'],
             'upcoming_salary' => $row['upcoming_salary'],
             'unpaid_salary' => $row['unpaid_salary_due'],
@@ -111,17 +116,16 @@ class ClientFundDashboardService
 
     private function clientSummary(Client $client): array
     {
-        $fundReceived = (float) $client->salaryPayments
-            ->where('status', 'approved')
-            ->sum('amount');
+        $funds = $this->fundSummary->forClient($client);
+        $fundReceived = (float) $funds['salary']['received'];
         $pendingPayments = (float) $client->salaryPayments
             ->where('status', 'pending')
             ->sum('amount');
         $pendingPaymentCount = $client->salaryPayments
             ->where('status', 'pending')
             ->count();
-        $salaryUsed = (float) $client->employeePayrolls->sum('paid_amount');
-        $availableBalance = $fundReceived - $salaryUsed;
+        $salaryUsed = (float) $funds['salary']['used'];
+        $availableBalance = (float) $funds['salary']['balance'];
         $unpaid = $this->unpaidSalaryForClient($client);
         $upcoming = $this->upcomingSalaryForClient($client);
 
@@ -130,6 +134,10 @@ class ClientFundDashboardService
             'fund_received' => $fundReceived,
             'salary_used' => $salaryUsed,
             'available_balance' => $availableBalance,
+            'ads_received' => (float) $funds['ads']['received'],
+            'ads_spent' => (float) $funds['ads']['used'],
+            'ads_balance' => (float) $funds['ads']['balance'],
+            'combined_balance' => (float) $funds['combined_balance'],
             'balance_class' => $this->balanceClass($availableBalance),
             'pending_payments' => $pendingPayments,
             'pending_payment_count' => $pendingPaymentCount,
@@ -215,35 +223,27 @@ class ClientFundDashboardService
 
     private function ledger(Client $client, array $filters = []): Collection
     {
-        $entries = collect();
-
-        foreach ($client->salaryPayments->where('status', 'approved') as $payment) {
-            $entries->push([
-                'date' => $payment->salary_month?->toDateString() ?: $payment->created_at?->toDateString(),
-                'type' => 'Client Fund Received',
-                'description' => 'Client fund payment ' . ($payment->transaction_id ? '(' . $payment->transaction_id . ')' : ''),
-                'debit' => 0.0,
-                'credit' => (float) $payment->amount,
-            ]);
-        }
-
-        foreach ($client->employeePayrolls->where('paid_amount', '>', 0) as $payroll) {
-            $entries->push([
-                'date' => $payroll->payment_date?->toDateString() ?: $payroll->created_at?->toDateString(),
-                'type' => 'Employee Salary Paid',
-                'description' => trim(($payroll->employee?->name ?: 'Employee') . ' - ' . $payroll->salary_period),
-                'debit' => (float) $payroll->paid_amount,
-                'credit' => 0.0,
-            ]);
-        }
-
-        $runningBalance = 0.0;
-
-        return $entries
+        return ClientFundLedger::where('client_id', $client->id)
+            ->latest()
+            ->get()
+            ->map(fn (ClientFundLedger $ledger) => [
+                'date' => $ledger->created_at?->toDateString(),
+                'type' => $ledger->fundTypeLabel() . ' ' . $ledger->directionLabel(),
+                'fund_type' => $ledger->fund_type,
+                'reference' => $ledger->reference,
+                'description' => $ledger->description ?: $ledger->reference,
+                'debit' => $ledger->direction === ClientFundLedger::DIRECTION_DEBIT ? (float) $ledger->amount_bdt : 0.0,
+                'credit' => $ledger->direction === ClientFundLedger::DIRECTION_CREDIT ? (float) $ledger->amount_bdt : 0.0,
+                'running_balance' => (float) $ledger->balance_after,
+            ])
             ->sortBy([['date', 'asc'], ['type', 'asc']])
             ->values()
             ->filter(function (array $entry) use ($filters) {
                 if (($filters['type'] ?? null) && $entry['type'] !== $filters['type']) {
+                    return false;
+                }
+
+                if (($filters['fund_type'] ?? null) && $entry['fund_type'] !== $filters['fund_type']) {
                     return false;
                 }
 
@@ -257,12 +257,6 @@ class ClientFundDashboardService
 
                 return true;
             })
-            ->values()
-            ->map(function (array $entry) use (&$runningBalance) {
-                $runningBalance += $entry['credit'] - $entry['debit'];
-                $entry['running_balance'] = $runningBalance;
-
-                return $entry;
-            });
+            ->values();
     }
 }

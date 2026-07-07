@@ -25,7 +25,8 @@ class ClientFundController extends Controller
         $filters = $request->validate([
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
-            'type' => ['nullable', 'in:Client Fund Received,Employee Salary Paid'],
+            'fund_type' => ['nullable', 'in:employee_salary,facebook_ads'],
+            'type' => ['nullable', 'string'],
         ]);
         $details = $clientFundDashboardService->clientDetails($client, $filters);
 
@@ -43,18 +44,20 @@ class ClientFundController extends Controller
         $filters = $request->validate([
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
-            'type' => ['nullable', 'in:Client Fund Received,Employee Salary Paid'],
+            'fund_type' => ['nullable', 'in:employee_salary,facebook_ads'],
+            'type' => ['nullable', 'string'],
         ]);
         $rows = $clientFundDashboardService->ledgerExportRows($client, $filters);
 
         return response()->streamDownload(function () use ($rows) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Date', 'Type', 'Description', 'Credit', 'Debit', 'Running Balance']);
+            fputcsv($handle, ['Date', 'Type', 'Reference', 'Description', 'Credit', 'Debit', 'Running Balance']);
 
             foreach ($rows as $row) {
                 fputcsv($handle, [
                     $row['date'],
                     $row['type'],
+                    $row['reference'],
                     $row['description'],
                     number_format($row['credit'], 2, '.', ''),
                     number_format($row['debit'], 2, '.', ''),
@@ -71,7 +74,8 @@ class ClientFundController extends Controller
         $filters = $request->validate([
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
-            'type' => ['nullable', 'in:Client Fund Received,Employee Salary Paid'],
+            'fund_type' => ['nullable', 'in:employee_salary,facebook_ads'],
+            'type' => ['nullable', 'string'],
         ]);
 
         return response()->view('admin.client-fund.ledger-excel', [
@@ -87,7 +91,7 @@ class ClientFundController extends Controller
     {
         return response()->streamDownload(function () use ($clientFundDashboardService) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Client', 'Fund Received', 'Salary Used', 'Balance', 'Pending Payments', 'Upcoming Salary', 'Unpaid Salary']);
+            fputcsv($handle, ['Client', 'Salary Received', 'Salary Used', 'Salary Balance', 'Ads Received', 'Ads Spent', 'Ads Balance', 'Combined Balance', 'Pending Payments', 'Upcoming Salary', 'Unpaid Salary']);
 
             foreach ($clientFundDashboardService->exportRows() as $row) {
                 fputcsv($handle, [
@@ -95,6 +99,10 @@ class ClientFundController extends Controller
                     number_format($row['fund_received'], 2, '.', ''),
                     number_format($row['salary_used'], 2, '.', ''),
                     number_format($row['balance'], 2, '.', ''),
+                    number_format($row['ads_received'], 2, '.', ''),
+                    number_format($row['ads_spent'], 2, '.', ''),
+                    number_format($row['ads_balance'], 2, '.', ''),
+                    number_format($row['combined_balance'], 2, '.', ''),
                     number_format($row['pending_payments'], 2, '.', ''),
                     number_format($row['upcoming_salary'], 2, '.', ''),
                     number_format($row['unpaid_salary'], 2, '.', ''),

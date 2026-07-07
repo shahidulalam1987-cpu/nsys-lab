@@ -9,16 +9,18 @@ use App\Models\DailyReport;
 use App\Models\DailyPerformanceReport;
 use App\Models\SalaryPayment;
 use App\Services\ClientLedgerService;
+use App\Services\ClientFundSummaryService;
 use App\Services\SalaryFundService;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    public function index(ClientLedgerService $ledgerService)
+    public function index(ClientLedgerService $ledgerService, ClientFundSummaryService $fundSummaryService)
     {
         $client = Client::where('user_id', auth()->id())->firstOrFail();
         $ledger = $ledgerService->build($client);
         $summary = $ledger['summary'];
+        $funds = $fundSummaryService->forClient($client);
 
         $today = date('Y-m-d');
 
@@ -38,10 +40,10 @@ class DashboardController extends Controller
         $modernReports = (clone $modernQuery)->get();
         $totalSpendUsd = (float) $modernReports->sum('spend');
         $totalOrders = (int) $modernReports->sum('orders');
-        $totalSpendBdt = $summary['total_debit'];
-        $approvedPayments = $summary['total_credit'];
-        $currentDue = $summary['current_due'];
-        $availableBalance = $summary['available_balance'];
+        $totalSpendBdt = $funds['ads']['used'];
+        $approvedPayments = $funds['ads']['received'];
+        $currentDue = max($funds['ads']['used'] - $funds['ads']['received'], 0);
+        $availableBalance = max($funds['ads']['balance'], 0);
 
         $avgCostPerOrder = DailyPerformanceReport::costPer($totalSpendUsd, $totalOrders);
 
@@ -97,7 +99,8 @@ class DashboardController extends Controller
             'recentPayments',
             'monthlyReports',
             'pagePerformance',
-            'campaignPerformance'
+            'campaignPerformance',
+            'funds'
         ));
     }
 

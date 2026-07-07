@@ -7,6 +7,7 @@ use App\Models\BonusRule;
 use App\Models\BusinessManager;
 use App\Models\Campaign;
 use App\Models\Client;
+use App\Models\ClientFundLedger;
 use App\Models\ClientPage;
 use App\Models\DailyPerformanceReport;
 use App\Models\Department;
@@ -154,6 +155,16 @@ class PerformanceOperationsPhaseTest extends TestCase
     private function scope(): array
     {
         $client = Client::create(['company_name' => 'Ops Client '.uniqid(), 'phone' => '1', 'client_rate' => 145, 'buy_rate' => 125, 'status' => 'active']);
+        ClientFundLedger::create([
+            'client_id' => $client->id,
+            'fund_type' => ClientFundLedger::FUND_FACEBOOK_ADS,
+            'direction' => ClientFundLedger::DIRECTION_CREDIT,
+            'amount_bdt' => 100000,
+            'balance_before' => 0,
+            'balance_after' => 100000,
+            'reference' => 'TEST-ADS-FUND',
+            'description' => 'Test ads fund deposit.',
+        ]);
         $bm = BusinessManager::create(['bm_name' => 'Ops BM', 'bm_id' => 'BM-'.uniqid(), 'owner_name' => 'Owner', 'owner_email' => uniqid().'@test.com', 'verification_status' => 'verified', 'status' => 'active']);
         $account = AdAccount::create(['ad_account_name' => 'Ops Account', 'ad_account_id' => 'AD-'.uniqid(), 'business_manager_id' => $bm->id, 'client_id' => $client->id, 'currency' => 'USD', 'status' => 'active']);
         $page = ClientPage::create(['client_id' => $client->id, 'business_manager_id' => $bm->id, 'ad_account_id' => $account->id, 'page_name' => 'Ops Page', 'platform' => 'Facebook', 'status' => 'active']);

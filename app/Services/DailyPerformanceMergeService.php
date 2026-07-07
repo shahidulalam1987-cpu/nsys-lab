@@ -61,6 +61,7 @@ class DailyPerformanceMergeService
                 'Employee submission merge approved by '.$actor->name.'.',
             ])->filter()->implode("\n"));
             $report->save();
+            app(ClientAdsFundService::class)->syncPerformanceDebit($report);
 
             $group->each->update(['status' => 'merged']);
             $operations = app(PerformanceOperationsService::class);

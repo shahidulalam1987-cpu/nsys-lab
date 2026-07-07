@@ -70,8 +70,43 @@ class Client extends Model
         return $this->hasMany(SalaryPayment::class);
     }
 
+    public function fundLedgers()
+    {
+        return $this->hasMany(ClientFundLedger::class);
+    }
+
     public function employeePayrolls()
     {
         return $this->hasMany(EmployeePayroll::class);
+    }
+
+    public function salary_fund_balance(): float
+    {
+        return app(\App\Services\ClientSalaryFundService::class)->balance($this);
+    }
+
+    public function ads_fund_balance(): float
+    {
+        return app(\App\Services\ClientAdsFundService::class)->balance($this);
+    }
+
+    public function total_client_balance(): float
+    {
+        return round($this->salary_fund_balance() + $this->ads_fund_balance(), 2);
+    }
+
+    public function salaryFundBalance(): float
+    {
+        return $this->salary_fund_balance();
+    }
+
+    public function adsFundBalance(): float
+    {
+        return $this->ads_fund_balance();
+    }
+
+    public function totalClientBalance(): float
+    {
+        return $this->total_client_balance();
     }
 }

@@ -8,6 +8,7 @@
         <tr>
             <th>ID</th>
             <th>Client</th>
+            <th>Purpose</th>
             <th>Amount</th>
             <th>Method</th>
             <th>Transaction ID</th>
@@ -28,6 +29,13 @@
             <tr>
                 <td>{{ $payment->id }}</td>
                 <td>{{ $payment->client?->company_name }}</td>
+                <td>
+                    @if(($payment->fund_type ?? 'employee_salary') === 'facebook_ads')
+                        <span class="badge badge-info">Ads Fund</span>
+                    @else
+                        <span class="badge badge-success">Salary Fund</span>
+                    @endif
+                </td>
                 <td>BDT {{ number_format($payment->amount, 2) }}</td>
                 <td>{{ $payment->payment_method }}</td>
                 <td>{{ $payment->transaction_id }}</td>
@@ -74,7 +82,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="{{ $mode === 'pending' ? 9 : 10 }}">{{ $emptyMessage }}</td></tr>
+            <tr><td colspan="{{ $mode === 'pending' ? 10 : 11 }}">{{ $emptyMessage }}</td></tr>
         @endforelse
     </table>
 </div>

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Client;
+use App\Models\ClientFundLedger;
 use App\Models\Employee;
 use App\Models\FinanceAccount;
 use App\Models\User;
@@ -109,6 +110,7 @@ class EmployeePayrollProductionWorkflowTest extends TestCase
 
         $this->actingAs($admin)->post('/admin/payroll', $this->salaryPayload($employee, $client));
         $payroll = $employee->payrolls()->first();
+        $this->seedClientSalaryFund($client, 20000);
 
         $this->assertSame('generated', $payroll->payroll_status);
         $this->assertDatabaseHas('employee_payroll_audits', [
@@ -167,6 +169,7 @@ class EmployeePayrollProductionWorkflowTest extends TestCase
         $employee = $this->employee();
         $financeAccount = $this->financeAccount();
         $payroll = $this->approvedPayroll($admin, $employee, $client);
+        $this->seedClientSalaryFund($client, 20000);
 
         $payload = [
             'payment_date' => '2026-06-30',
@@ -197,6 +200,7 @@ class EmployeePayrollProductionWorkflowTest extends TestCase
         $employee = $this->employee();
         $financeAccount = $this->financeAccount();
         $payroll = $this->approvedPayroll($admin, $employee, $client);
+        $this->seedClientSalaryFund($client, 20000);
 
         $this->actingAs($admin)->post('/admin/payroll/' . $payroll->id . '/confirm-payment', [
             'payment_date' => '2026-06-30',
@@ -241,6 +245,7 @@ class EmployeePayrollProductionWorkflowTest extends TestCase
         $employee = $this->employee();
         $financeAccount = $this->financeAccount();
         $payroll = $this->approvedPayroll($admin, $employee, $client);
+        $this->seedClientSalaryFund($client, 20000);
 
         $this->actingAs($admin)->post('/admin/payroll/' . $payroll->id . '/confirm-payment', [
             'payment_date' => '2026-06-30',
@@ -380,6 +385,25 @@ class EmployeePayrollProductionWorkflowTest extends TestCase
             'client_rate' => 100,
             'buy_rate' => 80,
             'status' => 'active',
+        ]);
+    }
+
+    private function seedClientSalaryFund(Client $client, float $amount): ClientFundLedger
+    {
+        $balanceBefore = (float) ClientFundLedger::where('client_id', $client->id)
+            ->where('fund_type', ClientFundLedger::FUND_EMPLOYEE_SALARY)
+            ->selectRaw("COALESCE(SUM(CASE WHEN direction = 'credit' THEN amount_bdt ELSE -amount_bdt END), 0) as balance")
+            ->value('balance');
+
+        return ClientFundLedger::create([
+            'client_id' => $client->id,
+            'fund_type' => ClientFundLedger::FUND_EMPLOYEE_SALARY,
+            'direction' => ClientFundLedger::DIRECTION_CREDIT,
+            'amount_bdt' => $amount,
+            'balance_before' => $balanceBefore,
+            'balance_after' => $balanceBefore + $amount,
+            'reference' => 'TEST-SALARY-FUND',
+            'description' => 'Test salary fund deposit.',
         ]);
     }
 }

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Client;
+use App\Models\ClientFundLedger;
 use App\Models\FinanceAccount;
 use App\Models\SalaryPayment;
 use App\Models\User;
@@ -33,6 +34,7 @@ class ClientFundPaymentAdminTest extends TestCase
         $response = $this->actingAs($admin)->post('/admin/salary-payments', [
             'client_id' => $client->id,
             'finance_account_id' => $account->id,
+            'fund_type' => ClientFundLedger::FUND_EMPLOYEE_SALARY,
             'amount' => 12000,
             'payment_method' => 'Bank',
             'transaction_id' => 'FUND-123',
@@ -48,6 +50,7 @@ class ClientFundPaymentAdminTest extends TestCase
         $this->assertSame($client->id, $payment->client_id);
         $this->assertSame('2026-06-15', $payment->salary_month->toDateString());
         $this->assertSame('approved', $payment->status);
+        $this->assertSame(ClientFundLedger::FUND_EMPLOYEE_SALARY, $payment->fund_type);
         $this->assertNotNull($payment->approved_at);
         $this->assertSame(13000.0, (float) $account->fresh()->current_balance);
         $this->assertDatabaseHas('finance_account_ledgers', [
@@ -60,6 +63,14 @@ class ClientFundPaymentAdminTest extends TestCase
             'old_balance' => 1000,
             'new_balance_snapshot' => 13000,
             'currency' => 'BDT',
+        ]);
+        $this->assertDatabaseHas('client_fund_ledgers', [
+            'client_id' => $client->id,
+            'fund_type' => ClientFundLedger::FUND_EMPLOYEE_SALARY,
+            'direction' => ClientFundLedger::DIRECTION_CREDIT,
+            'source_type' => SalaryPayment::class,
+            'source_id' => $payment->id,
+            'amount_bdt' => 12000,
         ]);
         Storage::disk('public')->assertExists($payment->screenshot);
     }
