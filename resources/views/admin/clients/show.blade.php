@@ -27,6 +27,12 @@
         <p><strong>Buy Rate:</strong> BDT {{ number_format($summary['buy_rate'], 2) }}</p>
     </div>
 
+    @include('admin.documents.partials.related-widget', [
+        'ownerModule' => 'client',
+        'ownerId' => $client->id,
+        'category' => 'Client',
+    ])
+
     <div class="card">
         <h2>Financial Summary</h2>
 

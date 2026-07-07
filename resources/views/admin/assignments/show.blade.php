@@ -25,4 +25,10 @@
         <p><strong>Status:</strong> {{ $assignment->statusLabel() }}</p>
         <p><strong>Note:</strong> {{ $assignment->note ?: '-' }}</p>
     </div>
+
+    @include('admin.documents.partials.related-widget', [
+        'ownerModule' => 'assignment',
+        'ownerId' => $assignment->id,
+        'category' => 'HR',
+    ])
 @endsection

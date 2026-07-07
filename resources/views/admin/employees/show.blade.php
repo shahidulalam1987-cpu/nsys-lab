@@ -509,6 +509,12 @@
         </div>
     </div>
 
+    @include('admin.documents.partials.related-widget', [
+        'ownerModule' => 'employee',
+        'ownerId' => $employee->id,
+        'category' => 'Employee',
+    ])
+
     <script>
         const tabButtons = document.querySelectorAll('.employee-tab-button');
         const tabPanels = document.querySelectorAll('.employee-tab-panel');

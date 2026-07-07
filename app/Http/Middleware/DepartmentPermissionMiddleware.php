@@ -38,6 +38,8 @@ class DepartmentPermissionMiddleware
 
             $request->is('admin/notifications*', 'admin/automation*') => [$manage ? 'system_tools.manage' : 'system_tools.view'],
 
+            $request->is('admin/documents*') => [$manage ? 'documents.manage' : 'documents.view', $manage ? 'system_tools.manage' : 'system_tools.view'],
+
             $request->is('admin/bug-tracker*', 'admin/activity-log*', 'admin/security-audit*', 'admin/test-data-reset*')
                 => [$manage ? 'system_tools.manage' : 'system_tools.view'],
 

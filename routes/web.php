@@ -53,6 +53,7 @@ use App\Http\Controllers\Admin\PerformanceTargetController;
 use App\Http\Controllers\Admin\BonusController;
 use App\Http\Controllers\Admin\ExecutivePerformanceController;
 use App\Http\Controllers\Admin\AutomationController;
+use App\Http\Controllers\Admin\DocumentManagementController;
 use App\Http\Controllers\Employee\PerformanceController as EmployeePerformanceController;
 
 Route::get('/', [DashboardController::class, 'index']);
@@ -85,6 +86,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [\App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [\App\Http\Controllers\ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::get('/documents/{document}/download', [DocumentManagementController::class, 'download']);
+    Route::get('/documents/{document}/preview', [DocumentManagementController::class, 'preview']);
 });
 
 Route::middleware(['auth', 'admin', 'department.permission'])->group(function () {
@@ -95,6 +98,17 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::post('/admin/notifications/{notification}/status', [NotificationCenterController::class, 'updateStatus']);
     Route::get('/admin/automation', [AutomationController::class, 'index']);
     Route::post('/admin/automation/tasks/{task}/complete', [AutomationController::class, 'complete']);
+    Route::get('/admin/documents', [DocumentManagementController::class, 'index']);
+    Route::get('/admin/documents/create', [DocumentManagementController::class, 'create']);
+    Route::post('/admin/documents', [DocumentManagementController::class, 'store']);
+    Route::get('/admin/documents/{document}', [DocumentManagementController::class, 'show']);
+    Route::get('/admin/documents/{document}/edit', [DocumentManagementController::class, 'edit']);
+    Route::post('/admin/documents/{document}/update', [DocumentManagementController::class, 'update']);
+    Route::post('/admin/documents/{document}/version', [DocumentManagementController::class, 'version']);
+    Route::post('/admin/documents/{document}/archive', [DocumentManagementController::class, 'archive']);
+    Route::post('/admin/documents/{document}/restore', [DocumentManagementController::class, 'restore']);
+    Route::get('/admin/documents/{document}/download', [DocumentManagementController::class, 'download']);
+    Route::get('/admin/documents/{document}/preview', [DocumentManagementController::class, 'preview']);
     Route::get('/admin/facebook-dashboard', [AdminDashboardController::class, 'facebookDashboard']);
     Route::get('/admin/tiktok', [AdminDashboardController::class, 'tiktokPlaceholder']);
     Route::get('/admin/tiktok/ad-accounts', [AdminDashboardController::class, 'tiktokPlaceholder']);

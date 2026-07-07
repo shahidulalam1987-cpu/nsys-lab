@@ -277,6 +277,12 @@
         </div>
     </div>
 
+    @include('admin.documents.partials.related-widget', [
+        'ownerModule' => 'payroll',
+        'ownerId' => $payroll->id,
+        'category' => 'Payroll',
+    ])
+
     @if(! empty($payroll->salary_day_adjustments))
         <div class="card">
             <h2>Date-wise Adjustment</h2>

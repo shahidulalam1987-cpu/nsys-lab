@@ -21,6 +21,12 @@
         </form>
     </div>
 
+    @include('admin.documents.partials.related-widget', [
+        'ownerModule' => 'finance_account',
+        'ownerId' => $account->id,
+        'category' => 'Finance',
+    ])
+
     <div id="adjustment-modal" style="display:none; position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,.72); align-items:center; justify-content:center; padding:20px;">
         <div class="card" style="width:min(480px,100%); margin:0;">
             <h2>Confirm Balance Adjustment</h2>
