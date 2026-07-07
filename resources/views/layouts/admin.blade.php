@@ -725,7 +725,7 @@
             @else
                 <div class="sidebar-section-title">Agency Dashboard</div>
                 <a class="{{ request()->is('admin/dashboard') ? 'active-menu' : '' }}" href="/admin/dashboard">Overview</a>
-                <a class="{{ request()->is('admin/executive-performance*') ? 'active-menu' : '' }}" href="/admin/executive-performance">Executive Performance</a>
+                <a class="{{ request()->is('admin/executive-performance*') ? 'active-menu' : '' }}" href="/admin/executive-performance">Executive Dashboard</a>
                 <a class="sidebar-link-with-badge {{ request()->is('admin/notifications*') ? 'active-menu' : '' }}" href="/admin/notifications">
                     <span>Notification Center</span>
                     @if($notificationHeaderSummary['unread'] > 0)

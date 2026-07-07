@@ -346,6 +346,8 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::post('/admin/bonuses/{earning}/reject', [BonusController::class, 'reject']);
     Route::get('/admin/bonuses/export', [BonusController::class, 'export']);
     Route::get('/admin/executive-performance', [ExecutivePerformanceController::class, 'index']);
+    Route::get('/admin/executive-performance/export/{format}', [ExecutivePerformanceController::class, 'export'])
+        ->whereIn('format', ['csv', 'excel', 'pdf']);
 
     Route::get('/admin/profit-history', [ProfitController::class, 'index']);
 });

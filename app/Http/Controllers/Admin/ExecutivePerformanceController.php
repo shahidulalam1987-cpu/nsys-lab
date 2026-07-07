@@ -3,36 +3,61 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\DailyPerformanceReport;
-use App\Models\EmployeeDailySubmission;
-use App\Models\EmployeePayroll;
-use App\Services\ClientFundDashboardService;
-use App\Services\PerformanceOperationsService;
+use App\Services\ExecutiveDashboardService;
+use Illuminate\Http\Request;
 
 class ExecutivePerformanceController extends Controller
 {
-    public function index(PerformanceOperationsService $operations, ClientFundDashboardService $funds)
+    public function index(Request $request, ExecutiveDashboardService $dashboard)
     {
-        $todayReports = DailyPerformanceReport::with('campaign.client')->whereDate('report_date', today())->get();
-        $monthReports = DailyPerformanceReport::with('campaign.client')->whereMonth('report_date', now()->month)->whereYear('report_date', now()->year)->get();
-        $todayGroups = $operations->verificationGroups(['date_from' => today()->toDateString(), 'date_to' => today()->toDateString()]);
-        $kpis = $operations->kpiRows(now()->startOfMonth(), now()->endOfMonth());
-        $summary = [
-            'today_spend' => (float) $todayReports->sum('spend'), 'today_orders' => (int) $todayReports->sum('orders'),
-            'today_cpo' => DailyPerformanceReport::costPer((float) $todayReports->sum('spend'), (int) $todayReports->sum('orders')),
-            'today_profit' => (float) $todayReports->sum(fn ($report) => $report->profit()),
-            'pending' => EmployeeDailySubmission::where('status', 'pending')->count(),
-            'ready' => $todayGroups->where('status', 'ready_to_merge')->count(),
-            'month_spend' => (float) $monthReports->sum('spend'), 'month_orders' => (int) $monthReports->sum('orders'),
-            'month_profit' => (float) $monthReports->sum(fn ($report) => $report->profit()),
-            'salary_paid' => (float) EmployeePayroll::whereMonth('payment_date', now()->month)->whereYear('payment_date', now()->year)->sum('paid_amount'),
-        ];
-        $summary['net_profit'] = $summary['month_profit'] - $summary['salary_paid'];
+        $this->authorizeExecutiveAccess();
 
         return view('admin.executive-performance.index', [
-            'summary' => $summary, 'topModerator' => $kpis->sortByDesc('confirmed_orders')->first(),
-            'topAdManager' => $kpis->sortByDesc('approved_spend')->first(), 'clientFund' => $funds->dashboard()['summary'],
-            'alerts' => ['high_spend_low_order' => $monthReports->where('orders', 0)->where('spend', '>', 0)->count(), 'pending_approval' => $summary['pending']],
+            'dashboard' => $dashboard->build($request->only(['period', 'date_from', 'date_to'])),
         ]);
+    }
+
+    public function export(Request $request, string $format, ExecutiveDashboardService $dashboard)
+    {
+        $this->authorizeExecutiveAccess();
+
+        $rows = $dashboard->exportRows($request->only(['period', 'date_from', 'date_to']));
+
+        if ($format === 'excel') {
+            return response()
+                ->view('admin.executive-performance.export-excel', ['rows' => $rows])
+                ->header('Content-Type', 'application/vnd.ms-excel')
+                ->header('Content-Disposition', 'attachment; filename="executive-dashboard.xls"');
+        }
+
+        if ($format === 'pdf') {
+            return response()
+                ->view('admin.executive-performance.export-pdf', [
+                    'dashboard' => $dashboard->build($request->only(['period', 'date_from', 'date_to'])),
+                ])
+                ->header('Content-Type', 'text/html');
+        }
+
+        return response()->streamDownload(function () use ($rows) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Section', 'Metric', 'Value']);
+
+            foreach ($rows as $row) {
+                fputcsv($handle, [$row['section'], $row['metric'], $row['value']]);
+            }
+
+            fclose($handle);
+        }, 'executive-dashboard.csv', ['Content-Type' => 'text/csv']);
+    }
+
+    private function authorizeExecutiveAccess(): void
+    {
+        $user = auth()->user();
+
+        if ($user?->isSuperAdmin() || $user?->hasRole('agency_owner')) {
+            return;
+        }
+
+        abort(403, 'Only Super Admin or Agency Owner can access Executive Dashboard.');
     }
 }
