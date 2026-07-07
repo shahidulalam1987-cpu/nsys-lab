@@ -36,7 +36,7 @@ class DepartmentPermissionMiddleware
         return match (true) {
             $request->is('admin/dashboard') => ['dashboard.view'],
 
-            $request->is('admin/notifications*') => ['system_tools.view'],
+            $request->is('admin/notifications*', 'admin/automation*') => [$manage ? 'system_tools.manage' : 'system_tools.view'],
 
             $request->is('admin/bug-tracker*', 'admin/activity-log*', 'admin/security-audit*', 'admin/test-data-reset*')
                 => [$manage ? 'system_tools.manage' : 'system_tools.view'],

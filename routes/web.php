@@ -52,6 +52,7 @@ use App\Http\Controllers\Admin\LeaderboardController;
 use App\Http\Controllers\Admin\PerformanceTargetController;
 use App\Http\Controllers\Admin\BonusController;
 use App\Http\Controllers\Admin\ExecutivePerformanceController;
+use App\Http\Controllers\Admin\AutomationController;
 use App\Http\Controllers\Employee\PerformanceController as EmployeePerformanceController;
 
 Route::get('/', [DashboardController::class, 'index']);
@@ -92,6 +93,8 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::get('/admin/dashboard', [AdminDashboardController::class, 'index']);
     Route::get('/admin/notifications', [NotificationCenterController::class, 'index']);
     Route::post('/admin/notifications/{notification}/status', [NotificationCenterController::class, 'updateStatus']);
+    Route::get('/admin/automation', [AutomationController::class, 'index']);
+    Route::post('/admin/automation/tasks/{task}/complete', [AutomationController::class, 'complete']);
     Route::get('/admin/facebook-dashboard', [AdminDashboardController::class, 'facebookDashboard']);
     Route::get('/admin/tiktok', [AdminDashboardController::class, 'tiktokPlaceholder']);
     Route::get('/admin/tiktok/ad-accounts', [AdminDashboardController::class, 'tiktokPlaceholder']);

@@ -434,6 +434,7 @@
         $employeeLanding = $authUser->hasPermission('employees.view') ? '/admin/employee-dashboard' : '/admin/work-status';
         $facebookLanding = $authUser->hasPermission('facebook.view') ? '/admin/facebook-dashboard' : '/admin/daily-reports';
         $isSystemTools = request()->is('admin/bug-tracker*')
+            || request()->is('admin/automation*')
             || request()->is('admin/activity-log*')
             || request()->is('admin/security-audit*')
             || request()->is('admin/test-data-reset*');
@@ -562,6 +563,7 @@
             @if($isSystemTools)
                 <div class="sidebar-section-title">System Tools</div>
                 <a class="{{ request()->is('admin/bug-tracker*') ? 'active-menu' : '' }}" href="/admin/bug-tracker">Bug Tracker</a>
+                <a class="{{ request()->is('admin/automation*') ? 'active-menu' : '' }}" href="/admin/automation">Automation</a>
                 <a class="{{ request()->is('admin/activity-log*') ? 'active-menu' : '' }}" href="/admin/activity-log">Activity Log</a>
                 <a class="{{ request()->is('admin/security-audit*') ? 'active-menu' : '' }}" href="/admin/security-audit">Security Audit</a>
                 <a class="{{ request()->is('admin/test-data-reset*') ? 'active-menu' : '' }}" href="/admin/test-data-reset">Test Data Reset</a>
@@ -726,6 +728,7 @@
                 <div class="sidebar-section-title">Agency Dashboard</div>
                 <a class="{{ request()->is('admin/dashboard') ? 'active-menu' : '' }}" href="/admin/dashboard">Overview</a>
                 <a class="{{ request()->is('admin/executive-performance*') ? 'active-menu' : '' }}" href="/admin/executive-performance">Executive Dashboard</a>
+                <a class="{{ request()->is('admin/automation*') ? 'active-menu' : '' }}" href="/admin/automation">Automation</a>
                 <a class="sidebar-link-with-badge {{ request()->is('admin/notifications*') ? 'active-menu' : '' }}" href="/admin/notifications">
                     <span>Notification Center</span>
                     @if($notificationHeaderSummary['unread'] > 0)
