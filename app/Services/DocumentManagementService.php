@@ -33,6 +33,8 @@ class DocumentManagementService
         'zip',
     ];
 
+    public const STORAGE_DISK = 'local';
+
     public function ownerMap(): array
     {
         return [
@@ -201,6 +203,21 @@ class DocumentManagementService
         $this->audit($document, $user, 'downloaded', 'Document downloaded.');
     }
 
+    public function fileExists(string $path): bool
+    {
+        return Storage::disk(self::STORAGE_DISK)->exists($path)
+            || Storage::disk('public')->exists($path);
+    }
+
+    public function filePath(string $path): string
+    {
+        if (Storage::disk(self::STORAGE_DISK)->exists($path)) {
+            return Storage::disk(self::STORAGE_DISK)->path($path);
+        }
+
+        return Storage::disk('public')->path($path);
+    }
+
     public function canView(ManagedDocument $document, User $user): bool
     {
         if ($user->isSuperAdmin() || $user->hasPermission('documents.view') || $user->hasPermission('documents.manage')) {
@@ -286,7 +303,7 @@ class DocumentManagementService
     {
         $directory = 'managed-documents/' . Str::slug($module ?: 'general') . '/' . now()->format('Y/m');
 
-        return $file->store($directory, 'public');
+        return $file->store($directory, self::STORAGE_DISK);
     }
 
     private function audit(ManagedDocument $document, User $user, string $action, string $description, array $metadata = []): void

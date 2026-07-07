@@ -7,7 +7,9 @@
             <h3 style="margin:0;">Related Documents</h3>
             <p class="text-muted" style="margin:4px 0 0;">Recent DMS files attached to this record.</p>
         </div>
-        <a class="btn btn-sm" href="/admin/documents/create?owner_module={{ $ownerModule }}&owner_record_id={{ $ownerId }}&category={{ urlencode($category ?? 'General') }}">Upload</a>
+        @if(app(\App\Services\DocumentManagementService::class)->canManage(auth()->user()))
+            <a class="btn btn-sm" href="/admin/documents/create?owner_module={{ $ownerModule }}&owner_record_id={{ $ownerId }}&category={{ urlencode($category ?? 'General') }}">Upload</a>
+        @endif
     </div>
     <table>
         <thead><tr><th>Title</th><th>Category</th><th>Version</th><th>Action</th></tr></thead>

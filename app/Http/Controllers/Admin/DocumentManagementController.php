@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ManagedDocument;
+use App\Models\ManagedDocumentVersion;
 use App\Services\DocumentManagementService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Storage;
 
 class DocumentManagementController extends Controller
 {
@@ -121,10 +121,14 @@ class DocumentManagementController extends Controller
     {
         abort_unless($documents->canView($document, $request->user()), 403);
 
+        if (! $documents->fileExists($document->current_file_path)) {
+            return response('Document file not found.', 404);
+        }
+
         $documents->logDownload($document, $request->user());
 
         return response()->download(
-            Storage::disk('public')->path($document->current_file_path),
+            $documents->filePath($document->current_file_path),
             $document->original_file_name ?: basename($document->current_file_path)
         );
     }
@@ -137,7 +141,44 @@ class DocumentManagementController extends Controller
             return redirect('/admin/documents/' . $document->id)->with('error', 'Preview is available only for PDF and image files.');
         }
 
-        return response()->file(Storage::disk('public')->path($document->current_file_path));
+        if (! $documents->fileExists($document->current_file_path)) {
+            return response('Document file not found.', 404);
+        }
+
+        return response()->file($documents->filePath($document->current_file_path));
+    }
+
+    public function downloadVersion(Request $request, ManagedDocument $document, ManagedDocumentVersion $version, DocumentManagementService $documents)
+    {
+        abort_unless($version->managed_document_id === $document->id, 404);
+        abort_unless($documents->canView($document, $request->user()), 403);
+
+        if (! $documents->fileExists($version->file_path)) {
+            return response('Document file not found.', 404);
+        }
+
+        $documents->logDownload($document, $request->user());
+
+        return response()->download(
+            $documents->filePath($version->file_path),
+            $version->original_file_name ?: basename($version->file_path)
+        );
+    }
+
+    public function previewVersion(Request $request, ManagedDocument $document, ManagedDocumentVersion $version, DocumentManagementService $documents)
+    {
+        abort_unless($version->managed_document_id === $document->id, 404);
+        abort_unless($documents->canView($document, $request->user()), 403);
+
+        if (! in_array(strtolower((string) $version->file_type), ['pdf', 'png', 'jpg', 'jpeg'], true)) {
+            return redirect('/admin/documents/' . $document->id)->with('error', 'Preview is available only for PDF and image files.');
+        }
+
+        if (! $documents->fileExists($version->file_path)) {
+            return response('Document file not found.', 404);
+        }
+
+        return response()->file($documents->filePath($version->file_path));
     }
 
     private function validatedDocument(Request $request): array

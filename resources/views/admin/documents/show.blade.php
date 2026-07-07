@@ -70,7 +70,15 @@
                     <td>{{ number_format(($version->file_size ?: 0) / 1024, 1) }} KB</td>
                     <td>{{ $version->uploader?->name ?: '-' }}</td>
                     <td>{{ $version->created_at?->format('d M Y h:i A') }}</td>
-                    <td>{{ $version->change_note ?: '-' }}</td>
+                    <td>
+                        {{ $version->change_note ?: '-' }}
+                        <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
+                            <a class="btn btn-sm" href="/admin/documents/{{ $document->id }}/versions/{{ $version->id }}/download">Download</a>
+                            @if(in_array(strtolower((string) $version->file_type), ['pdf','png','jpg','jpeg'], true))
+                                <a class="btn btn-sm" href="/admin/documents/{{ $document->id }}/versions/{{ $version->id }}/preview" target="_blank">Preview</a>
+                            @endif
+                        </div>
+                    </td>
                 </tr>
             @endforeach
         </tbody>

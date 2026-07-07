@@ -109,6 +109,8 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::post('/admin/documents/{document}/restore', [DocumentManagementController::class, 'restore']);
     Route::get('/admin/documents/{document}/download', [DocumentManagementController::class, 'download']);
     Route::get('/admin/documents/{document}/preview', [DocumentManagementController::class, 'preview']);
+    Route::get('/admin/documents/{document}/versions/{version}/download', [DocumentManagementController::class, 'downloadVersion']);
+    Route::get('/admin/documents/{document}/versions/{version}/preview', [DocumentManagementController::class, 'previewVersion']);
     Route::get('/admin/facebook-dashboard', [AdminDashboardController::class, 'facebookDashboard']);
     Route::get('/admin/tiktok', [AdminDashboardController::class, 'tiktokPlaceholder']);
     Route::get('/admin/tiktok/ad-accounts', [AdminDashboardController::class, 'tiktokPlaceholder']);

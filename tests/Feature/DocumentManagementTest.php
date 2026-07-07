@@ -17,6 +17,7 @@ class DocumentManagementTest extends TestCase
 
     public function test_admin_can_upload_search_and_bind_document_to_employee(): void
     {
+        Storage::fake('local');
         Storage::fake('public');
         $admin = $this->admin();
         $employee = Employee::create([
@@ -41,7 +42,8 @@ class DocumentManagementTest extends TestCase
         ])->assertRedirect('/admin/documents');
 
         $document = ManagedDocument::firstOrFail();
-        Storage::disk('public')->assertExists($document->current_file_path);
+        Storage::disk('local')->assertExists($document->current_file_path);
+        Storage::disk('public')->assertMissing($document->current_file_path);
         $this->assertSame(Employee::class, $document->owner_record_type);
         $this->assertSame($employee->id, $document->owner_record_id);
         $this->assertSame(1, $document->versions()->count());
@@ -58,7 +60,7 @@ class DocumentManagementTest extends TestCase
 
     public function test_admin_can_archive_restore_and_upload_new_version(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
         $admin = $this->admin();
         $document = $this->documentFor($admin);
 
@@ -88,7 +90,7 @@ class DocumentManagementTest extends TestCase
 
     public function test_document_download_is_audited(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
         $admin = $this->admin();
         $document = $this->documentFor($admin);
 
@@ -104,7 +106,7 @@ class DocumentManagementTest extends TestCase
 
     public function test_client_can_download_only_client_owned_document(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
         $admin = $this->admin();
         $clientUser = User::factory()->create(['role' => 'client', 'status' => 'active']);
         $otherUser = User::factory()->create(['role' => 'client', 'status' => 'active']);
@@ -140,7 +142,7 @@ class DocumentManagementTest extends TestCase
 
     public function test_employee_can_download_only_own_employee_document(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
         $admin = $this->admin();
         $employeeUser = User::factory()->create(['role' => 'employee', 'status' => 'active']);
         $otherUser = User::factory()->create(['role' => 'employee', 'status' => 'active']);
@@ -178,6 +180,93 @@ class DocumentManagementTest extends TestCase
 
         $this->actingAs($employeeUser)->get('/documents/' . $document->id . '/download')->assertOk();
         $this->actingAs($otherUser)->get('/documents/' . $document->id . '/download')->assertForbidden();
+    }
+
+    public function test_preview_requires_permission_and_missing_file_returns_clean_not_found(): void
+    {
+        Storage::fake('local');
+        $admin = $this->admin();
+        $other = User::factory()->create(['role' => 'client', 'status' => 'active']);
+        $document = $this->documentFor($admin);
+
+        $this->actingAs($other)
+            ->get('/documents/' . $document->id . '/preview')
+            ->assertForbidden();
+
+        Storage::disk('local')->delete($document->current_file_path);
+
+        $this->actingAs($admin)
+            ->get('/documents/' . $document->id . '/download')
+            ->assertNotFound()
+            ->assertSee('Document file not found.');
+
+        $this->actingAs($admin)
+            ->get('/documents/' . $document->id . '/preview')
+            ->assertNotFound()
+            ->assertSee('Document file not found.');
+    }
+
+    public function test_historical_version_download_and_preview_are_secured(): void
+    {
+        Storage::fake('local');
+        $admin = $this->admin();
+        $other = User::factory()->create(['role' => 'client', 'status' => 'active']);
+        $document = $this->documentFor($admin);
+
+        $this->actingAs($admin)->post('/admin/documents/' . $document->id . '/version', [
+            'document' => UploadedFile::fake()->create('updated.pdf', 64, 'application/pdf'),
+            'change_note' => 'Updated copy',
+        ])->assertRedirect();
+
+        $version = $document->versions()->where('version', 1)->firstOrFail();
+
+        $this->actingAs($other)
+            ->get('/admin/documents/' . $document->id . '/versions/' . $version->id . '/download')
+            ->assertForbidden();
+
+        $this->actingAs($admin)
+            ->get('/admin/documents/' . $document->id . '/versions/' . $version->id . '/download')
+            ->assertOk();
+
+        $this->actingAs($admin)
+            ->get('/admin/documents/' . $document->id . '/versions/' . $version->id . '/preview')
+            ->assertOk();
+    }
+
+    public function test_related_widget_upload_button_hidden_without_manage_permission(): void
+    {
+        Storage::fake('local');
+        $admin = $this->admin();
+        $viewer = User::factory()->create(['role' => 'employee', 'status' => 'active']);
+        $employee = Employee::create([
+            'user_id' => $viewer->id,
+            'employee_id' => 'NSYS-EM-WIDGET',
+            'name' => 'Widget Employee',
+            'mobile' => '01700000003',
+            'department' => 'HR',
+            'role' => 'Manager',
+            'status' => 'active',
+            'monthly_salary' => 10000,
+            'joining_date' => '2026-07-01',
+        ]);
+
+        $this->actingAs($admin)->post('/admin/documents', [
+            'title' => 'Widget Document',
+            'category' => 'Employee',
+            'owner_module' => 'employee',
+            'owner_record_id' => $employee->id,
+            'document' => UploadedFile::fake()->create('widget.pdf', 64, 'application/pdf'),
+        ]);
+
+        $this->actingAs($viewer);
+        $html = view('admin.documents.partials.related-widget', [
+            'ownerModule' => 'employee',
+            'ownerId' => $employee->id,
+            'category' => 'Employee',
+        ])->render();
+
+        $this->assertStringNotContainsString('/admin/documents/create', $html);
+        $this->assertStringContainsString('Widget Document', $html);
     }
 
     private function documentFor(User $admin): ManagedDocument
