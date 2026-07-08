@@ -54,6 +54,7 @@ use App\Http\Controllers\Admin\BonusController;
 use App\Http\Controllers\Admin\ExecutivePerformanceController;
 use App\Http\Controllers\Admin\AutomationController;
 use App\Http\Controllers\Admin\DocumentManagementController;
+use App\Http\Controllers\Admin\MarketingOperationsController;
 use App\Http\Controllers\Employee\PerformanceController as EmployeePerformanceController;
 
 Route::get('/', [DashboardController::class, 'index']);
@@ -112,6 +113,12 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::get('/admin/documents/{document}/versions/{version}/download', [DocumentManagementController::class, 'downloadVersion']);
     Route::get('/admin/documents/{document}/versions/{version}/preview', [DocumentManagementController::class, 'previewVersion']);
     Route::get('/admin/facebook-dashboard', [AdminDashboardController::class, 'facebookDashboard']);
+    Route::get('/admin/marketing-operations', [MarketingOperationsController::class, 'dashboard']);
+    Route::get('/admin/marketing-operations/reports', [MarketingOperationsController::class, 'reports']);
+    Route::get('/admin/marketing-operations/verification', [MarketingOperationsController::class, 'verification']);
+    Route::get('/admin/marketing-operations/{type}/create', [MarketingOperationsController::class, 'create']);
+    Route::post('/admin/marketing-operations/{type}', [MarketingOperationsController::class, 'store']);
+    Route::post('/admin/marketing-operations/reports/{report}/status', [MarketingOperationsController::class, 'updateStatus']);
     Route::get('/admin/tiktok', [AdminDashboardController::class, 'tiktokPlaceholder']);
     Route::get('/admin/tiktok/ad-accounts', [AdminDashboardController::class, 'tiktokPlaceholder']);
     Route::get('/admin/tiktok/pages', [AdminDashboardController::class, 'tiktokPlaceholder']);

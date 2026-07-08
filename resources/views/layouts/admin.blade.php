@@ -428,11 +428,12 @@
         $canFinance = $authUser->hasPermission('finance.view');
         $canClients = $authUser->hasPermission('clients.view');
         $canEmployees = $authUser->hasAnyPermission(['employees.view', 'departments.view', 'employee_roles.view', 'assignments.view', 'attendance.view', 'work_status.view', 'payroll.view', 'notices.view']);
-        $canFacebook = $authUser->hasAnyPermission(['facebook.view', 'daily_reports.view']);
+        $canFacebook = $authUser->hasAnyPermission(['facebook.view', 'daily_reports.view', 'marketing_operations.view']);
         $canTikTok = $authUser->hasPermission('tiktok.view');
+        $canMarketingOperations = $authUser->hasAnyPermission(['marketing_operations.view', 'facebook.view', 'daily_reports.view', 'tiktok.view']);
         $canSystemTools = $authUser->hasPermission('system_tools.view');
         $employeeLanding = $authUser->hasPermission('employees.view') ? '/admin/employee-dashboard' : '/admin/work-status';
-        $facebookLanding = $authUser->hasPermission('facebook.view') ? '/admin/facebook-dashboard' : '/admin/daily-reports';
+        $facebookLanding = '/admin/marketing-operations';
         $isSystemTools = request()->is('admin/bug-tracker*')
             || request()->is('admin/automation*')
             || request()->is('admin/documents*')
@@ -463,7 +464,9 @@
             || request()->is('admin/facebook-cards*')
             || request()->is('admin/facebook-financial*')
             || (($canFinance && ! $canClients) && (request()->is('admin/client-fund*') || request()->is('admin/salary-payments*')));
-        $isFacebook = request()->is('admin/facebook-dashboard')
+        $isFacebook = request()->is('admin/marketing-operations*')
+            || request()->is('admin/tiktok*')
+            || request()->is('admin/facebook-dashboard')
             || request()->is('admin/business-managers*')
             || request()->is('admin/ad-accounts*')
             || request()->is('admin/ad-account-ledger*')
@@ -481,7 +484,7 @@
         $clientFundBadges = ($isEmployeeDepartment || $isClientDepartment)
             ? app(\App\Services\ClientFundDashboardService::class)->sidebarBadges()
             : ['upcoming_salary_count' => 0, 'unpaid_salary_count' => 0, 'pending_payment_count' => 0];
-        $facebookBadges = ($authUser->hasPermission('facebook.view') && ($isFacebook || $isAdminDashboard))
+        $facebookBadges = ($authUser->hasAnyPermission(['facebook.view', 'marketing_operations.view']) && ($isFacebook || $isAdminDashboard))
             ? [
                 'billing_alert_count' => \App\Models\AdAccount::all()->filter(fn ($account) => in_array($account->billingStatus(), ['upcoming', 'overdue'], true))->count(),
             ]
@@ -521,16 +524,13 @@
                 @if($canEmployees)
                 <a class="department-tab {{ $isEmployeeDepartment ? 'active-department' : '' }}" href="{{ $employeeLanding }}">Employees</a>
                 @endif
-                @if($canFacebook)
+                @if($canMarketingOperations)
                 <a class="department-tab {{ $isFacebook ? 'active-department' : '' }}" href="{{ $facebookLanding }}">
-                    Facebook
+                    Marketing Operations
                     @if($facebookBadges['billing_alert_count'] > 0)
                         <span class="header-count-badge">{{ $facebookBadges['billing_alert_count'] }}</span>
                     @endif
                 </a>
-                @endif
-                @if($canTikTok)
-                <a class="department-tab {{ $isTikTok ? 'active-department' : '' }}" href="/admin/tiktok">TikTok</a>
                 @endif
                 @if($canSystemTools)
                 <a class="department-tab {{ $isSystemTools ? 'active-department' : '' }}" href="/admin/bug-tracker">
@@ -574,13 +574,17 @@
                 <a class="sidebar-muted" href="#" onclick="return false;">System Health</a>
                 <a class="sidebar-muted" href="#" onclick="return false;">Error Logs</a>
             @elseif($isTikTok)
-                <div class="sidebar-section-title">TikTok</div>
-                <a class="{{ request()->is('admin/tiktok') ? 'active-menu' : '' }}" href="/admin/tiktok">Dashboard</a>
-                <a class="{{ request()->is('admin/tiktok/ad-accounts') ? 'active-menu' : '' }}" href="/admin/tiktok/ad-accounts">Ad Account Management</a>
-                <a class="{{ request()->is('admin/tiktok/pages') ? 'active-menu' : '' }}" href="/admin/tiktok/pages">Page Management</a>
-                <a class="{{ request()->is('admin/tiktok/campaigns') ? 'active-menu' : '' }}" href="/admin/tiktok/campaigns">Campaign Management</a>
-                <a class="{{ request()->is('admin/tiktok/daily-performance') ? 'active-menu' : '' }}" href="/admin/tiktok/daily-performance">Daily Performance Entry</a>
-                <a class="{{ request()->is('admin/tiktok/analytics') ? 'active-menu' : '' }}" href="/admin/tiktok/analytics">Analytics Dashboard</a>
+                <div class="sidebar-section-title">Marketing Operations</div>
+                <a class="{{ request()->is('admin/marketing-operations') ? 'active-menu' : '' }}" href="/admin/marketing-operations">Dashboard</a>
+                <a class="{{ request()->is('admin/marketing-operations/moderator_order/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/moderator_order/create">Moderator Reports</a>
+                <a class="{{ request()->is('admin/marketing-operations/ad_manager_spend/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/ad_manager_spend/create">Ad Manager Reports</a>
+                <a class="{{ request()->is('admin/marketing-operations/auditor_audit/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/auditor_audit/create">Auditor Reports</a>
+                <a class="{{ request()->is('admin/marketing-operations/monitor_issue/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/monitor_issue/create">Monitor Reports</a>
+                <a class="{{ request()->is('admin/marketing-operations/trainer_training/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/trainer_training/create">Trainer Reports</a>
+                <a class="{{ request()->is('admin/marketing-operations/management_review/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/management_review/create">Management Reports</a>
+                <a class="{{ request()->is('admin/marketing-operations/verification') || request()->is('admin/performance-verification*') ? 'active-menu' : '' }}" href="/admin/marketing-operations/verification">Performance Verification</a>
+                <a class="{{ request()->is('admin/daily-reports*') ? 'active-menu' : '' }}" href="/admin/daily-reports">Daily Performance</a>
+                <a class="{{ request()->is('admin/marketing-operations/reports') ? 'active-menu' : '' }}" href="/admin/marketing-operations/reports">Reports</a>
             @elseif($isFinancialManagement)
                 <div class="sidebar-section-title">Finance</div>
 
@@ -676,10 +680,19 @@
                 <a class="{{ request()->is('admin/salary-month-sheet*') ? 'active-menu' : '' }}" href="/admin/salary-month-sheet">Salary Report</a>
                 @endif
             @elseif($isFacebook)
-                <div class="sidebar-section-title">Facebook</div>
-                <div class="sidebar-section-title">Facebook Dashboard</div>
+                <div class="sidebar-section-title">Marketing Operations</div>
+                <a class="{{ request()->is('admin/marketing-operations') || request()->is('admin/facebook-dashboard') ? 'active-menu' : '' }}" href="/admin/marketing-operations">Dashboard</a>
+                <a class="{{ request()->is('admin/marketing-operations/moderator_order/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/moderator_order/create">Moderator Reports</a>
+                <a class="{{ request()->is('admin/marketing-operations/ad_manager_spend/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/ad_manager_spend/create">Ad Manager Reports</a>
+                <a class="{{ request()->is('admin/marketing-operations/auditor_audit/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/auditor_audit/create">Auditor Reports</a>
+                <a class="{{ request()->is('admin/marketing-operations/monitor_issue/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/monitor_issue/create">Monitor Reports</a>
+                <a class="{{ request()->is('admin/marketing-operations/trainer_training/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/trainer_training/create">Trainer Reports</a>
+                <a class="{{ request()->is('admin/marketing-operations/management_review/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/management_review/create">Management Reports</a>
+                <a class="{{ request()->is('admin/marketing-operations/verification') || request()->is('admin/performance-verification*') ? 'active-menu' : '' }}" href="/admin/marketing-operations/verification">Performance Verification</a>
+                <a class="{{ request()->is('admin/daily-reports*') ? 'active-menu' : '' }}" href="/admin/daily-reports">Daily Performance</a>
+                <a class="{{ request()->is('admin/marketing-operations/reports') ? 'active-menu' : '' }}" href="/admin/marketing-operations/reports">Reports</a>
+                <div class="sidebar-section-title">Legacy Meta Tools</div>
                 @if($authUser->hasPermission('facebook.view'))
-                <a class="{{ request()->is('admin/facebook-dashboard') ? 'active-menu' : '' }}" href="/admin/facebook-dashboard">Dashboard</a>
                 <a class="{{ request()->is('admin/business-managers*') ? 'active-menu' : '' }}" href="/admin/business-managers">BM Management</a>
                 <a class="sidebar-link-with-badge {{ request()->is('admin/ad-accounts*') ? 'active-menu' : '' }}" href="/admin/ad-accounts">
                     <span>Ad Account Management</span>

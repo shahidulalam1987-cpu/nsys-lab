@@ -13,6 +13,7 @@
     $trendSpend = collect($dashboard['trends'])->pluck('spend')->values();
     $trendRevenue = collect($dashboard['trends'])->pluck('revenue')->values();
     $trendProfit = collect($dashboard['trends'])->pluck('profit')->values();
+    $marketingWidgets = app(\App\Services\MarketingOperationsService::class)->widgets();
 @endphp
 
 <style>
@@ -371,6 +372,22 @@
         <a class="kpi-card tone-negative" href="/admin/client-fund"><p>Salary Fund Used</p><h2>BDT {{ number_format($month['salary_fund_used'], 2) }}</h2></a>
         <a class="kpi-card tone-positive" href="/admin/client-fund"><p>Ads Fund Received</p><h2>BDT {{ number_format($month['ads_fund_received'], 2) }}</h2></a>
         <a class="kpi-card tone-negative" href="/admin/client-fund"><p>Ads Fund Used</p><h2>BDT {{ number_format($month['ads_fund_used'], 2) }}</h2></a>
+    </div>
+</div>
+
+<div class="executive-section">
+    <h2>Marketing Operations Insights</h2>
+    <div class="kpi-grid">
+        <a class="kpi-card tone-neutral" href="/admin/marketing-operations"><p>Top Moderator</p><h2>{{ $marketingWidgets['top_moderator'] ?: '-' }}</h2></a>
+        <a class="kpi-card tone-neutral" href="/admin/marketing-operations"><p>Top Ad Manager</p><h2>{{ $marketingWidgets['top_ad_manager'] ?: '-' }}</h2></a>
+        <a class="kpi-card tone-neutral" href="/admin/marketing-operations"><p>Top Auditor</p><h2>{{ $marketingWidgets['top_auditor'] ?: '-' }}</h2></a>
+        <a class="kpi-card tone-neutral" href="/admin/marketing-operations"><p>Top Monitor</p><h2>{{ $marketingWidgets['top_monitor'] ?: '-' }}</h2></a>
+        <a class="kpi-card tone-neutral" href="/admin/marketing-operations"><p>Top Trainer</p><h2>{{ $marketingWidgets['top_trainer'] ?: '-' }}</h2></a>
+        <a class="kpi-card tone-{{ $marketingWidgets['repeated_mistakes'] > 0 ? 'negative' : 'neutral' }}" href="/admin/marketing-operations/reports?status=repeated"><p>Repeated Mistakes</p><h2>{{ number_format($marketingWidgets['repeated_mistakes']) }}</h2></a>
+        <a class="kpi-card tone-{{ $marketingWidgets['training_due'] > 0 ? 'warning' : 'neutral' }}" href="/admin/marketing-operations/reports?report_type=trainer_training"><p>Training Due</p><h2>{{ number_format($marketingWidgets['training_due']) }}</h2></a>
+        <a class="kpi-card tone-{{ $marketingWidgets['critical_operations_status'] > 0 ? 'negative' : 'neutral' }}" href="/admin/marketing-operations/reports?report_type=management_review"><p>Critical Operations</p><h2>{{ number_format($marketingWidgets['critical_operations_status']) }}</h2></a>
+        <a class="kpi-card tone-neutral" href="/admin/marketing-operations/reports?report_type=auditor_audit"><p>Average Response Time</p><h2>{{ number_format($marketingWidgets['average_response_time'], 2) }}</h2></a>
+        <a class="kpi-card tone-neutral" href="/admin/marketing-operations/reports?report_type=ad_manager_spend"><p>Average CPP</p><h2>{{ number_format($marketingWidgets['average_cpp'], 2) }}</h2></a>
     </div>
 </div>
 

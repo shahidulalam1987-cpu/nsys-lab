@@ -87,6 +87,9 @@ class DepartmentPermissionMiddleware
             $request->is('admin/employee-submissions*', 'admin/performance-verification*')
                 => [$manage ? 'performance.manage' : 'performance.view'],
 
+            $request->is('admin/marketing-operations*')
+                => [$manage ? 'marketing_operations.manage' : 'marketing_operations.view', $manage ? 'performance.manage' : 'performance.view', $manage ? 'facebook.manage' : 'facebook.view', $manage ? 'daily_reports.manage' : 'daily_reports.view'],
+
             $request->is('admin/employee-kpi*') => ['kpi.view'],
             $request->is('admin/leaderboard*') => ['leaderboard.view'],
             $request->is('admin/performance-targets*') => ['targets.manage'],
