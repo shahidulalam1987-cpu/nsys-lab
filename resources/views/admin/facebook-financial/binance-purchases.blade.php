@@ -4,6 +4,8 @@
     <h1>Binance Purchases</h1>
     <p>Track every USD purchase with its actual BDT buy rate. No fixed buy rate is used.</p>
 
+    @include('admin.facebook-cards.partials.tabs')
+
     <div class="stats-grid">
         <div class="stat-card"><p>Total USD Purchased</p><h2>USD {{ number_format($summary['total_usd'], 2) }}</h2></div>
         <div class="stat-card"><p>Available Binance USD</p><h2>USD {{ number_format($summary['remaining_usd'], 2) }}</h2></div>

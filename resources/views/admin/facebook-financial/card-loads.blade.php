@@ -4,6 +4,8 @@
     <h1>Card Load History</h1>
     <p>Track USD moved from Binance purchases into Facebook payment cards.</p>
 
+    @include('admin.facebook-cards.partials.tabs')
+
     <div class="card">
         <h2>Load Card</h2>
         <form method="POST" action="/admin/facebook-financial/card-loads" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">

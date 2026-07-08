@@ -13,7 +13,8 @@
     <label>Provider<br>
         <select name="provider">
             <option value="">Select Provider</option>
-            @foreach(['RedotPay', 'Tavao', 'Other'] as $provider)
+            @php($providers = collect(['RedotPay', 'Tevau', 'Other'])->when($card->provider && ! in_array($card->provider, ['RedotPay', 'Tevau', 'Other'], true), fn($items) => $items->prepend($card->provider))->unique())
+            @foreach($providers as $provider)
                 <option value="{{ $provider }}" @selected(old('provider', $card->provider) === $provider)>{{ $provider }}</option>
             @endforeach
         </select>

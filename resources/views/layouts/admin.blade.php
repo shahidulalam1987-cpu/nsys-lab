@@ -584,46 +584,21 @@
             @elseif($isFinancialManagement)
                 <div class="sidebar-section-title">Finance</div>
 
-                <div class="sidebar-section-title">Funding</div>
                 <a class="sidebar-link-with-badge {{ request()->is('admin/facebook-financial/funding-dashboard*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/funding-dashboard">
                     <span>Funding Dashboard</span>
                     @if($financialBadges['low_funding_count'] > 0)
                         <span class="sidebar-count-badge danger">{{ $financialBadges['low_funding_count'] }}</span>
                     @endif
                 </a>
-                <a class="{{ request()->is('admin/facebook-financial/binance-purchases*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/binance-purchases">Binance Purchases</a>
-                <a class="sidebar-link-with-badge {{ request()->is('admin/facebook-cards*') ? 'active-menu' : '' }}" href="/admin/facebook-cards">
+                <a class="{{ request()->is('admin/finance/accounts*') ? 'active-menu' : '' }}" href="/admin/finance/accounts">Finance Accounts</a>
+                <a class="sidebar-link-with-badge {{ request()->is('admin/facebook-cards*') || request()->is('admin/facebook-financial/card-loads*') || request()->is('admin/facebook-financial/card-transactions*') || request()->is('admin/facebook-financial/binance-purchases*') ? 'active-menu' : '' }}" href="/admin/facebook-cards">
                     <span>Card Management</span>
                     @if($financialBadges['low_card_count'] > 0)
                         <span class="sidebar-count-badge danger">{{ $financialBadges['low_card_count'] }}</span>
                     @endif
                 </a>
-                <a class="{{ request()->is('admin/facebook-financial/card-loads*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/card-loads">Card Loads</a>
-                <a class="{{ request()->is('admin/facebook-financial/card-transactions*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/card-transactions">Card Transactions</a>
-
-                <div class="sidebar-section-title">Finance</div>
-                <a class="{{ request()->is('admin/financial-management') ? 'active-menu' : '' }}" href="/admin/financial-management">Finance Dashboard</a>
-                <a class="{{ request()->is('admin/finance/accounts*') ? 'active-menu' : '' }}" href="/admin/finance/accounts">Finance Accounts</a>
                 <a class="{{ request()->is('admin/finance/family-expenses*') ? 'active-menu' : '' }}" href="/admin/finance/family-expenses">Family Expenses</a>
                 <a class="{{ request()->is('admin/finance/loans*') ? 'active-menu' : '' }}" href="/admin/finance/loans">Loan Management</a>
-                <a class="{{ request()->is('admin/facebook-financial/profit-dashboard*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/profit-dashboard">Profit Dashboard</a>
-                <a class="sidebar-muted" href="#" onclick="return false;">Revenue Dashboard</a>
-                <a class="sidebar-muted" href="#" onclick="return false;">Expense Dashboard</a>
-
-                <div class="sidebar-section-title">Reports</div>
-                <a class="{{ request()->is('admin/finance/reports/balance-sheet') ? 'active-menu' : '' }}" href="/admin/finance/reports/balance-sheet">Balance Sheet</a>
-                <a class="{{ request()->is('admin/finance/reports/loan-report') ? 'active-menu' : '' }}" href="/admin/finance/reports/loan-report">Loan Report</a>
-                <a class="{{ request()->is('admin/finance/reports/family-expenses') ? 'active-menu' : '' }}" href="/admin/finance/reports/family-expenses">Family Expense Report</a>
-                <a class="{{ request()->is('admin/finance/reports/reconciliation') ? 'active-menu' : '' }}" href="/admin/finance/reports/reconciliation">Reconciliation Report</a>
-                <a class="sidebar-muted" href="#" onclick="return false;">Monthly Profit Report</a>
-                <a class="sidebar-muted" href="#" onclick="return false;">Funding Report</a>
-                <a class="sidebar-muted" href="#" onclick="return false;">Card Fee Report</a>
-
-                <div class="sidebar-section-title">Client Fund</div>
-                <a class="{{ request()->is('admin/client-fund*') ? 'active-menu' : '' }}" href="/admin/client-fund">Client Fund Dashboard</a>
-                <a class="{{ request()->is('admin/salary-payments/create') ? 'active-menu' : '' }}" href="/admin/salary-payments/create">Receive Client Payment</a>
-                <a class="{{ request()->is('admin/salary-payments/pending') ? 'active-menu' : '' }}" href="/admin/salary-payments/pending">Pending Client Payments</a>
-                <a class="{{ request()->is('admin/salary-payments') ? 'active-menu' : '' }}" href="/admin/salary-payments">Client Payment History</a>
             @elseif($isClientDepartment)
                 <div class="sidebar-section-title">Clients</div>
 

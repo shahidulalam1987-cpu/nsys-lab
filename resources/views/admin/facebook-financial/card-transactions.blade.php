@@ -4,6 +4,8 @@
     <h1>Card Transactions</h1>
     <p>Track exact Facebook spend profit using Binance purchase rate, card fees, extra charges, and client sell rate.</p>
 
+    @include('admin.facebook-cards.partials.tabs')
+
     <div class="card">
         <h2>Add Card Transaction</h2>
         <form method="POST" action="/admin/facebook-financial/card-transactions" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
