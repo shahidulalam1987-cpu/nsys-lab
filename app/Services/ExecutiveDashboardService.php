@@ -170,6 +170,11 @@ class ExecutiveDashboardService
         $payrollPaid = (float) EmployeePayroll::where('payroll_status', 'paid')
             ->whereDate('payment_confirmed_at', $today->toDateString())
             ->sum('paid_amount');
+        $receiptCount = SalaryPayment::whereDate('created_at', $today->toDateString())->count()
+            + EmployeePayroll::whereDate('payment_confirmed_at', $today->toDateString())->count();
+        $latestClientReceipt = SalaryPayment::whereNotNull('receipt_number')->latest('updated_at')->value('receipt_number');
+        $latestSalaryReceipt = EmployeePayroll::whereNotNull('salary_receipt_number')->latest('updated_at')->value('salary_receipt_number');
+        $lastApprovedBy = SalaryPayment::with('approver')->whereNotNull('approved_by')->latest('approved_at')->first()?->approver?->name ?: '-';
         $pendingApprovals = $this->pendingApprovalCount($payrollRows);
         $snapshot = [
             [
@@ -207,6 +212,24 @@ class ExecutiveDashboardService
                 'value' => $payrollPaid,
                 'display' => 'BDT ' . number_format($payrollPaid, 2),
                 'url' => '/admin/payroll/payment-report',
+            ],
+            [
+                'label' => "Today's Receipt Count",
+                'value' => $receiptCount,
+                'display' => number_format($receiptCount),
+                'url' => '/admin/salary-payments',
+            ],
+            [
+                'label' => 'Latest Receipt Number',
+                'value' => $receiptCount,
+                'display' => $latestSalaryReceipt ?: ($latestClientReceipt ?: '-'),
+                'url' => '/admin/salary-payments',
+            ],
+            [
+                'label' => 'Last Approved By',
+                'value' => $lastApprovedBy === '-' ? 0 : 1,
+                'display' => $lastApprovedBy,
+                'url' => '/admin/salary-payments',
             ],
             [
                 'label' => "Today's Pending Approvals",

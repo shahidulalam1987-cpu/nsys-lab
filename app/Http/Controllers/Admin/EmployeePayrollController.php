@@ -526,7 +526,7 @@ class EmployeePayrollController extends Controller
 
     public function show($id)
     {
-        $payroll = EmployeePayroll::with(['employee', 'client', 'audits.user', 'approver', 'payer', 'financeAccount', 'financeLedgers.account', 'financeLedgers.creator'])->findOrFail($id);
+        $payroll = EmployeePayroll::with(['employee', 'client', 'audits.user', 'approver', 'payer', 'financeAccount', 'financeLedgers.account', 'financeLedgers.creator', 'clientFundLedgers'])->findOrFail($id);
         $workStatusSummary = $this->workStatusSummary($payroll);
         $financeAccounts = FinanceAccount::where('status', 'active')->where('currency', 'BDT')->orderBy('account_name')->get();
 
@@ -702,6 +702,7 @@ class EmployeePayrollController extends Controller
                 'payroll_status' => 'paid',
                 'payment_status' => 'paid',
                 'status' => 'paid',
+                'salary_receipt_number' => $payroll->salary_receipt_number ?: EmployeePayroll::salaryReceiptFor((int) $payroll->id, $payroll->created_at),
                 'payment_date' => $data['payment_date'],
                 'payment_method' => $account->account_name,
                 'finance_account_id' => $account->id,
@@ -833,6 +834,7 @@ class EmployeePayrollController extends Controller
             'client_id' => ['nullable', 'exists:clients,id'],
             'finance_account_id' => ['nullable', 'exists:finance_accounts,id'],
             'month' => ['nullable', 'date_format:Y-m'],
+            'search' => ['nullable', 'string', 'max:255'],
         ]);
 
         return view('admin.payroll.payment-report', [
@@ -853,15 +855,19 @@ class EmployeePayrollController extends Controller
             'client_id' => ['nullable', 'exists:clients,id'],
             'finance_account_id' => ['nullable', 'exists:finance_accounts,id'],
             'month' => ['nullable', 'date_format:Y-m'],
+            'search' => ['nullable', 'string', 'max:255'],
         ]);
 
         $rows = $this->paymentReportQuery($filters)->get();
 
         return response()->streamDownload(function () use ($rows) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Employee', 'Employee ID', 'Client', 'Month', 'Salary', 'Payment Date', 'Finance Account', 'Reference', 'Status']);
+            fputcsv($handle, ['Receipt Number', 'Employee', 'Employee ID', 'Client', 'Month', 'Salary', 'Payment Date', 'Finance Account', 'Reference', 'Finance Ledger ID', 'Client Fund Ledger ID', 'Status']);
             foreach ($rows as $payroll) {
+                $financeLedger = $payroll->financeLedgers->firstWhere('transaction_type', 'salary_payment');
+                $clientFundLedger = $payroll->clientFundLedgers->firstWhere('direction', \App\Models\ClientFundLedger::DIRECTION_DEBIT);
                 fputcsv($handle, [
+                    $payroll->salaryReceiptNumber(),
                     $payroll->snapshotEmployeeName(),
                     $payroll->snapshotEmployeeCode(),
                     $payroll->client?->company_name ?: '-',
@@ -870,6 +876,8 @@ class EmployeePayrollController extends Controller
                     $payroll->payment_date?->toDateString() ?: '-',
                     $payroll->finance_account_name ?: ($payroll->financeAccount?->account_name ?: '-'),
                     $payroll->transaction_id ?: '-',
+                    $financeLedger?->id ?: '-',
+                    $clientFundLedger?->id ?: '-',
                     $payroll->payrollStatusLabel(),
                 ]);
             }
@@ -886,6 +894,7 @@ class EmployeePayrollController extends Controller
             'client_id' => ['nullable', 'exists:clients,id'],
             'finance_account_id' => ['nullable', 'exists:finance_accounts,id'],
             'month' => ['nullable', 'date_format:Y-m'],
+            'search' => ['nullable', 'string', 'max:255'],
         ]);
 
         return response()->view('admin.payroll.payment-report-excel', [
@@ -1040,7 +1049,7 @@ class EmployeePayrollController extends Controller
     private function paymentReportQuery(array $filters)
     {
         return EmployeePayroll::current()
-            ->with(['employee', 'client', 'financeAccount'])
+            ->with(['employee', 'client', 'financeAccount', 'financeLedgers', 'clientFundLedgers'])
             ->where('payroll_status', 'paid')
             ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->whereDate('payment_date', '>=', $date))
             ->when($filters['date_to'] ?? null, fn ($query, $date) => $query->whereDate('payment_date', '<=', $date))
@@ -1048,6 +1057,19 @@ class EmployeePayrollController extends Controller
             ->when($filters['client_id'] ?? null, fn ($query, $clientId) => $query->where('client_id', $clientId))
             ->when($filters['finance_account_id'] ?? null, fn ($query, $accountId) => $query->where('finance_account_id', $accountId))
             ->when($filters['month'] ?? null, fn ($query, $month) => $query->whereDate('salary_month', $month . '-01'))
+            ->when($filters['search'] ?? null, function ($query, $search) {
+                $search = trim((string) $search);
+                $query->where(function ($query) use ($search) {
+                    $query->where('salary_receipt_number', 'like', '%' . $search . '%')
+                        ->orWhere('transaction_id', 'like', '%' . $search . '%')
+                        ->orWhereHas('employee', fn ($employeeQuery) => $employeeQuery
+                            ->where('name', 'like', '%' . $search . '%')
+                            ->orWhere('employee_id', 'like', '%' . $search . '%'))
+                        ->orWhereHas('client', fn ($clientQuery) => $clientQuery->where('company_name', 'like', '%' . $search . '%'))
+                        ->orWhereHas('financeLedgers', fn ($ledgerQuery) => $ledgerQuery->where('id', $search))
+                        ->orWhereHas('clientFundLedgers', fn ($ledgerQuery) => $ledgerQuery->where('id', $search));
+                });
+            })
             ->latest('payment_date')
             ->latest();
     }

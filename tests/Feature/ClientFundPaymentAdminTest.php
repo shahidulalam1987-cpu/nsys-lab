@@ -121,6 +121,122 @@ class ClientFundPaymentAdminTest extends TestCase
         $this->assertSame(5000.0, $fund['summary']['paid_to_nsys']);
     }
 
+    public function test_client_payment_approval_stores_audit_metadata_receipt_and_references(): void
+    {
+        $admin = $this->admin();
+        $client = $this->client();
+        $account = FinanceAccount::create([
+            'account_type' => 'bank',
+            'account_name' => 'Audit Bank',
+            'currency' => 'BDT',
+            'current_balance' => 1000,
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($admin)->post('/admin/salary-payments', [
+            'client_id' => $client->id,
+            'fund_type' => ClientFundLedger::FUND_EMPLOYEE_SALARY,
+            'amount' => 60000,
+            'payment_method' => 'Bank',
+            'transaction_id' => 'AUDIT-CLIENT-1',
+            'payment_date' => '2026-07-09',
+            'status' => 'pending',
+        ]);
+
+        $payment = SalaryPayment::firstOrFail();
+        $this->assertStringStartsWith('NSYS-CP-2026-', $payment->receipt_number);
+
+        $this->withServerVariables(['REMOTE_ADDR' => '10.10.10.10'])
+            ->withHeader('User-Agent', 'NSYS-Test-Agent')
+            ->actingAs($admin)
+            ->post('/admin/salary-payments/' . $payment->id . '/approve', [
+                'finance_account_id' => $account->id,
+            ])
+            ->assertRedirect();
+
+        $payment->refresh();
+        $financeLedger = $payment->financeLedger();
+        $clientFundLedger = $payment->clientFundLedger();
+
+        $this->assertSame($admin->id, $payment->approved_by);
+        $this->assertSame('10.10.10.10', $payment->approved_ip);
+        $this->assertSame('NSYS-Test-Agent', $payment->approved_user_agent);
+        $this->assertNotNull($financeLedger);
+        $this->assertNotNull($clientFundLedger);
+
+        $details = $this->actingAs($admin)->get('/admin/salary-payments/' . $payment->id);
+        $details->assertOk()
+            ->assertSee($payment->receipt_number)
+            ->assertSee('Approval Timeline')
+            ->assertSee('Finance Ledger ID')
+            ->assertSee((string) $financeLedger->id)
+            ->assertSee('Client Fund Ledger ID')
+            ->assertSee((string) $clientFundLedger->id)
+            ->assertSee('10.10.10.10')
+            ->assertSee('QR Code placeholder');
+
+        $search = $this->actingAs($admin)->get('/admin/salary-payments?search=' . urlencode($payment->receipt_number));
+        $search->assertOk()->assertSee($payment->receipt_number);
+    }
+
+    public function test_client_payment_receipt_and_approval_metadata_are_immutable(): void
+    {
+        $admin = $this->admin();
+        $client = $this->client();
+        $payment = SalaryPayment::create([
+            'client_id' => $client->id,
+            'receipt_number' => 'NSYS-CP-2026-000777',
+            'fund_type' => ClientFundLedger::FUND_EMPLOYEE_SALARY,
+            'salary_month' => '2026-07-09',
+            'amount' => 1000,
+            'payment_method' => 'Bank',
+            'transaction_id' => 'IMMUTABLE-1',
+            'status' => 'approved',
+            'approved_at' => now(),
+            'approved_by' => $admin->id,
+            'approved_ip' => '1.1.1.1',
+            'approved_user_agent' => 'Original Agent',
+        ]);
+
+        $payment->update([
+            'receipt_number' => 'NSYS-CP-2026-999999',
+            'approved_by' => User::factory()->create(['role' => 'admin'])->id,
+            'approved_ip' => '2.2.2.2',
+            'approved_user_agent' => 'Changed Agent',
+        ]);
+
+        $payment->refresh();
+        $this->assertSame('NSYS-CP-2026-000777', $payment->receipt_number);
+        $this->assertSame($admin->id, $payment->approved_by);
+        $this->assertSame('1.1.1.1', $payment->approved_ip);
+        $this->assertSame('Original Agent', $payment->approved_user_agent);
+    }
+
+    public function test_client_payment_pdf_uses_receipt_number(): void
+    {
+        $admin = $this->admin();
+        $client = $this->client();
+        $payment = SalaryPayment::create([
+            'client_id' => $client->id,
+            'receipt_number' => 'NSYS-CP-2026-000888',
+            'fund_type' => ClientFundLedger::FUND_EMPLOYEE_SALARY,
+            'salary_month' => '2026-07-09',
+            'amount' => 1000,
+            'payment_method' => 'Bank',
+            'transaction_id' => 'PDF-CLIENT-1',
+            'status' => 'approved',
+            'approved_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/salary-payments/' . $payment->id . '/receipt-pdf');
+
+        $response->assertOk();
+        $this->assertStringContainsString(
+            'client-payment-NSYS-CP-2026-000888.pdf',
+            $response->headers->get('content-disposition')
+        );
+    }
+
     private function admin(): User
     {
         return User::factory()->create([

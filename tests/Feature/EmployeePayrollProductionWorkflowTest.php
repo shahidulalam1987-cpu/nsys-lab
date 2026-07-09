@@ -131,9 +131,13 @@ class EmployeePayrollProductionWorkflowTest extends TestCase
         $paid->assertRedirect('/admin/payroll/' . $payroll->id);
 
         $payroll->refresh();
+        $financeLedger = $payroll->financeLedgers()->where('transaction_type', 'salary_payment')->firstOrFail();
+        $clientFundLedger = $payroll->clientFundLedgers()->where('direction', ClientFundLedger::DIRECTION_DEBIT)->firstOrFail();
+
         $this->assertSame('paid', $payroll->payroll_status);
         $this->assertSame('paid', $payroll->calculated_status);
         $this->assertSame(10000.0, (float) $payroll->paid_amount);
+        $this->assertStringStartsWith('NSYS-SP-2026-', $payroll->salary_receipt_number);
         $this->assertSame('NSYS Salary Bank', $payroll->finance_account_name);
         $this->assertSame(40000.0, (float) $financeAccount->fresh()->current_balance);
         $this->assertNotNull($payroll->approved_at);
@@ -160,6 +164,22 @@ class EmployeePayrollProductionWorkflowTest extends TestCase
         $show->assertSee('Finance Ledger');
         $show->assertSee('Audit Log');
         $show->assertSee('Salary Paid');
+        $show->assertSee($payroll->salary_receipt_number);
+        $show->assertSee('Finance Ledger ID');
+        $show->assertSee((string) $financeLedger->id);
+        $show->assertSee('Client Fund Ledger ID');
+        $show->assertSee((string) $clientFundLedger->id);
+        $show->assertSee('Salary Timeline');
+
+        $report = $this->actingAs($admin)->get('/admin/payroll/payment-report?search=' . urlencode($payroll->salary_receipt_number));
+        $report->assertOk()
+            ->assertSee($payroll->salary_receipt_number)
+            ->assertSee((string) $financeLedger->id)
+            ->assertSee((string) $clientFundLedger->id);
+
+        $statementHtml = view('employee.pdf.salary-statement', app(\App\Services\SalaryStatementService::class)->data($payroll))->render();
+        $this->assertStringContainsString($payroll->salary_receipt_number, $statementHtml);
+        $this->assertStringContainsString('Payroll Ledger', $statementHtml);
     }
 
     public function test_second_confirm_payment_post_does_not_deduct_again(): void

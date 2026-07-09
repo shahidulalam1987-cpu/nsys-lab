@@ -227,6 +227,8 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::get('/admin/salary-payments/create', [SalaryPaymentController::class, 'create']);
     Route::post('/admin/salary-payments', [SalaryPaymentController::class, 'store']);
     Route::get('/admin/salary-payments/pending', [SalaryPaymentController::class, 'pending']);
+    Route::get('/admin/salary-payments/{payment}', [SalaryPaymentController::class, 'show']);
+    Route::get('/admin/salary-payments/{payment}/receipt-pdf', [SalaryPaymentController::class, 'receiptPdf']);
     Route::post('/admin/salary-payments/{id}/approve', [SalaryPaymentController::class, 'approve']);
     Route::post('/admin/salary-payments/{id}/reject', [SalaryPaymentController::class, 'reject']);
     Route::post('/admin/salary-payments/{payment}/delete', [SalaryPaymentController::class, 'destroy']);

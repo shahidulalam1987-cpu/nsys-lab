@@ -25,6 +25,7 @@ class EmployeePayroll extends Model
 
     protected $fillable = [
         'employee_id',
+        'salary_receipt_number',
         'payroll_employee_name',
         'payroll_employee_code',
         'client_id',
@@ -106,6 +107,10 @@ class EmployeePayroll extends Model
     protected static function booted(): void
     {
         static::saving(function (EmployeePayroll $payroll) {
+            if ($payroll->exists && $payroll->isDirty('salary_receipt_number') && $payroll->getOriginal('salary_receipt_number')) {
+                $payroll->salary_receipt_number = $payroll->getOriginal('salary_receipt_number');
+            }
+
             $payroll->attributes['payment_status'] = self::paymentStatusFor(
                 $payroll->attributes['payment_status'] ?? null,
                 (float) ($payroll->payable_salary ?? 0),
@@ -719,6 +724,23 @@ class EmployeePayroll extends Model
     public function financeLedgers()
     {
         return $this->hasMany(FinanceAccountLedger::class, 'employee_payroll_id');
+    }
+
+    public function clientFundLedgers()
+    {
+        return $this->morphMany(ClientFundLedger::class, 'source', 'source_type', 'source_id');
+    }
+
+    public function salaryReceiptNumber(): string
+    {
+        return $this->salary_receipt_number ?: self::salaryReceiptFor((int) $this->id, $this->created_at);
+    }
+
+    public static function salaryReceiptFor(int $id, mixed $date = null): string
+    {
+        $year = $date ? date('Y', strtotime((string) $date)) : date('Y');
+
+        return 'NSYS-SP-' . $year . '-' . str_pad((string) $id, 6, '0', STR_PAD_LEFT);
     }
 
     public function regeneratedFrom()

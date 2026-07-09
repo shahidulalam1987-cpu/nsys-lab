@@ -12,6 +12,7 @@ use App\Services\ActivityLogger;
 use App\Services\ClientFundLedgerService;
 use App\Services\ClientSalaryFundService;
 use App\Services\FinanceLedgerService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -19,7 +20,7 @@ class SalaryPaymentController extends Controller
 {
     public function index(Request $request)
     {
-        $query = SalaryPayment::with('client');
+        $query = SalaryPayment::with(['client', 'financeAccount', 'financeLedgers', 'clientFundLedgers']);
 
         if ($request->client_id) {
             $query->where('client_id', $request->client_id);
@@ -27,6 +28,17 @@ class SalaryPaymentController extends Controller
 
         if ($request->status) {
             $query->where('status', $request->status);
+        }
+
+        if ($request->search) {
+            $search = trim((string) $request->search);
+            $query->where(function ($query) use ($search) {
+                $query->where('receipt_number', 'like', '%' . $search . '%')
+                    ->orWhere('transaction_id', 'like', '%' . $search . '%')
+                    ->orWhereHas('client', fn ($clientQuery) => $clientQuery->where('company_name', 'like', '%' . $search . '%'))
+                    ->orWhereHas('financeLedgers', fn ($ledgerQuery) => $ledgerQuery->where('id', $search))
+                    ->orWhereHas('clientFundLedgers', fn ($ledgerQuery) => $ledgerQuery->where('id', $search));
+            });
         }
 
         $payments = $query->latest()->get();
@@ -72,8 +84,10 @@ class SalaryPaymentController extends Controller
 
         $payment = DB::transaction(function () use ($data, $request) {
             $payment = SalaryPayment::create($data);
+            $this->ensureReceiptNumber($payment);
 
             if ($payment->status === 'approved') {
+                $this->stampApprovalMetadata($payment, $request);
                 $this->creditClientPayment($payment, $request);
                 $this->creditSelectedClientFund($payment);
             }
@@ -116,10 +130,14 @@ class SalaryPaymentController extends Controller
             $this->creditClientPayment($payment, $request);
             $payment->update([
                 'status' => 'approved',
-                'approved_at' => now(),
+                'approved_at' => $payment->approved_at ?: now(),
+                'approved_by' => $payment->approved_by ?: $request->user()?->id,
+                'approved_ip' => $payment->approved_ip ?: $request->ip(),
+                'approved_user_agent' => $payment->approved_user_agent ?: $request->userAgent(),
                 'rejected_at' => null,
                 'reject_reason' => null,
             ]);
+            $this->ensureReceiptNumber($payment);
             $this->creditSelectedClientFund($payment->fresh('client'));
 
             return $payment;
@@ -128,6 +146,28 @@ class SalaryPaymentController extends Controller
         app(ActivityLogger::class)->log('Client Fund', 'Payment Approved', 'Client payment #' . $payment->id . ' approved.', request());
 
         return back()->with('success', 'Client payment approved successfully.');
+    }
+
+    public function show(SalaryPayment $payment)
+    {
+        $payment->load(['client', 'financeAccount', 'approver', 'financeLedgers.account', 'clientFundLedgers']);
+        $relatedPayrolls = \App\Models\EmployeePayroll::with('employee')
+            ->where('client_id', $payment->client_id)
+            ->where('payroll_status', 'paid')
+            ->latest('payment_date')
+            ->limit(10)
+            ->get();
+
+        return view('admin.salary-payments.show', compact('payment', 'relatedPayrolls'));
+    }
+
+    public function receiptPdf(SalaryPayment $payment)
+    {
+        $payment->load(['client', 'financeAccount', 'approver', 'financeLedgers', 'clientFundLedgers']);
+
+        return Pdf::loadView('admin.salary-payments.receipt-pdf', ['payment' => $payment])
+            ->setPaper('a4')
+            ->download('client-payment-' . $payment->receiptNumber() . '.pdf');
     }
 
     public function reject(Request $request, $id)
@@ -265,5 +305,24 @@ class SalaryPaymentController extends Controller
             'transaction_reference' => $payment->transaction_id,
             'created_by' => $request->user()?->id,
         ]);
+    }
+
+    private function ensureReceiptNumber(SalaryPayment $payment): void
+    {
+        if ($payment->receipt_number) {
+            return;
+        }
+
+        $payment->forceFill(['receipt_number' => SalaryPayment::receiptFor((int) $payment->id, $payment->created_at)])->saveQuietly();
+    }
+
+    private function stampApprovalMetadata(SalaryPayment $payment, Request $request): void
+    {
+        $payment->forceFill([
+            'approved_at' => $payment->approved_at ?: now(),
+            'approved_by' => $payment->approved_by ?: $request->user()?->id,
+            'approved_ip' => $payment->approved_ip ?: $request->ip(),
+            'approved_user_agent' => $payment->approved_user_agent ?: $request->userAgent(),
+        ])->saveQuietly();
     }
 }

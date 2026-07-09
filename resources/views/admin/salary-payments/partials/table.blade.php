@@ -7,6 +7,7 @@
     <table>
         <tr>
             <th>ID</th>
+            <th>Receipt</th>
             <th>Client</th>
             <th>Purpose</th>
             <th>Amount</th>
@@ -28,6 +29,7 @@
         @forelse($payments as $payment)
             <tr>
                 <td>{{ $payment->id }}</td>
+                <td><a href="/admin/salary-payments/{{ $payment->id }}">{{ $payment->receiptNumber() }}</a></td>
                 <td>{{ $payment->client?->company_name }}</td>
                 <td>
                     @if(($payment->fund_type ?? 'employee_salary') === 'facebook_ads')
@@ -74,6 +76,8 @@
                             <button class="btn-danger" type="submit">Reject</button>
                         </form>
                     @else
+                        <a class="btn" href="/admin/salary-payments/{{ $payment->id }}">View</a>
+                        <a class="btn" href="/admin/salary-payments/{{ $payment->id }}/receipt-pdf">PDF</a>
                         <form method="POST" action="/admin/salary-payments/{{ $payment->id }}/delete" style="display:inline;">
                             @csrf
                             <button class="btn btn-danger" type="submit" onclick="return confirm('Delete this client payment record?');">Delete</button>
@@ -82,7 +86,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="{{ $mode === 'pending' ? 10 : 11 }}">{{ $emptyMessage }}</td></tr>
+            <tr><td colspan="{{ $mode === 'pending' ? 11 : 12 }}">{{ $emptyMessage }}</td></tr>
         @endforelse
     </table>
 </div>

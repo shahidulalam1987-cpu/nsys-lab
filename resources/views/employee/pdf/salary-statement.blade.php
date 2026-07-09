@@ -275,11 +275,19 @@
     <div class="section">
         <div class="section-title">Payment Information</div>
         @if((float) $payroll->paid_amount > 0 || $payroll->payroll_status === 'paid')
+            @php
+                $salaryFinanceLedger = $payroll->financeLedgers->firstWhere('transaction_type', 'salary_payment');
+                $salaryClientFundLedger = $payroll->clientFundLedgers->firstWhere('direction', \App\Models\ClientFundLedger::DIRECTION_DEBIT);
+            @endphp
             <table class="plain">
+                <tr><td class="label">Receipt Number</td><td>{{ $reference }}</td></tr>
                 <tr><td class="label">Payment Date</td><td>{{ $payroll->payment_date?->toDateString() ?: $payroll->paid_at?->format('Y-m-d') ?: '-' }}</td></tr>
                 <tr><td class="label">Payment Method</td><td>{{ $payroll->payment_method ?: '-' }}</td></tr>
                 <tr><td class="label">Finance Account</td><td>{{ $payroll->finance_account_name ?: ($payroll->financeAccount?->account_name ?: '-') }}</td></tr>
                 <tr><td class="label">Transaction ID / Reference</td><td>{{ $payroll->transaction_id ?: '-' }}</td></tr>
+                <tr><td class="label">Payroll Ledger</td><td>{{ $salaryFinanceLedger?->id ?: '-' }}</td></tr>
+                <tr><td class="label">Client Fund Ledger</td><td>{{ $salaryClientFundLedger?->id ?: '-' }}</td></tr>
+                <tr><td class="label">Approved By</td><td>{{ $payroll->approver?->name ?: '-' }}</td></tr>
                 <tr><td class="label">Paid Amount</td><td>BDT {{ number_format((float) $payroll->paid_amount, 2) }}</td></tr>
                 <tr><td class="label">Bank Name</td><td>{{ $payroll->snapshotBankName() }}</td></tr>
                 <tr><td class="label">Account Name</td><td>{{ $payroll->snapshotAccountName() }}</td></tr>

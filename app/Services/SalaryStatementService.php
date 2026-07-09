@@ -9,7 +9,7 @@ class SalaryStatementService
 {
     public function data(EmployeePayroll $payroll): array
     {
-        $payroll->loadMissing(['employee.shift', 'client', 'approver', 'payer', 'financeAccount']);
+        $payroll->loadMissing(['employee.shift', 'client', 'approver', 'payer', 'financeAccount', 'financeLedgers', 'clientFundLedgers']);
 
         $employee = $payroll->employee;
         $adjustments = collect($payroll->salary_day_adjustments ?? []);
@@ -50,7 +50,8 @@ class SalaryStatementService
             ?: $payroll->created_at?->format('Y')
             ?: now()->format('Y');
 
-        return 'NSYS-PAY-' . $year . '-' . str_pad((string) $payroll->id, 5, '0', STR_PAD_LEFT);
+        return $payroll->salary_receipt_number
+            ?: 'NSYS-SP-' . $year . '-' . str_pad((string) $payroll->id, 6, '0', STR_PAD_LEFT);
     }
 
     private function workStatusSummary(EmployeePayroll $payroll, Collection $adjustments): array

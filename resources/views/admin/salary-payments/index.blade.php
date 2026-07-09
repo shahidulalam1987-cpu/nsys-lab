@@ -8,6 +8,7 @@
 
     <div class="card" style="margin-top:20px;">
         <form method="GET" action="/admin/salary-payments">
+            <input type="text" name="search" value="{{ request('search') }}" placeholder="Receipt, transaction, ledger, client">
             <select name="client_id">
                 <option value="">All Clients</option>
                 @foreach($clients as $client)

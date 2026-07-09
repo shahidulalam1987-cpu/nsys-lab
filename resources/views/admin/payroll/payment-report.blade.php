@@ -9,6 +9,7 @@
             <label>From<br><input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}"></label>
             <label>To<br><input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}"></label>
             <label>Month<br><input type="month" name="month" value="{{ $filters['month'] ?? '' }}"></label>
+            <label>Search<br><input type="text" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Receipt, reference, ledger, employee"></label>
             <label>Employee<br>
                 <select name="employee_id">
                     <option value="">All Employees</option>
@@ -51,29 +52,36 @@
             <table>
                 <tr>
                     <th>Employee</th>
+                    <th>Receipt</th>
                     <th>Month</th>
                     <th>Client</th>
                     <th>Salary</th>
                     <th>Payment Date</th>
                     <th>Finance Account</th>
                     <th>Transaction Reference</th>
+                    <th>Ledger IDs</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
                 @forelse($payrolls as $payroll)
                     <tr>
                         <td>{{ $payroll->snapshotEmployeeName() }}<br><span style="color:var(--muted);">{{ $payroll->snapshotEmployeeCode() }}</span></td>
+                        <td>{{ $payroll->salaryReceiptNumber() }}</td>
                         <td>{{ $payroll->salary_month?->format('Y-m') ?: '-' }}</td>
                         <td>{{ $payroll->client?->company_name ?: '-' }}</td>
                         <td>BDT {{ number_format($payroll->snapshotSalaryAmount(), 2) }}</td>
                         <td>{{ $payroll->payment_date?->toDateString() ?: '-' }}</td>
                         <td>{{ $payroll->finance_account_name ?: ($payroll->financeAccount?->account_name ?: '-') }}</td>
                         <td>{{ $payroll->transaction_id ?: '-' }}</td>
+                        <td>
+                            Finance: {{ $payroll->financeLedgers->firstWhere('transaction_type', 'salary_payment')?->id ?: '-' }}<br>
+                            Client Fund: {{ $payroll->clientFundLedgers->firstWhere('direction', \App\Models\ClientFundLedger::DIRECTION_DEBIT)?->id ?: '-' }}
+                        </td>
                         <td><span class="badge badge-success">{{ $payroll->payrollStatusLabel() }}</span></td>
                         <td><a href="/admin/payroll/{{ $payroll->id }}">View</a></td>
                     </tr>
                 @empty
-                    <tr><td colspan="9">No confirmed salary payments found.</td></tr>
+                    <tr><td colspan="11">No confirmed salary payments found.</td></tr>
                 @endforelse
             </table>
         </div>

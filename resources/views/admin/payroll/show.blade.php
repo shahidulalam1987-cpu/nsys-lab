@@ -4,6 +4,8 @@
     @php
         $paymentStatusLabels = ['upcoming' => 'Upcoming', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid'];
         $remainingDue = max($payroll->payable_salary - $payroll->paid_amount, 0);
+        $salaryFinanceLedger = $payroll->financeLedgers->firstWhere('transaction_type', 'salary_payment');
+        $salaryClientFundLedger = $payroll->clientFundLedgers->firstWhere('direction', \App\Models\ClientFundLedger::DIRECTION_DEBIT);
     @endphp
 
     <h1>Salary Details</h1>
@@ -189,9 +191,13 @@
                 <p><strong>Account Number:</strong> {{ $payroll->snapshotAccountNumber() }}</p>
                 <p><strong>Branch Name:</strong> {{ $payroll->snapshotBranchName() }}</p>
                 <p><strong>Finance Account:</strong> {{ $payroll->finance_account_name ?: ($payroll->financeAccount?->account_name ?: '-') }}</p>
+                <p><strong>Salary Receipt Number:</strong> {{ $payroll->salaryReceiptNumber() }}</p>
                 <p><strong>Payment Method:</strong> {{ $payroll->payment_method ?: '-' }}</p>
                 <p><strong>Payment Date:</strong> {{ $payroll->payment_date?->toDateString() ?: '-' }}</p>
                 <p><strong>Transaction ID / Reference:</strong> {{ $payroll->transaction_id ?: '-' }}</p>
+                <p><strong>Finance Ledger ID:</strong> {{ $salaryFinanceLedger?->id ?: '-' }}</p>
+                <p><strong>Client Fund Ledger ID:</strong> {{ $salaryClientFundLedger?->id ?: '-' }}</p>
+                <p><strong>Funding Source:</strong> {{ $payroll->client ? 'Employee Salary Fund - ' . $payroll->client->company_name : 'Agency Payroll' }}</p>
                 <p><strong>Payment Note:</strong> {{ $payroll->payment_note ?: '-' }}</p>
                 <p><strong>Payment Attachment:</strong>
                     @if($payroll->salary_payment_attachment)
@@ -251,6 +257,16 @@
                 @endforelse
             </table>
         </div>
+    </div>
+
+    <div class="card">
+        <h2>Salary Timeline</h2>
+        <p>Generated: {{ $payroll->created_at?->format('Y-m-d H:i') }}</p>
+        <p>Approved: {{ $payroll->approved_at?->format('Y-m-d H:i') ?: '-' }}</p>
+        <p>Finance Debited: {{ $salaryFinanceLedger ? '#' . $salaryFinanceLedger->id : '-' }}</p>
+        <p>Client Salary Fund Debited: {{ $salaryClientFundLedger ? '#' . $salaryClientFundLedger->id : '-' }}</p>
+        <p>Salary Paid: {{ $payroll->paid_at?->format('Y-m-d H:i') ?: '-' }}</p>
+        <p>Salary Report: {{ $payroll->payroll_status === 'paid' ? 'Available' : '-' }}</p>
     </div>
 
     <div class="card">
