@@ -157,8 +157,8 @@ class MarketingOperationsCenterTest extends TestCase
             ->get('/admin/marketing-operations')
             ->assertOk()
             ->assertSee('Marketing Operations')
-            ->assertSee('Moderator Reports')
-            ->assertSee('Ad Manager Reports')
+            ->assertSee('Moderator Operations')
+            ->assertSee('Ad Manager Operations')
             ->assertDontSee('>Facebook<', false)
             ->assertDontSee('>TikTok<', false);
 

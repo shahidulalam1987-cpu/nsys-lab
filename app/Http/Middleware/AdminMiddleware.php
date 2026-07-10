@@ -10,7 +10,10 @@ class AdminMiddleware
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (auth()->check() && (auth()->user()->role === 'admin' || auth()->user()->hasRole('moderator'))) {
+        if (auth()->check() && (
+            auth()->user()->role === 'admin'
+            || auth()->user()->hasAnyRole(['moderator', 'ad_manager', 'auditor', 'monitor'])
+        )) {
             return $next($request);
         }
 

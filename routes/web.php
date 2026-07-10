@@ -114,6 +114,13 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::get('/admin/documents/{document}/versions/{version}/preview', [DocumentManagementController::class, 'previewVersion']);
     Route::get('/admin/facebook-dashboard', [AdminDashboardController::class, 'facebookDashboard']);
     Route::get('/admin/marketing-operations', [MarketingOperationsController::class, 'dashboard']);
+    Route::get('/admin/marketing-operations/agency', [MarketingOperationsController::class, 'agency']);
+    Route::get('/admin/marketing-operations/settings', [MarketingOperationsController::class, 'settings']);
+    Route::post('/admin/marketing-operations/settings', [MarketingOperationsController::class, 'updateSettings']);
+    Route::get('/admin/marketing-operations/{module}/operations', [MarketingOperationsController::class, 'enterpriseIndex']);
+    Route::get('/admin/marketing-operations/{module}/operations/create', [MarketingOperationsController::class, 'enterpriseCreate']);
+    Route::post('/admin/marketing-operations/{module}/operations', [MarketingOperationsController::class, 'enterpriseStore']);
+    Route::post('/admin/marketing-operations/{module}/operations/{id}/status', [MarketingOperationsController::class, 'enterpriseStatus']);
     Route::get('/admin/marketing-operations/reports', [MarketingOperationsController::class, 'reports']);
     Route::get('/admin/marketing-operations/verification', [MarketingOperationsController::class, 'verification']);
     Route::get('/admin/marketing-operations/{type}/create', [MarketingOperationsController::class, 'create']);

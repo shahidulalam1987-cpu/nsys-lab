@@ -12,7 +12,46 @@
     </div>
 
     <div class="card">
+        <h2>Agency Operations Today</h2>
+        <div class="stats-grid">
+            <div class="stat-card"><p>Today's Orders</p><h2>{{ number_format($enterpriseSummary['today_orders'] ?? 0) }}</h2></div>
+            <div class="stat-card"><p>Today's Spend</p><h2>${{ number_format($enterpriseSummary['today_spend'] ?? 0, 2) }}</h2></div>
+            <div class="stat-card"><p>Estimated Profit</p><h2>BDT {{ number_format($enterpriseSummary['today_estimated_profit'] ?? 0, 2) }}</h2></div>
+            <div class="stat-card"><p>Pending Verifications</p><h2>{{ number_format($enterpriseSummary['pending_verifications'] ?? 0) }}</h2></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Submission SLA</h2>
+        @php
+            $submittedTotal = ($enterpriseSummary['on_time_reports'] ?? 0) + ($enterpriseSummary['late_reports'] ?? 0);
+            $submissionPercent = $submittedTotal > 0 ? round((($enterpriseSummary['on_time_reports'] ?? 0) / $submittedTotal) * 100, 2) : 0;
+        @endphp
+        <div class="stats-grid">
+            <div class="stat-card"><p>On-time Reports</p><h2>{{ number_format($enterpriseSummary['on_time_reports'] ?? 0) }}</h2></div>
+            <div class="stat-card"><p>Late Reports</p><h2>{{ number_format($enterpriseSummary['late_reports'] ?? 0) }}</h2></div>
+            <div class="stat-card"><p>Missing Reports</p><h2>{{ number_format(($enterpriseSummary['missing_moderator_reports'] ?? 0) + ($enterpriseSummary['missing_ad_reports'] ?? 0)) }}</h2></div>
+            <div class="stat-card"><p>Submission %</p><h2>{{ number_format($submissionPercent, 2) }}%</h2></div>
+        </div>
+        <p>Moderator and Ad Manager submission windows are controlled from Marketing Operations Settings.</p>
+    </div>
+
+    <div class="card">
         <h2>Operations Queue</h2>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;">
+            <a class="btn" href="/admin/marketing-operations/moderator/operations">Moderator Operations</a>
+            <a class="btn" href="/admin/marketing-operations/ad-manager/operations">Ad Manager Operations</a>
+            <a class="btn" href="/admin/marketing-operations/auditor/operations">Auditor Operations</a>
+            <a class="btn" href="/admin/marketing-operations/monitor/operations">Monitor Operations</a>
+            <a class="btn" href="/admin/marketing-operations/agency">Agency Operations</a>
+            <a class="btn" href="/admin/marketing-operations/reports">Reports</a>
+            <a class="btn" href="/admin/marketing-operations/settings">Settings</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Legacy Compatibility</h2>
+        <p>Existing marketing operations routes remain available for old records.</p>
         <div style="display:flex;flex-wrap:wrap;gap:10px;">
             <a class="btn" href="/admin/marketing-operations/moderator_order/create">Moderator Report</a>
             <a class="btn" href="/admin/marketing-operations/ad_manager_spend/create">Ad Manager Report</a>

@@ -576,15 +576,13 @@
             @elseif($isTikTok)
                 <div class="sidebar-section-title">Marketing Operations</div>
                 <a class="{{ request()->is('admin/marketing-operations') ? 'active-menu' : '' }}" href="/admin/marketing-operations">Dashboard</a>
-                <a class="{{ request()->is('admin/marketing-operations/moderator_order/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/moderator_order/create">Moderator Reports</a>
-                <a class="{{ request()->is('admin/marketing-operations/ad_manager_spend/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/ad_manager_spend/create">Ad Manager Reports</a>
-                <a class="{{ request()->is('admin/marketing-operations/auditor_audit/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/auditor_audit/create">Auditor Reports</a>
-                <a class="{{ request()->is('admin/marketing-operations/monitor_issue/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/monitor_issue/create">Monitor Reports</a>
-                <a class="{{ request()->is('admin/marketing-operations/trainer_training/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/trainer_training/create">Trainer Reports</a>
-                <a class="{{ request()->is('admin/marketing-operations/management_review/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/management_review/create">Management Reports</a>
-                <a class="{{ request()->is('admin/marketing-operations/verification') || request()->is('admin/performance-verification*') ? 'active-menu' : '' }}" href="/admin/marketing-operations/verification">Performance Verification</a>
-                <a class="{{ request()->is('admin/daily-reports*') ? 'active-menu' : '' }}" href="/admin/daily-reports">Daily Performance</a>
+                <a class="{{ request()->is('admin/marketing-operations/moderator/operations*') ? 'active-menu' : '' }}" href="/admin/marketing-operations/moderator/operations">Moderator Operations</a>
+                <a class="{{ request()->is('admin/marketing-operations/ad-manager/operations*') ? 'active-menu' : '' }}" href="/admin/marketing-operations/ad-manager/operations">Ad Manager Operations</a>
+                <a class="{{ request()->is('admin/marketing-operations/auditor/operations*') ? 'active-menu' : '' }}" href="/admin/marketing-operations/auditor/operations">Auditor Operations</a>
+                <a class="{{ request()->is('admin/marketing-operations/monitor/operations*') ? 'active-menu' : '' }}" href="/admin/marketing-operations/monitor/operations">Monitor Operations</a>
+                <a class="{{ request()->is('admin/marketing-operations/agency') ? 'active-menu' : '' }}" href="/admin/marketing-operations/agency">Agency Operations</a>
                 <a class="{{ request()->is('admin/marketing-operations/reports') ? 'active-menu' : '' }}" href="/admin/marketing-operations/reports">Reports</a>
+                <a class="{{ request()->is('admin/marketing-operations/settings') ? 'active-menu' : '' }}" href="/admin/marketing-operations/settings">Settings</a>
             @elseif($isFinancialManagement)
                 <div class="sidebar-section-title">Finance</div>
 
@@ -682,15 +680,13 @@
             @elseif($isFacebook)
                 <div class="sidebar-section-title">Marketing Operations</div>
                 <a class="{{ request()->is('admin/marketing-operations') || request()->is('admin/facebook-dashboard') ? 'active-menu' : '' }}" href="/admin/marketing-operations">Dashboard</a>
-                <a class="{{ request()->is('admin/marketing-operations/moderator_order/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/moderator_order/create">Moderator Reports</a>
-                <a class="{{ request()->is('admin/marketing-operations/ad_manager_spend/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/ad_manager_spend/create">Ad Manager Reports</a>
-                <a class="{{ request()->is('admin/marketing-operations/auditor_audit/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/auditor_audit/create">Auditor Reports</a>
-                <a class="{{ request()->is('admin/marketing-operations/monitor_issue/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/monitor_issue/create">Monitor Reports</a>
-                <a class="{{ request()->is('admin/marketing-operations/trainer_training/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/trainer_training/create">Trainer Reports</a>
-                <a class="{{ request()->is('admin/marketing-operations/management_review/create') ? 'active-menu' : '' }}" href="/admin/marketing-operations/management_review/create">Management Reports</a>
-                <a class="{{ request()->is('admin/marketing-operations/verification') || request()->is('admin/performance-verification*') ? 'active-menu' : '' }}" href="/admin/marketing-operations/verification">Performance Verification</a>
-                <a class="{{ request()->is('admin/daily-reports*') ? 'active-menu' : '' }}" href="/admin/daily-reports">Daily Performance</a>
+                <a class="{{ request()->is('admin/marketing-operations/moderator/operations*') ? 'active-menu' : '' }}" href="/admin/marketing-operations/moderator/operations">Moderator Operations</a>
+                <a class="{{ request()->is('admin/marketing-operations/ad-manager/operations*') ? 'active-menu' : '' }}" href="/admin/marketing-operations/ad-manager/operations">Ad Manager Operations</a>
+                <a class="{{ request()->is('admin/marketing-operations/auditor/operations*') ? 'active-menu' : '' }}" href="/admin/marketing-operations/auditor/operations">Auditor Operations</a>
+                <a class="{{ request()->is('admin/marketing-operations/monitor/operations*') ? 'active-menu' : '' }}" href="/admin/marketing-operations/monitor/operations">Monitor Operations</a>
+                <a class="{{ request()->is('admin/marketing-operations/agency') ? 'active-menu' : '' }}" href="/admin/marketing-operations/agency">Agency Operations</a>
                 <a class="{{ request()->is('admin/marketing-operations/reports') ? 'active-menu' : '' }}" href="/admin/marketing-operations/reports">Reports</a>
+                <a class="{{ request()->is('admin/marketing-operations/settings') ? 'active-menu' : '' }}" href="/admin/marketing-operations/settings">Settings</a>
                 <div class="sidebar-section-title">Legacy Meta Tools</div>
                 @if($authUser->hasPermission('facebook.view'))
                 <a class="{{ request()->is('admin/business-managers*') ? 'active-menu' : '' }}" href="/admin/business-managers">BM Management</a>
