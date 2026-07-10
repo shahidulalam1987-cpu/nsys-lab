@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\FinalSettlementService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
@@ -268,6 +269,21 @@ class Employee extends Model
         return $this->confirmation_date?->copy()->startOfDay();
     }
 
+    public function finalSettlementDueDate(): ?Carbon
+    {
+        return $this->finalSettlementPaymentDeadline();
+    }
+
+    public function finalSettlementSalaryDate(): ?Carbon
+    {
+        return app(FinalSettlementService::class)->calculateSettlementSalaryDate($this);
+    }
+
+    public function finalSettlementPaymentDeadline(): ?Carbon
+    {
+        return app(FinalSettlementService::class)->calculatePaymentDeadline($this);
+    }
+
     public function isSalaryEligible(?Carbon $date = null): bool
     {
         $eligibilityDate = $this->salaryEligibilityDate();
@@ -371,11 +387,7 @@ class Employee extends Model
             : $this->payrolls()->current()->get();
 
         return $payrolls->contains(function (EmployeePayroll $payroll) use ($lastWorkingDate) {
-            return $payroll->isFinalSettlementPayroll()
-                || $payroll->salary_month?->copy()->startOfMonth()->toDateString() === $lastWorkingDate->copy()->startOfMonth()->toDateString()
-                || ($payroll->salary_period_from
-                    && $payroll->salary_period_to
-                    && $lastWorkingDate->betweenIncluded($payroll->salary_period_from, $payroll->salary_period_to));
+            return $payroll->isFinalSettlementPayroll();
         });
     }
 

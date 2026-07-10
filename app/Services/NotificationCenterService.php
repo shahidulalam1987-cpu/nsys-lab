@@ -128,7 +128,10 @@ class NotificationCenterService
         $finalSettlements = $stages->filter(fn (array $row) => in_array($row['stage']['category'], [PayrollCategoryService::FINAL_SETTLEMENT_PENDING, PayrollCategoryService::FINAL_SETTLEMENT_UNPAID], true));
         $overdue = $unpaid->filter(function (array $row) {
             $payroll = data_get($row, 'stage.payroll');
-            $salaryDate = data_get($row, 'stage.salary_date') ?: $payroll?->salaryDueDate();
+            $employee = data_get($row, 'employee') ?: $payroll?->employee;
+            $salaryDate = in_array(data_get($row, 'stage.category'), [PayrollCategoryService::FINAL_SETTLEMENT_PENDING, PayrollCategoryService::FINAL_SETTLEMENT_UNPAID], true)
+                ? (data_get($row, 'stage.payment_deadline') ?: $employee?->finalSettlementPaymentDeadline())
+                : (data_get($row, 'stage.salary_date') ?: $payroll?->salaryDueDate());
 
             return $salaryDate && $salaryDate->lt(today());
         });
@@ -358,7 +361,12 @@ class NotificationCenterService
             return $this->finalSettlementMessage($payrolls);
         }
 
-        return $stages->count() . ' Final Settlements Due';
+        $first = $stages->first();
+        $employee = data_get($first, 'employee');
+        return $stages->count() . ' Final Settlements Due. '
+            . ($employee?->name ?: 'Final settlement')
+            . ' | Last Working Date: ' . ($employee?->last_working_date?->toDateString() ?: '-')
+            . ' | ' . ($employee ? app(FinalSettlementService::class)->deadlineLabel($employee) : 'Final Settlement Deadline: -');
     }
 
     private function terminatedEmployeesMissingFinalPayroll(): Collection

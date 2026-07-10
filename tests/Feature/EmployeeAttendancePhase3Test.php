@@ -386,6 +386,94 @@ class EmployeeAttendancePhase3Test extends TestCase
         $this->assertDatabaseMissing('employee_work_statuses', ['employee_id' => $employee->id, 'work_date' => '2026-06-11']);
     }
 
+    public function test_terminated_monthly_cycle_with_previous_payroll_uses_final_settlement_range(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $employee = $this->employee([
+            'name' => 'Farzana Akter Taslima',
+            'confirmation_date' => '2026-05-11',
+            'salary_day' => 11,
+            'status' => 'terminated',
+            'last_working_date' => '2026-06-28',
+        ]);
+        $employee->payrolls()->create([
+            'client_id' => $client->id,
+            'calculation_type' => 'monthly_cycle',
+            'salary_period_from' => '2026-05-11',
+            'salary_period_to' => '2026-06-11',
+            'from_date' => '2026-05-11',
+            'to_date' => '2026-06-11',
+            'working_days' => 30,
+            'non_working_days' => 0,
+            'month_days' => 30,
+            'daily_salary' => 1000,
+            'salary_month' => '2026-05-01',
+            'payable_salary' => 30000,
+            'paid_amount' => 30000,
+            'payment_status' => 'paid',
+            'payroll_status' => 'paid',
+            'is_final_settlement' => false,
+        ]);
+
+        $period = app(WorkStatusCycleService::class)->period($employee, '2026-06');
+
+        $this->assertSame('2026-06-12', $period['period_start']->toDateString());
+        $this->assertSame('2026-06-28', $period['period_end']->toDateString());
+        $this->assertSame('2026-06-28', $period['salary_cycle_date']->toDateString());
+
+        $createPage = $this->actingAs($admin)->get('/admin/work-status/create?employee_id=' . $employee->id . '&entry_mode=monthly&salary_month=2026-06');
+        $createPage->assertOk();
+        $createPage->assertSee('Final settlement cycle detected. Work status will be generated up to the last working date.');
+        $createPage->assertSee('"period_start":"2026-06-12"', false);
+        $createPage->assertSee('"period_end":"2026-06-28"', false);
+
+        $this->actingAs($admin)->post('/admin/work-status', [
+            'entry_mode' => 'monthly',
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'salary_month' => '2026-06',
+            'duplicate_action' => 'skip',
+            'status' => 'working',
+            'monthly_rows' => $this->monthlyRows('2026-06-12', '2026-06-28'),
+        ])->assertRedirect('/admin/payroll?status=due');
+
+        $this->assertSame('2026-06-12', $employee->workStatuses()->oldest('work_date')->first()->work_date->toDateString());
+        $this->assertSame('2026-06-28', $employee->workStatuses()->latest('work_date')->first()->work_date->toDateString());
+        $this->assertSame(17, $employee->workStatuses()->count());
+        $this->assertDatabaseMissing('employee_work_statuses', ['employee_id' => $employee->id, 'work_date' => '2026-06-11']);
+        $this->assertDatabaseMissing('employee_work_statuses', ['employee_id' => $employee->id, 'work_date' => '2026-06-29']);
+    }
+
+    public function test_terminated_monthly_cycle_without_previous_payroll_starts_from_confirmation_date(): void
+    {
+        $admin = $this->user('admin');
+        $employee = $this->employee([
+            'confirmation_date' => '2026-06-05',
+            'salary_day' => 11,
+            'status' => 'terminated',
+            'last_working_date' => '2026-06-28',
+        ]);
+
+        $period = app(WorkStatusCycleService::class)->period($employee, '2026-06');
+
+        $this->assertSame('2026-06-05', $period['period_start']->toDateString());
+        $this->assertSame('2026-06-28', $period['period_end']->toDateString());
+
+        $this->actingAs($admin)->post('/admin/work-status', [
+            'entry_mode' => 'monthly',
+            'employee_id' => $employee->id,
+            'salary_month' => '2026-06',
+            'duplicate_action' => 'skip',
+            'status' => 'working',
+            'monthly_rows' => $this->monthlyRows('2026-06-05', '2026-06-28'),
+        ])->assertRedirect('/admin/payroll?status=due');
+
+        $this->assertSame('2026-06-05', $employee->workStatuses()->oldest('work_date')->first()->work_date->toDateString());
+        $this->assertSame('2026-06-28', $employee->workStatuses()->latest('work_date')->first()->work_date->toDateString());
+        $this->assertDatabaseMissing('employee_work_statuses', ['employee_id' => $employee->id, 'work_date' => '2026-06-29']);
+    }
+
     public function test_monthly_cycle_skips_duplicate_dates_by_default(): void
     {
         $admin = $this->user('admin');

@@ -129,6 +129,8 @@ class NotificationCenterTest extends TestCase
             'department' => 'Moderator',
             'role' => 'Moderator',
             'joining_date' => '2026-06-01',
+            'confirmation_date' => '2026-06-01',
+            'salary_day' => 20,
             'status' => 'terminated',
             'last_working_date' => '2026-06-20',
             'monthly_salary' => 30000,
@@ -150,6 +152,7 @@ class NotificationCenterTest extends TestCase
             'paid_amount' => 0,
             'payment_status' => 'unpaid',
             'status' => 'unpaid',
+            'is_final_settlement' => true,
         ]);
 
         $response = $this->actingAs($admin)->get('/admin/notifications');
@@ -157,7 +160,7 @@ class NotificationCenterTest extends TestCase
         $response->assertOk();
         $response->assertSee('Final Settlements Due');
         $response->assertSee('Terminated Settlement Alert');
-        $response->assertSee('Final Settlement Overdue');
+        $response->assertSee('Final Settlement Due In: 36 Days');
         $this->assertDatabaseHas('system_notifications', [
             'notification_key' => 'employee.final_settlement_due',
             'priority' => 'critical',

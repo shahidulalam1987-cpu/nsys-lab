@@ -8,6 +8,10 @@ use Illuminate\Validation\ValidationException;
 
 class WorkStatusCycleService
 {
+    public function __construct(private PayrollCycleResolver $payrollCycleResolver)
+    {
+    }
+
     public function period(Employee $employee, string $salaryMonth): array
     {
         $month = Carbon::createFromFormat('Y-m', $salaryMonth)->startOfMonth();
@@ -18,6 +22,10 @@ class WorkStatusCycleService
             throw ValidationException::withMessages([
                 'employee_id' => 'Employee confirmation date and salary day are required for Monthly Cycle entry.',
             ]);
+        }
+
+        if ($employee->status === 'terminated' && $employee->last_working_date) {
+            return $this->finalSettlementPeriod($employee, $confirmationDate);
         }
 
         $cycleDate = $this->cycleDate($month, $salaryDay);
@@ -64,5 +72,27 @@ class WorkStatusCycleService
     private function cycleDate(Carbon $month, int $salaryDay): Carbon
     {
         return $month->copy()->day(min($salaryDay, $month->copy()->endOfMonth()->day))->startOfDay();
+    }
+
+    private function finalSettlementPeriod(Employee $employee, Carbon $confirmationDate): array
+    {
+        $lastWorkingDate = $employee->last_working_date->copy()->startOfDay();
+        $lastCompletedCycleDate = $this->payrollCycleResolver->latestCompletedCycleEnd($employee, $lastWorkingDate);
+        $periodStart = $lastCompletedCycleDate && $lastCompletedCycleDate->gte($confirmationDate)
+            ? $lastCompletedCycleDate->copy()->addDay()
+            : $confirmationDate->copy();
+
+        if ($confirmationDate->gt($lastWorkingDate) || $periodStart->gt($lastWorkingDate)) {
+            throw ValidationException::withMessages([
+                'salary_month' => 'No final settlement work status dates exist for this employee.',
+            ]);
+        }
+
+        return [
+            'salary_month' => $lastWorkingDate->copy()->startOfMonth(),
+            'salary_cycle_date' => $lastWorkingDate,
+            'period_start' => $periodStart,
+            'period_end' => $lastWorkingDate,
+        ];
     }
 }

@@ -117,7 +117,7 @@
                         </select>
                     </p>
                 </div>
-                <p style="color:var(--muted);margin:12px 0 0;">The first cycle starts from confirmation. Terminated employees stop at their last working date.</p>
+                <p id="monthly-cycle-helper" style="color:var(--muted);margin:12px 0 0;">The first cycle starts from confirmation. Terminated employees stop at their last working date.</p>
             </div>
 
             <div class="work-status-section work-status-grid">
@@ -253,6 +253,15 @@
             const defaults = assignmentDefaults[employeeSelect.value];
             if (!defaults?.confirmation_date || !defaults?.salary_day || !salaryMonthInput.value) return null;
 
+            if (defaults.status === 'terminated' && defaults.final_settlement_period) {
+                return {
+                    start: utcDate(defaults.final_settlement_period.period_start),
+                    end: utcDate(defaults.final_settlement_period.period_end),
+                    salaryDate: utcDate(defaults.final_settlement_period.salary_cycle_date),
+                    isFinalSettlement: true
+                };
+            }
+
             const [year, month] = salaryMonthInput.value.split('-').map(Number);
             const monthIndex = month - 1;
             const confirmation = utcDate(defaults.confirmation_date);
@@ -272,7 +281,7 @@
             }
 
             if (confirmation > eligibleEnd || start > eligibleEnd) return null;
-            return { start, end: eligibleEnd, salaryDate: end };
+            return { start, end: eligibleEnd, salaryDate: end, isFinalSettlement: false };
         };
 
         const statusOptions = (selected) => Object.entries(statusLabels).map(([value, label]) =>
@@ -295,6 +304,7 @@
                 cycleDateInput.value = '';
                 monthlyFromDateInput.value = '';
                 monthlyToDateInput.value = '';
+                document.getElementById('monthly-cycle-helper').textContent = 'The first cycle starts from confirmation. Terminated employees stop at their last working date.';
                 document.getElementById('cycle-period-message').textContent = 'Select a salary-eligible employee and salary month to preview the cycle.';
                 return;
             }
@@ -302,7 +312,12 @@
             cycleDateInput.value = dateString(period.salaryDate);
             monthlyFromDateInput.value = dateString(period.start);
             monthlyToDateInput.value = dateString(period.end);
-            document.getElementById('cycle-period-message').textContent = `Cycle period: ${dateString(period.start)} to ${dateString(period.end)}`;
+            document.getElementById('monthly-cycle-helper').textContent = period.isFinalSettlement
+                ? 'Final settlement cycle detected. Work status will be generated up to the last working date.'
+                : 'The first cycle starts from confirmation. Terminated employees stop at their last working date.';
+            document.getElementById('cycle-period-message').textContent = period.isFinalSettlement
+                ? `Final settlement period: ${dateString(period.start)} to ${dateString(period.end)}`
+                : `Cycle period: ${dateString(period.start)} to ${dateString(period.end)}`;
             let index = 0;
 
             for (let date = new Date(period.start.getTime()); date <= period.end; date.setUTCDate(date.getUTCDate() + 1)) {

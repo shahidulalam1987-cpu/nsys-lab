@@ -5,11 +5,15 @@ namespace Tests\Feature;
 use App\Models\Client;
 use App\Models\Employee;
 use App\Models\EmployeeAssignment;
+use App\Models\EmployeePayroll;
 use App\Models\EmployeeWorkStatus;
 use App\Models\User;
+use App\Services\FinalSettlementService;
 use App\Services\PayrollCategoryService;
+use App\Services\PayrollCycleResolver;
 use App\Services\PayrollEstimateService;
 use App\Services\NotificationCenterService;
+use App\Services\WorkStatusCycleService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -395,7 +399,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertSee('Terminated Final Settlement');
         $response->assertSee('Final Settlement Employee');
         $response->assertSee('Final Settlement Unpaid');
-        $response->assertSee('Final Settlement Overdue: 4 Days');
+        $response->assertSee('Final Settlement Due In: 36 Days');
         $response->assertSee('Working: 14.00');
         $response->assertSee('Non Working: 6.00');
     }
@@ -533,6 +537,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $this->payroll($terminated, $client, [
             'payable_salary' => 12000,
             'paid_amount' => 5000,
+            'is_final_settlement' => true,
         ]);
 
         $response = $this->actingAs($admin)->get('/admin/employees/' . $terminated->id);
@@ -672,6 +677,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
             'payable_salary' => 20000,
             'paid_amount' => 0,
             'payment_status' => 'unpaid',
+            'is_final_settlement' => true,
         ]);
 
         $category = app(PayrollCategoryService::class)->resolveEmployee($employee);
@@ -697,6 +703,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
             'payable_salary' => 20000,
             'paid_amount' => 20000,
             'payment_status' => 'paid',
+            'is_final_settlement' => true,
         ]);
 
         $category = app(PayrollCategoryService::class)->resolveEmployee($employee);
@@ -705,6 +712,217 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $this->assertTrue($payroll->fresh()->isFinalSettlementPaid());
         $this->assertSame('Final Settlement Paid', $payroll->fresh()->settlementStatusLabel());
         $this->assertSame(PayrollCategoryService::FINAL_SETTLEMENT_PAID, $category['category']);
+    }
+
+    public function test_normal_paid_payroll_covering_last_working_date_is_not_final_settlement(): void
+    {
+        Carbon::setTestNow('2026-07-01');
+
+        $client = $this->client();
+        $employee = $this->employee([
+            'name' => 'Farzana Akter Taslima',
+            'status' => 'terminated',
+            'confirmation_date' => '2026-05-11',
+            'salary_day' => 11,
+            'last_working_date' => '2026-06-28',
+            'monthly_salary' => 5000,
+        ]);
+        $payroll = $this->payroll($employee, $client, [
+            'salary_month' => '2026-06-01',
+            'salary_period_from' => '2026-06-01',
+            'salary_period_to' => '2026-06-30',
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-30',
+            'payable_salary' => 5000,
+            'paid_amount' => 5000,
+            'payment_status' => 'paid',
+            'payroll_status' => 'paid',
+            'is_final_settlement' => false,
+        ]);
+
+        $category = app(PayrollCategoryService::class)->resolveEmployee($employee->fresh());
+        $notificationService = app(NotificationCenterService::class);
+        $method = new \ReflectionMethod($notificationService, 'terminatedEmployeesMissingFinalPayroll');
+        $method->setAccessible(true);
+        $pendingFinalSalaries = $method->invoke($notificationService);
+
+        $this->assertFalse($payroll->fresh()->isFinalSettlementPayroll());
+        $this->assertFalse($employee->fresh()->load(['payrolls' => fn ($query) => $query->current()])->hasFinalSalaryPayroll());
+        $this->assertSame(PayrollCategoryService::FINAL_SETTLEMENT_PENDING, $category['category']);
+        $this->assertTrue($pendingFinalSalaries->contains(fn (Employee $pendingEmployee) => $pendingEmployee->id === $employee->id));
+    }
+
+    public function test_final_settlement_service_uses_next_salary_day_and_payment_deadline(): void
+    {
+        $service = app(FinalSettlementService::class);
+
+        $salaryDayFive = $this->employee([
+            'status' => 'terminated',
+            'confirmation_date' => '2026-06-01',
+            'salary_day' => 5,
+            'last_working_date' => '2026-06-28',
+        ]);
+        $salaryDayEleven = $this->employee([
+            'status' => 'terminated',
+            'confirmation_date' => '2026-06-01',
+            'salary_day' => 11,
+            'last_working_date' => '2026-06-28',
+        ]);
+        $salaryDayTwenty = $this->employee([
+            'status' => 'terminated',
+            'confirmation_date' => '2026-06-01',
+            'salary_day' => 20,
+            'last_working_date' => '2026-06-28',
+        ]);
+
+        $this->assertSame('2026-07-05', $service->calculateSettlementSalaryDate($salaryDayFive)?->toDateString());
+        $this->assertSame('2026-07-15', $service->calculatePaymentDeadline($salaryDayFive)?->toDateString());
+        $this->assertSame('2026-07-11', $service->calculateSettlementSalaryDate($salaryDayEleven)?->toDateString());
+        $this->assertSame('2026-07-21', $service->calculatePaymentDeadline($salaryDayEleven)?->toDateString());
+        $this->assertSame('2026-07-20', $service->calculateSettlementSalaryDate($salaryDayTwenty)?->toDateString());
+        $this->assertSame('2026-07-30', $service->calculatePaymentDeadline($salaryDayTwenty)?->toDateString());
+    }
+
+    public function test_final_settlement_service_handles_cross_year_leap_year_and_salary_day_edges(): void
+    {
+        $service = app(FinalSettlementService::class);
+
+        $crossYear = $this->employee([
+            'status' => 'terminated',
+            'confirmation_date' => '2026-12-01',
+            'salary_day' => 5,
+            'last_working_date' => '2026-12-28',
+        ]);
+        $leapYear = $this->employee([
+            'status' => 'terminated',
+            'confirmation_date' => '2028-02-01',
+            'salary_day' => 29,
+            'last_working_date' => '2028-02-28',
+        ]);
+        $exactSalaryDay = $this->employee([
+            'status' => 'terminated',
+            'confirmation_date' => '2026-06-01',
+            'salary_day' => 11,
+            'last_working_date' => '2026-06-11',
+        ]);
+        $oneDayBefore = $this->employee([
+            'status' => 'terminated',
+            'confirmation_date' => '2026-06-01',
+            'salary_day' => 11,
+            'last_working_date' => '2026-06-10',
+        ]);
+        $oneDayAfter = $this->employee([
+            'status' => 'terminated',
+            'confirmation_date' => '2026-06-01',
+            'salary_day' => 11,
+            'last_working_date' => '2026-06-12',
+        ]);
+
+        $this->assertSame('2027-01-05', $service->calculateSettlementSalaryDate($crossYear)?->toDateString());
+        $this->assertSame('2027-01-15', $service->calculatePaymentDeadline($crossYear)?->toDateString());
+        $this->assertSame('2028-02-29', $service->calculateSettlementSalaryDate($leapYear)?->toDateString());
+        $this->assertSame('2028-03-10', $service->calculatePaymentDeadline($leapYear)?->toDateString());
+        $this->assertSame('2026-07-11', $service->calculateSettlementSalaryDate($exactSalaryDay)?->toDateString());
+        $this->assertSame('2026-06-11', $service->calculateSettlementSalaryDate($oneDayBefore)?->toDateString());
+        $this->assertSame('2026-07-11', $service->calculateSettlementSalaryDate($oneDayAfter)?->toDateString());
+    }
+
+    public function test_final_settlement_pending_shows_due_in_during_grace_period(): void
+    {
+        Carbon::setTestNow('2026-07-05');
+
+        $admin = $this->admin();
+        $employee = $this->employee([
+            'name' => 'Grace Due In Employee',
+            'status' => 'terminated',
+            'confirmation_date' => '2026-06-01',
+            'salary_day' => 11,
+            'last_working_date' => '2026-06-28',
+        ]);
+
+        $category = app(PayrollCategoryService::class)->resolveEmployee($employee);
+        $response = $this->actingAs($admin)->get('/admin/payroll?status=due&employee_scope=terminated');
+
+        $this->assertSame(PayrollCategoryService::FINAL_SETTLEMENT_PENDING, $category['category']);
+        $this->assertSame('2026-07-11', $category['settlement_salary_date']->toDateString());
+        $this->assertSame('2026-07-21', $category['payment_deadline']->toDateString());
+        $response->assertOk();
+        $response->assertSee('Grace Due In Employee');
+        $response->assertSee('Payment Deadline: 2026-07-21');
+        $response->assertSee('Final Settlement Due In: 16 Days');
+        $response->assertDontSee('Final Settlement Overdue');
+    }
+
+    public function test_final_settlement_pending_shows_due_today_on_grace_due_date(): void
+    {
+        Carbon::setTestNow('2026-07-21');
+
+        $admin = $this->admin();
+        $this->employee([
+            'name' => 'Grace Due Today Employee',
+            'status' => 'terminated',
+            'confirmation_date' => '2026-06-01',
+            'salary_day' => 11,
+            'last_working_date' => '2026-06-28',
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/payroll?status=due&employee_scope=terminated');
+
+        $response->assertOk();
+        $response->assertSee('Grace Due Today Employee');
+        $response->assertSee('Final Settlement Due Today');
+        $response->assertDontSee('Final Settlement Overdue');
+    }
+
+    public function test_final_settlement_pending_shows_overdue_after_grace_due_date(): void
+    {
+        Carbon::setTestNow('2026-07-22');
+
+        $admin = $this->admin();
+        $this->employee([
+            'name' => 'Grace Overdue Employee',
+            'status' => 'terminated',
+            'confirmation_date' => '2026-06-01',
+            'salary_day' => 11,
+            'last_working_date' => '2026-06-28',
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/payroll?status=due&employee_scope=terminated');
+
+        $response->assertOk();
+        $response->assertSee('Grace Overdue Employee');
+        $response->assertSee('Final Settlement Overdue: 1 Days');
+    }
+
+    public function test_explicit_unpaid_final_settlement_payroll_uses_grace_due_date_without_cycle_due_date(): void
+    {
+        Carbon::setTestNow('2026-07-05');
+
+        $client = $this->client();
+        $employee = $this->employee([
+            'name' => 'Explicit Grace Payroll Employee',
+            'status' => 'terminated',
+            'confirmation_date' => '2026-06-01',
+            'salary_day' => 11,
+            'last_working_date' => '2026-06-28',
+        ]);
+        $payroll = $this->payroll($employee, $client, [
+            'salary_period_from' => '2026-06-01',
+            'salary_period_to' => '2026-06-28',
+            'payable_salary' => 5000,
+            'paid_amount' => 0,
+            'payment_status' => 'unpaid',
+            'is_final_settlement' => true,
+        ]);
+
+        $this->assertSame('2026-07-11', $payroll->salaryDueDate()?->toDateString());
+        $this->assertSame('Final Settlement Due In: 16 Days', $payroll->overdueLabel());
+
+        Carbon::setTestNow('2026-07-21');
+        $this->assertSame('Final Settlement Due Today', $payroll->fresh()->overdueLabel());
+
+        Carbon::setTestNow('2026-07-22');
+        $this->assertSame('Final Settlement Overdue: 1 Days', $payroll->fresh()->overdueLabel());
     }
 
     public function test_paid_terminated_employee_does_not_show_as_final_salary_pending(): void
@@ -831,6 +1049,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
             'salary_period_to' => '2026-06-01',
             'paid_amount' => 0,
             'payment_status' => 'unpaid',
+            'is_final_settlement' => true,
         ]);
         $finalPaid = $this->employee([
             'name' => 'Exclusive Final Paid',
@@ -842,6 +1061,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
             'salary_period_to' => '2026-06-01',
             'paid_amount' => 30000,
             'payment_status' => 'paid',
+            'is_final_settlement' => true,
         ]);
 
         $expected = [
@@ -1618,6 +1838,147 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $excel->assertOk();
         $excel->assertHeader('Content-Type', 'application/vnd.ms-excel');
         $excel->assertSee('Paid Export Employee');
+    }
+
+    public function test_legacy_payment_note_resolves_completed_cycle_for_final_settlement_boundary(): void
+    {
+        $client = $this->client();
+        $employee = $this->employee([
+            'status' => 'terminated',
+            'confirmation_date' => '2026-05-11',
+            'salary_day' => 11,
+            'last_working_date' => '2026-06-28',
+        ]);
+
+        $payroll = $this->payroll($employee, $client, [
+            'salary_month' => '2026-06-01',
+            'salary_period_from' => '2026-06-01',
+            'salary_period_to' => '2026-06-30',
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-30',
+            'payable_salary' => 5000,
+            'paid_amount' => 5000,
+            'payment_status' => 'paid',
+            'payroll_status' => 'paid',
+            'payment_confirmed_at' => '2026-06-14 12:00:00',
+            'payment_note' => 'Salary payment for May 2026',
+            'is_final_settlement' => false,
+        ]);
+
+        $cycle = app(PayrollCycleResolver::class)->resolvePayrollCycle($payroll);
+        $period = app(WorkStatusCycleService::class)->period($employee, '2026-06');
+
+        $this->assertSame('legacy_compatibility', $cycle['source']);
+        $this->assertSame('2026-05-11', $cycle['cycle_start']->toDateString());
+        $this->assertSame('2026-06-11', $cycle['cycle_end']->toDateString());
+        $this->assertSame('2026-06-11', app(PayrollCycleResolver::class)->latestCompletedCycleEnd($employee, Carbon::parse('2026-06-28'))?->toDateString());
+        $this->assertSame('2026-06-12', $period['period_start']->toDateString());
+        $this->assertSame('2026-06-28', $period['period_end']->toDateString());
+    }
+
+    public function test_modern_cycle_due_date_has_first_priority(): void
+    {
+        $client = $this->client();
+        $employee = $this->employee([
+            'confirmation_date' => '2026-05-16',
+            'salary_day' => 16,
+        ]);
+        $payroll = $this->payroll($employee, $client, [
+            'salary_period_from' => '2026-05-16',
+            'salary_period_to' => '2026-06-16',
+            'cycle_due_date' => '2026-06-16',
+            'cycle_key' => EmployeePayroll::cycleKey($employee->id, $client->id, Carbon::parse('2026-06-16')),
+            'salary_month' => '2026-05-01',
+        ]);
+
+        $cycle = app(PayrollCycleResolver::class)->resolvePayrollCycle($payroll);
+
+        $this->assertSame('cycle_due_date', $cycle['source']);
+        $this->assertSame('2026-06-16', $cycle['official_salary_date']->toDateString());
+        $this->assertSame('2026-05-16', $cycle['cycle_start']->toDateString());
+        $this->assertSame('2026-06-16', $cycle['cycle_end']->toDateString());
+    }
+
+    public function test_consistent_historical_paid_period_resolves_without_salary_due_date_guessing(): void
+    {
+        $client = $this->client();
+        $employee = $this->employee([
+            'confirmation_date' => '2026-05-11',
+            'salary_day' => 11,
+        ]);
+        $payroll = $this->payroll($employee, $client, [
+            'salary_period_from' => '2026-05-11',
+            'salary_period_to' => '2026-06-11',
+            'salary_month' => '2026-05-01',
+            'payable_salary' => 5000,
+            'paid_amount' => 5000,
+            'payment_status' => 'paid',
+            'payment_confirmed_at' => '2026-06-14 12:00:00',
+        ]);
+
+        $cycle = app(PayrollCycleResolver::class)->resolvePayrollCycle($payroll);
+
+        $this->assertSame('historical_paid_period', $cycle['source']);
+        $this->assertSame('2026-05-11', $cycle['cycle_start']->toDateString());
+        $this->assertSame('2026-06-11', $cycle['cycle_end']->toDateString());
+        $this->assertSame('2026-06-11', $cycle['official_salary_date']->toDateString());
+    }
+
+    public function test_superseded_payroll_is_ignored_for_latest_completed_cycle(): void
+    {
+        $client = $this->client();
+        $employee = $this->employee([
+            'confirmation_date' => '2026-05-11',
+            'salary_day' => 11,
+            'status' => 'terminated',
+            'last_working_date' => '2026-07-20',
+        ]);
+
+        $this->payroll($employee, $client, [
+            'salary_period_from' => '2026-06-12',
+            'salary_period_to' => '2026-07-11',
+            'cycle_due_date' => '2026-07-11',
+            'payable_salary' => 5000,
+            'paid_amount' => 5000,
+            'is_current' => false,
+        ]);
+        $current = $this->payroll($employee, $client, [
+            'salary_period_from' => '2026-05-11',
+            'salary_period_to' => '2026-06-11',
+            'cycle_due_date' => '2026-06-11',
+            'payable_salary' => 5000,
+            'paid_amount' => 5000,
+        ]);
+
+        $cycle = app(PayrollCycleResolver::class)->latestCompletedCycle($employee, Carbon::parse('2026-07-20'));
+
+        $this->assertSame($current->id, $cycle['payroll_id']);
+        $this->assertSame('2026-06-11', $cycle['cycle_end']->toDateString());
+    }
+
+    public function test_final_settlement_payroll_is_not_used_as_previous_completed_cycle(): void
+    {
+        $client = $this->client();
+        $employee = $this->employee([
+            'status' => 'terminated',
+            'confirmation_date' => '2026-05-11',
+            'salary_day' => 11,
+            'last_working_date' => '2026-06-28',
+        ]);
+
+        $this->payroll($employee, $client, [
+            'salary_period_from' => '2026-06-12',
+            'salary_period_to' => '2026-06-28',
+            'payable_salary' => 2500,
+            'paid_amount' => 2500,
+            'is_final_settlement' => true,
+        ]);
+
+        $boundary = app(PayrollCycleResolver::class)->settlementBoundary($employee);
+
+        $this->assertSame('2026-05-11', $boundary['period_start']->toDateString());
+        $this->assertSame('2026-06-28', $boundary['period_end']->toDateString());
+        $this->assertNull($boundary['latest_completed_cycle']);
     }
 
     private function admin(): User

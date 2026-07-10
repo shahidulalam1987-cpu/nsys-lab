@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Services\FinalSettlementService;
+use App\Services\PayrollCycleResolver;
 use Illuminate\Database\Eloquent\Model;
 
 class EmployeePayroll extends Model
@@ -356,42 +358,7 @@ class EmployeePayroll extends Model
 
     public function matchesSalaryCycleDate(\Carbon\Carbon $calculatedSalaryDate): bool
     {
-        if ($this->is_current === false || $this->superseded_by_id || $this->reversed_at) {
-            return false;
-        }
-
-        // Older manually paid payrolls were stored against the salary month while
-        // their full-month period makes salaryDueDate() fall in the following month.
-        // Treat the stored month as canonical so one payroll cannot match both cycles.
-        if ($this->usesLegacyHandledSalaryMonth()) {
-            return $this->salary_month->isSameMonth($calculatedSalaryDate);
-        }
-
-        $dueDate = $this->salaryDueDate();
-        if ($dueDate) {
-            return $dueDate->isSameDay($calculatedSalaryDate);
-        }
-
-        return $this->salary_month?->isSameMonth($calculatedSalaryDate) ?? false;
-    }
-
-    private function usesLegacyHandledSalaryMonth(): bool
-    {
-        if (! $this->salary_month || ! $this->salary_period_to) {
-            return false;
-        }
-
-        if (self::statusFor((float) $this->payable_salary, (float) $this->paid_amount) !== 'paid') {
-            return false;
-        }
-
-        $handledAt = $this->payment_confirmed_at
-            ?: $this->paid_at
-            ?: $this->payment_date;
-
-        return $handledAt
-            && $this->salary_month->isSameMonth($this->salary_period_to)
-            && $handledAt->copy()->startOfDay()->lte($this->salary_period_to->copy()->endOfDay());
+        return app(PayrollCycleResolver::class)->matchesSalaryCycleDate($this, $calculatedSalaryDate);
     }
 
     public function snapshotEmployeeName(): string
@@ -525,16 +492,7 @@ class EmployeePayroll extends Model
             return false;
         }
 
-        if ($this->is_final_settlement) {
-            return true;
-        }
-
-        $lastWorkingDate = $employee->last_working_date;
-
-        return $this->salary_month?->copy()->startOfMonth()->toDateString() === $lastWorkingDate->copy()->startOfMonth()->toDateString()
-            || ($this->salary_period_from
-                && $this->salary_period_to
-                && $lastWorkingDate->betweenIncluded($this->salary_period_from, $this->salary_period_to));
+        return (bool) $this->is_final_settlement;
     }
 
     public function isFinalSettlementDue(): bool
@@ -570,10 +528,6 @@ class EmployeePayroll extends Model
 
     public function salaryDueDate(): ?\Carbon\Carbon
     {
-        if ($this->cycle_due_date) {
-            return $this->cycle_due_date->copy()->startOfDay();
-        }
-
         $employee = $this->relationLoaded('employee')
             ? $this->employee
             : $this->employee()->first();
@@ -582,19 +536,12 @@ class EmployeePayroll extends Model
             return null;
         }
 
-        $periodEnd = $this->salary_period_to?->copy()->startOfDay()
-            ?: $this->to_date?->copy()->startOfDay()
-            ?: $this->salary_month?->copy()->endOfMonth()->startOfDay()
-            ?: now()->endOfMonth()->startOfDay();
-
-        $dueDate = $employee->salaryDateForMonth($periodEnd->copy());
-
-        if ($dueDate && $dueDate->lt($periodEnd)) {
-            $dueDate = $employee->salaryDateForMonth($periodEnd->copy()->addMonthNoOverflow());
+        if ($this->isFinalSettlementPayroll()) {
+            return $employee->finalSettlementSalaryDate();
         }
 
-        return $dueDate
-            ?: ($this->isFinalSettlementPayroll() ? $employee->last_working_date : null);
+        return app(PayrollCycleResolver::class)
+            ->resolvePayrollCycle($this)['official_salary_date'] ?? null;
     }
 
     public static function cycleKey(int $employeeId, ?int $clientId, \Carbon\Carbon $cycleDueDate): string
@@ -604,6 +551,14 @@ class EmployeePayroll extends Model
 
     public function daysUntilDue(?\Carbon\Carbon $asOf = null): ?int
     {
+        if ($this->isFinalSettlementPayroll()) {
+            $employee = $this->relationLoaded('employee')
+                ? $this->employee
+                : $this->employee()->first();
+
+            return $employee ? app(FinalSettlementService::class)->daysUntilDeadline($employee, $asOf) : null;
+        }
+
         $dueDate = $this->salaryDueDate();
 
         if (! $dueDate) {
@@ -617,6 +572,14 @@ class EmployeePayroll extends Model
 
     public function overdueDays(?\Carbon\Carbon $asOf = null): int
     {
+        if ($this->isFinalSettlementPayroll()) {
+            $employee = $this->relationLoaded('employee')
+                ? $this->employee
+                : $this->employee()->first();
+
+            return $employee ? app(FinalSettlementService::class)->calculateOverdueDays($employee, $asOf) : 0;
+        }
+
         return max(-($this->daysUntilDue($asOf) ?? 0), 0);
     }
 
@@ -633,11 +596,15 @@ class EmployeePayroll extends Model
             return '-';
         }
 
-        $days = $this->overdueDays();
+        if ($this->isFinalSettlementPayroll()) {
+            $employee = $this->relationLoaded('employee')
+                ? $this->employee
+                : $this->employee()->first();
 
-        return $this->isFinalSettlementPayroll()
-            ? 'Final Settlement Overdue: ' . $days . ' Days'
-            : $days . ' Days Overdue';
+            return $employee ? app(FinalSettlementService::class)->deadlineLabel($employee) : '-';
+        }
+
+        return $this->overdueDays() . ' Days Overdue';
     }
 
     private function salaryCycleStatusForZeroPayment(string $fallbackStatus): string

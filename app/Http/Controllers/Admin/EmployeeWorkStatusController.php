@@ -67,11 +67,26 @@ class EmployeeWorkStatusController extends Controller
         $assignmentDefaults = $employees
             ->mapWithKeys(function (Employee $employee) {
                 $assignment = app(AssignmentResolver::class)->current($employee);
+                $finalSettlementPeriod = null;
+
+                if ($employee->status === 'terminated' && $employee->last_working_date) {
+                    try {
+                        $period = app(WorkStatusCycleService::class)->period($employee, $employee->last_working_date->format('Y-m'));
+                        $finalSettlementPeriod = [
+                            'salary_cycle_date' => $period['salary_cycle_date']->toDateString(),
+                            'period_start' => $period['period_start']->toDateString(),
+                            'period_end' => $period['period_end']->toDateString(),
+                        ];
+                    } catch (ValidationException $exception) {
+                        $finalSettlementPeriod = null;
+                    }
+                }
 
                 return [$employee->id => [
                     'employee_id' => $employee->id,
                     'has_assignment' => (bool) $assignment,
                     'is_agency_internal' => $employee->isAgencyInternal(),
+                    'status' => $employee->status,
                     'client_id' => $assignment?->client_id,
                     'client_page_id' => $assignment?->client_page_id,
                     'campaign_id' => $assignment?->campaign_id,
@@ -79,6 +94,7 @@ class EmployeeWorkStatusController extends Controller
                     'confirmation_date' => $employee->confirmation_date?->toDateString(),
                     'last_working_date' => $employee->last_working_date?->toDateString(),
                     'salary_day' => $employee->salaryCycleDay(),
+                    'final_settlement_period' => $finalSettlementPeriod,
                 ]];
             })
             ->all();

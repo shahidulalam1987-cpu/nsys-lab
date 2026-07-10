@@ -52,7 +52,7 @@
             @if($isUpcoming)
                 <tr><th>Employee</th><th>Client</th><th>Salary Date</th><th>Days Remaining</th><th>Expected Salary</th><th>Work Status Count</th><th>Status</th></tr>
             @else
-                <tr><th>Employee</th><th>Client</th><th>Salary Date</th><th>Amount</th><th>Current Stage</th><th>Overdue Days</th><th>Action</th></tr>
+                <tr><th>Employee</th><th>Client</th><th>{{ ($filters['employee_scope'] ?? '') === 'terminated' ? 'Settlement Salary Date' : 'Salary Date' }}</th><th>Amount</th><th>Current Stage</th><th>Deadline Status</th><th>Action</th></tr>
             @endif
 
             @forelse($stageRows as $row)
@@ -61,7 +61,11 @@
                     $stage = $row['stage'];
                     $payroll = data_get($stage, 'payroll');
                     $estimate = data_get($stage, 'estimate', []);
-                    $salaryDate = data_get($stage, 'salary_date') ?: $payroll?->salaryDueDate();
+                    $salaryDate = data_get($stage, 'settlement_salary_date')
+                        ?: data_get($stage, 'salary_date')
+                        ?: $payroll?->salaryDueDate();
+                    $paymentDeadline = data_get($stage, 'payment_deadline')
+                        ?: ($employee->status === 'terminated' ? $employee->finalSettlementPaymentDeadline() : null);
                     $amount = $payroll
                         ? max((float)$payroll->payable_salary - (float)$payroll->paid_amount, 0)
                         : (float)data_get($estimate, 'estimated_payable_salary', 0);
@@ -71,12 +75,19 @@
                     if ($payroll?->isFinalSettlementPayroll() && (float)$payroll->paid_amount > 0 && (float)$payroll->paid_amount < (float)$payroll->payable_salary) {
                         $stageLabel = 'Final Settlement Partial';
                     }
-                    $overdueDays = $salaryDate && $salaryDate->lt(today()) ? $salaryDate->diffInDays(today()) : 0;
+                    $deadlineDate = $employee->status === 'terminated' ? $paymentDeadline : $salaryDate;
+                    $daysUntilDue = $deadlineDate ? (int) today()->diffInDays($deadlineDate, false) : null;
+                    $overdueDays = $daysUntilDue !== null && $daysUntilDue < 0 ? abs($daysUntilDue) : 0;
                 @endphp
                 <tr>
                     <td><a href="/admin/employees/{{ $employee->id }}">{{ $employee->employee_id }}</a><br><strong>{{ $employee->name }}</strong></td>
                     <td>{{ $client?->company_name ?: '-' }}</td>
-                    <td>{{ $salaryDate?->toDateString() ?: '-' }}</td>
+                    <td>
+                        {{ $salaryDate?->toDateString() ?: '-' }}
+                        @if($employee->status === 'terminated')
+                            <br><small class="muted">Payment Deadline: {{ $paymentDeadline?->toDateString() ?: '-' }}</small>
+                        @endif
+                    </td>
                     @if($isUpcoming)
                         <td>{{ $salaryDate ? today()->diffInDays($salaryDate) : '-' }}</td>
                         <td>BDT {{ number_format($amount, 2) }}</td>
@@ -100,8 +111,16 @@
                         </td>
                         <td><span class="badge {{ in_array($category, ['unpaid', 'final_settlement_unpaid']) ? 'badge-danger' : 'badge-warning' }}">{{ $stageLabel }}</span></td>
                         <td>
-                            @if($overdueDays > 0)
-                                {{ $employee->status === 'terminated' ? 'Final Settlement Overdue: ' . $overdueDays . ' Days' : $overdueDays . ' Days Overdue' }}
+                            @if($employee->status === 'terminated' && $salaryDate)
+                                @if($daysUntilDue > 0)
+                                    Final Settlement Due In: {{ $daysUntilDue }} Days
+                                @elseif($daysUntilDue === 0)
+                                    Final Settlement Due Today
+                                @else
+                                    Final Settlement Overdue: {{ $overdueDays }} Days
+                                @endif
+                            @elseif($overdueDays > 0)
+                                {{ $overdueDays }} Days Overdue
                             @else
                                 -
                             @endif

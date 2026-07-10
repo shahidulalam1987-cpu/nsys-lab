@@ -48,7 +48,8 @@ class PayrollCategoryService
 
     public function __construct(
         private PayrollEstimateService $payrollEstimator,
-        private AssignmentResolver $assignmentResolver
+        private AssignmentResolver $assignmentResolver,
+        private FinalSettlementService $finalSettlement
     )
     {
     }
@@ -77,8 +78,14 @@ class PayrollCategoryService
                 return $this->category(self::NOT_SALARY_ELIGIBLE);
             }
 
+            $settlementSalaryDate = $this->finalSettlement->calculateSettlementSalaryDate($employee);
+            $paymentDeadline = $this->finalSettlement->calculatePaymentDeadline($employee);
+
             return $this->category(self::FINAL_SETTLEMENT_PENDING, [
-                'salary_date' => $employee->last_working_date,
+                'salary_date' => $settlementSalaryDate,
+                'settlement_salary_date' => $settlementSalaryDate,
+                'payment_deadline' => $paymentDeadline,
+                'deadline_label' => $this->finalSettlement->deadlineLabel($employee),
                 'estimate' => $this->payrollEstimator->estimateCycle(
                     $employee,
                     $employee->last_working_date,
