@@ -174,10 +174,11 @@ class EmployeeSalaryCycleStatusTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Recently Joined Employee');
-        $response->assertSee('Estimated Amount Due');
-        $response->assertSee('BDT 0.00');
+        $response->assertSee('Estimated Salary');
+        $response->assertSee('Complete Work Status to calculate salary');
         $response->assertSee('Pending Work Status');
         $response->assertSee('Add Work Status');
+        $response->assertDontSee('BDT 0.00');
         $response->assertDontSee('BDT 7,000.00');
     }
 
@@ -287,7 +288,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertSee('Three Day Employee');
         $response->assertSee('BDT 700.00');
         $response->assertSee('Based on Work Status');
-        $response->assertSee('Working: 3.00');
+        $response->assertSee('Working 3.00');
     }
 
     public function test_agency_internal_employee_estimate_includes_null_client_work_status(): void
@@ -311,7 +312,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertOk();
         $response->assertSee('Internal Employee');
         $response->assertSee('BDT 450.00');
-        $response->assertSee('Working: 1.50');
+        $response->assertSee('Working 1.50');
     }
 
     public function test_client_assigned_employee_estimate_uses_client_specific_work_status(): void
@@ -338,7 +339,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertOk();
         $response->assertSee('Client Specific Employee');
         $response->assertSee('BDT 400.00');
-        $response->assertSee('Working: 2.00');
+        $response->assertSee('Working 2.00');
     }
 
     public function test_terminated_final_salary_pending_uses_work_status_estimate(): void
@@ -364,8 +365,8 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertOk();
         $response->assertSee('Final Estimate Employee');
         $response->assertSee('BDT 800.00');
-        $response->assertSee('Working: 2.00');
-        $response->assertSee('Non Working: 1.00');
+        $response->assertSee('Working 2.00');
+        $response->assertSee('Non Working 1.00');
         $response->assertDontSee('BDT 12,000.00');
     }
 
@@ -399,9 +400,9 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertSee('Terminated Final Settlement');
         $response->assertSee('Final Settlement Employee');
         $response->assertSee('Final Settlement Unpaid');
-        $response->assertSee('Final Settlement Due In: 36 Days');
-        $response->assertSee('Working: 14.00');
-        $response->assertSee('Non Working: 6.00');
+        $response->assertSee('Due In 36 Days');
+        $response->assertSee('Working 14.00');
+        $response->assertSee('Non Working 6.00');
     }
 
     public function test_due_filter_shows_final_salary_pending_for_terminated_employee_without_payroll(): void
@@ -420,7 +421,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Final Salary Pending Employee');
-        $response->assertSee('Final salary not generated yet');
+        $response->assertSee('Salary Not Generated');
         $response->assertSee('Add Work Status');
         $response->assertDontSee('Generate Final Salary');
     }
@@ -848,9 +849,9 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $this->assertSame('2026-07-21', $category['payment_deadline']->toDateString());
         $response->assertOk();
         $response->assertSee('Grace Due In Employee');
-        $response->assertSee('Payment Deadline: 2026-07-21');
-        $response->assertSee('Final Settlement Due In: 16 Days');
-        $response->assertDontSee('Final Settlement Overdue');
+        $response->assertSee('21 Jul 2026');
+        $response->assertSee('Waiting for Work Status');
+        $response->assertDontSee('Overdue');
     }
 
     public function test_final_settlement_pending_shows_due_today_on_grace_due_date(): void
@@ -870,8 +871,8 @@ class EmployeeSalaryCycleStatusTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Grace Due Today Employee');
-        $response->assertSee('Final Settlement Due Today');
-        $response->assertDontSee('Final Settlement Overdue');
+        $response->assertSee('Waiting for Work Status');
+        $response->assertDontSee('Overdue');
     }
 
     public function test_final_settlement_pending_shows_overdue_after_grace_due_date(): void
@@ -891,7 +892,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Grace Overdue Employee');
-        $response->assertSee('Final Settlement Overdue: 1 Days');
+        $response->assertSee('Waiting for Work Status');
     }
 
     public function test_explicit_unpaid_final_settlement_payroll_uses_grace_due_date_without_cycle_due_date(): void
@@ -957,7 +958,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $this->assertTrue($employee->fresh()->load(['payrolls' => fn ($query) => $query->current()])->hasFinalSalaryPayroll());
         $this->assertTrue($payroll->fresh()->isFinalSettlementPaid());
         $dueResponse->assertOk();
-        $dueResponse->assertSee('No unpaid salary work found.');
+        $dueResponse->assertSee('No final settlement work found.');
         $dueResponse->assertDontSee('Final salary not generated yet');
         $dueResponse->assertDontSee('Generate Final Salary');
         $paidResponse->assertOk();
@@ -1427,8 +1428,8 @@ class EmployeeSalaryCycleStatusTest extends TestCase
 
         $response = $this->actingAs($admin)->get('/admin/payroll?status=due');
         $response->assertOk();
-        $response->assertSee('Working: 32.00');
-        $response->assertSee('Payable Count: 30.00');
+        $response->assertSee('Working 32.00');
+        $response->assertSee('Payable 30.00');
         $response->assertSee('BDT 5,000.00');
     }
 
@@ -1732,7 +1733,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Farzana Overdue Regression');
-        $response->assertSee('2026-06-16');
+        $response->assertSee('16 Jun 2026');
         $response->assertSee('3 Days Overdue');
         $response->assertDontSee('34 Days Overdue');
     }

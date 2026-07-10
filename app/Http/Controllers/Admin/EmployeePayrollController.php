@@ -16,6 +16,7 @@ use App\Services\ClientFundLedgerService;
 use App\Services\ClientSalaryFundService;
 use App\Services\FinanceLedgerService;
 use App\Services\PayrollCategoryService;
+use App\Services\PayrollCycleResolver;
 use App\Services\PayrollEstimateService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -29,7 +30,8 @@ class EmployeePayrollController extends Controller
     public function __construct(
         private PayrollEstimateService $payrollEstimator,
         private PayrollCategoryService $payrollCategory,
-        private AssignmentResolver $assignmentResolver
+        private AssignmentResolver $assignmentResolver,
+        private PayrollCycleResolver $payrollCycleResolver
     ) {}
 
     public function index(Request $request)
@@ -950,6 +952,8 @@ class EmployeePayrollController extends Controller
         $stageRows = Employee::with([
             'payrolls' => fn ($query) => $query->current()->with(['client', 'financeAccount']),
             'activeAssignments.client',
+            'departmentRecord',
+            'roleRecord',
         ])
             ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->whereKey($employeeId))
             ->orderBy('name')
@@ -983,6 +987,7 @@ class EmployeePayrollController extends Controller
 
                 return $stageMonth && Carbon::parse($stageMonth)->format('Y-m') === $filters['month'];
             })
+            ->map(fn (array $row) => $this->withQueueDisplayData($row))
             ->values();
 
         $payrolls = $stageRows
@@ -1098,6 +1103,188 @@ class EmployeePayrollController extends Controller
             ], true),
             default => false,
         };
+    }
+
+    private function withQueueDisplayData(array $row): array
+    {
+        $employee = $row['employee'];
+        $stage = $row['stage'];
+        $payroll = data_get($stage, 'payroll');
+        $estimate = data_get($stage, 'estimate', []);
+        $client = $payroll?->client ?: $employee->activeAssignments->first()?->client;
+        $salaryDate = data_get($stage, 'settlement_salary_date')
+            ?: data_get($stage, 'salary_date')
+            ?: $payroll?->salaryDueDate();
+        $paymentDeadline = data_get($stage, 'payment_deadline')
+            ?: ($employee->status === 'terminated' ? $employee->finalSettlementPaymentDeadline() : null);
+        $periodStart = data_get($estimate, 'salary_period_start')
+            ?: $payroll?->salary_period_from
+            ?: $payroll?->from_date;
+        $periodEnd = data_get($estimate, 'salary_period_end')
+            ?: $payroll?->salary_period_to
+            ?: $payroll?->to_date;
+        $workStatusRecords = (int) data_get($estimate, 'work_status_records', 0);
+        $hasWorkStatus = $payroll || $workStatusRecords > 0;
+        $remainingAmount = $payroll
+            ? max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0)
+            : (float) data_get($estimate, 'estimated_payable_salary', 0);
+        $category = $stage['category'];
+        $stageLabel = $stage['label'];
+
+        if ($payroll?->isFinalSettlementPayroll() && (float) $payroll->paid_amount > 0 && (float) $payroll->paid_amount < (float) $payroll->payable_salary) {
+            $stageLabel = 'Final Settlement Partial';
+        }
+
+        $deadlineState = $this->deadlineState($employee, $paymentDeadline ?: $salaryDate, $category, $hasWorkStatus);
+        $cycleSource = $payroll ? $this->payrollCycleResolver->resolvePayrollCycle($payroll)['source'] ?? null : null;
+
+        $row['display'] = [
+            'employee_name' => $employee->name,
+            'employee_code' => $employee->employee_id,
+            'employee_url' => '/admin/employees/' . $employee->id,
+            'client_name' => $client?->company_name ?: '-',
+            'department' => $employee->departmentName(),
+            'role' => $employee->roleName(),
+            'employment_type' => $employee->employeeTypeLabel(),
+            'current_status' => $employee->statusLabel(),
+            'last_working_date' => $this->formatQueueDate($employee->last_working_date),
+            'settlement_period_start' => $this->formatQueueDate($periodStart),
+            'settlement_period_end' => $this->formatQueueDate($periodEnd),
+            'salary_day' => $employee->salaryCycleDay() ?: '-',
+            'settlement_salary_date' => $this->formatQueueDate($salaryDate),
+            'payment_deadline' => $this->formatQueueDate($paymentDeadline),
+            'stage_label' => $stageLabel,
+            'stage_badge_class' => $this->stageBadgeClass($category),
+            'deadline_label' => $deadlineState['label'],
+            'deadline_badge_class' => $deadlineState['badge_class'],
+            'has_work_status' => $hasWorkStatus,
+            'estimated_salary_label' => $hasWorkStatus ? 'BDT ' . number_format($remainingAmount, 2) : 'Pending Work Status',
+            'estimated_salary_help' => $hasWorkStatus
+                ? ($payroll ? 'Generated payroll balance' : 'Based on Work Status')
+                : 'Complete Work Status to calculate salary',
+            'work_status_label' => $hasWorkStatus ? 'Work Status' : 'Awaiting Work Status',
+            'work_status_help' => $hasWorkStatus ? null : 'Not Added Yet',
+            'working_count' => $payroll ? (float) $payroll->working_days : (float) data_get($estimate, 'actual_work_status_count', data_get($estimate, 'working_salary_count', 0)),
+            'payable_count' => $payroll ? (float) $payroll->working_days : (float) data_get($estimate, 'effective_salary_count', data_get($estimate, 'working_salary_count', 0)),
+            'non_working_count' => $payroll ? (float) $payroll->non_working_days : (float) data_get($estimate, 'non_working_count', 0),
+            'legacy_metadata' => $cycleSource === 'legacy_compatibility',
+            'progress_steps' => $this->finalSettlementProgressSteps($category, (bool) $payroll, $hasWorkStatus, $payroll),
+            'add_work_status_url' => $this->addWorkStatusUrl($employee, $client, $salaryDate, $category, $hasWorkStatus),
+            'generate_salary_url' => $this->generateSalaryUrl($employee, $client, $salaryDate, $estimate, $category, $hasWorkStatus),
+            'payroll_view_url' => $payroll ? '/admin/payroll/' . $payroll->id : null,
+            'payroll_edit_url' => $payroll ? '/admin/payroll/' . $payroll->id . '/edit' : null,
+            'can_confirm_payment' => $payroll && $payroll->canMarkPaid() && $payroll->payroll_status !== 'paid',
+        ];
+
+        return $row;
+    }
+
+    private function deadlineState(Employee $employee, ?Carbon $deadlineDate, string $category, bool $hasWorkStatus): array
+    {
+        if ($employee->status === 'terminated' && ! $hasWorkStatus) {
+            return ['label' => 'Waiting for Work Status', 'badge_class' => 'badge-neutral'];
+        }
+
+        if (! $deadlineDate) {
+            return ['label' => '-', 'badge_class' => 'badge-neutral'];
+        }
+
+        $daysUntilDue = (int) today()->diffInDays($deadlineDate, false);
+
+        if ($employee->status === 'terminated') {
+            if ($daysUntilDue > 0) {
+                return ['label' => 'Due In ' . $daysUntilDue . ' Days', 'badge_class' => 'badge-success'];
+            }
+
+            if ($daysUntilDue === 0) {
+                return ['label' => 'Due Today', 'badge_class' => 'badge-warning'];
+            }
+
+            return ['label' => 'Overdue ' . abs($daysUntilDue) . ' Days', 'badge_class' => 'badge-danger'];
+        }
+
+        if ($daysUntilDue < 0 || in_array($category, [PayrollCategoryService::UNPAID, PayrollCategoryService::FINAL_SETTLEMENT_UNPAID], true)) {
+            return ['label' => abs($daysUntilDue) . ' Days Overdue', 'badge_class' => 'badge-danger'];
+        }
+
+        return ['label' => '-', 'badge_class' => 'badge-neutral'];
+    }
+
+    private function stageBadgeClass(string $category): string
+    {
+        return match ($category) {
+            PayrollCategoryService::PAID,
+            PayrollCategoryService::FINAL_SETTLEMENT_PAID => 'badge-success',
+            PayrollCategoryService::UNPAID,
+            PayrollCategoryService::FINAL_SETTLEMENT_UNPAID => 'badge-danger',
+            PayrollCategoryService::PENDING_WORK_STATUS,
+            PayrollCategoryService::FINAL_SETTLEMENT_PENDING => 'badge-warning',
+            default => 'badge-info',
+        };
+    }
+
+    private function finalSettlementProgressSteps(string $category, bool $hasPayroll, bool $hasWorkStatus, ?EmployeePayroll $payroll): array
+    {
+        $salaryGenerated = $hasPayroll;
+        $paymentCompleted = $payroll && (float) $payroll->paid_amount >= (float) $payroll->payable_salary;
+
+        return [
+            ['label' => 'Employee Terminated', 'state' => 'done'],
+            ['label' => $hasWorkStatus ? 'Work Status Completed' : 'Work Status Pending', 'state' => $hasWorkStatus ? 'done' : 'current'],
+            ['label' => $salaryGenerated ? 'Salary Generated' : 'Salary Not Generated', 'state' => $salaryGenerated ? 'done' : ($hasWorkStatus ? 'current' : 'pending')],
+            ['label' => $paymentCompleted ? 'Payment Completed' : 'Payment Pending', 'state' => $paymentCompleted ? 'done' : ($salaryGenerated ? 'current' : 'pending')],
+            ['label' => 'Settlement Completed', 'state' => $category === PayrollCategoryService::FINAL_SETTLEMENT_PAID ? 'done' : 'pending'],
+        ];
+    }
+
+    private function addWorkStatusUrl(Employee $employee, ?Client $client, ?Carbon $salaryDate, string $category, bool $hasWorkStatus): ?string
+    {
+        if (! in_array($category, [PayrollCategoryService::PENDING_WORK_STATUS, PayrollCategoryService::FINAL_SETTLEMENT_PENDING], true) || $hasWorkStatus) {
+            return null;
+        }
+
+        $query = [
+            'entry_mode' => 'monthly',
+            'employee_id' => $employee->id,
+            'salary_month' => $salaryDate?->format('Y-m'),
+            'status' => 'working',
+            'note' => 'Salary cycle work status entry',
+            'return_to' => '/admin/payroll?status=due',
+        ];
+
+        if (! $employee->isAgencyInternal() && $client) {
+            $query['client_id'] = $client->id;
+        }
+
+        return '/admin/work-status/create?' . http_build_query(array_filter($query));
+    }
+
+    private function generateSalaryUrl(Employee $employee, ?Client $client, ?Carbon $salaryDate, array $estimate, string $category, bool $hasWorkStatus): ?string
+    {
+        if (! in_array($category, [PayrollCategoryService::SALARY_READY, PayrollCategoryService::FINAL_SETTLEMENT_PENDING], true) || ! $hasWorkStatus) {
+            return null;
+        }
+
+        $query = [
+            'employee_id' => $employee->id,
+            'client_id' => $client?->id,
+            'salary_date' => $salaryDate?->toDateString(),
+            'cycle_start' => data_get($estimate, 'salary_period_start')?->toDateString(),
+            'cycle_end' => data_get($estimate, 'salary_period_end')?->toDateString(),
+            'calculation_type' => 'date_to_date',
+            'use_work_status' => 1,
+        ];
+
+        return '/admin/payroll/create?' . http_build_query(array_filter($query, fn ($value) => $value !== null && $value !== ''));
+    }
+
+    private function formatQueueDate($date): string
+    {
+        if (! $date) {
+            return '-';
+        }
+
+        return Carbon::parse($date)->format('d M Y');
     }
 
     private function existingPayrollForPeriod(int $employeeId, ?int $clientId, Carbon $salaryMonth): ?EmployeePayroll

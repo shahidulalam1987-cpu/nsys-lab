@@ -3,14 +3,60 @@
 @section('content')
     @php
         $isUpcoming = $mode === 'upcoming';
-        $pageTitle = $isUpcoming ? 'Upcoming Salary' : 'Unpaid Salary';
+        $isFinalSettlementQueue = ! $isUpcoming && ($filters['employee_scope'] ?? '') === 'terminated';
+        $pageTitle = $isUpcoming ? 'Upcoming Salary' : ($isFinalSettlementQueue ? 'Final Settlement Queue' : 'Unpaid Salary');
     @endphp
 
-    <h1>{{ $pageTitle }}</h1>
-    <p>{{ $isUpcoming ? 'Salary dates within the next five days. This is a notification-only stage.' : 'Complete work status, salary generation, approval, and payment from this queue.' }}</p>
+    <style>
+        .settlement-workspace { display: grid; gap: 14px; }
+        .settlement-row { border: 1px solid rgba(148,163,184,.22); border-radius: 12px; background: rgba(15,23,42,.62); padding: 16px; }
+        .settlement-row-top { display: grid; grid-template-columns: minmax(220px,1.2fr) minmax(180px,.8fr) minmax(240px,1fr) minmax(220px,1fr); gap: 14px; align-items: start; }
+        .settlement-person strong { color: #e5efff; font-size: 15px; }
+        .settlement-code { color: #93c5fd; font-weight: 700; font-size: 12px; letter-spacing: .02em; }
+        .settlement-meta { color: #94a3b8; font-size: 12px; line-height: 1.6; }
+        .settlement-label { color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
+        .settlement-value { color: #e2e8f0; font-weight: 700; }
+        .settlement-period { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
+        .settlement-period span { background: rgba(2,6,23,.4); border: 1px solid rgba(148,163,184,.18); border-radius: 8px; padding: 8px; white-space: nowrap; }
+        .settlement-arrow { color: #38bdf8; font-weight: 800; }
+        .settlement-schedule { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+        .settlement-mini { background: rgba(2,6,23,.35); border: 1px solid rgba(148,163,184,.16); border-radius: 8px; padding: 8px; min-height: 62px; }
+        .settlement-mini small { color: #94a3b8; display: block; margin-bottom: 4px; }
+        .settlement-status { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .settlement-body { display: grid; grid-template-columns: minmax(220px,.8fr) minmax(220px,1fr) minmax(260px,1.2fr) minmax(180px,.7fr); gap: 14px; margin-top: 14px; align-items: stretch; }
+        .settlement-panel { background: rgba(2,6,23,.28); border: 1px solid rgba(148,163,184,.14); border-radius: 10px; padding: 12px; }
+        .settlement-money { font-size: 18px; color: #e2e8f0; font-weight: 800; }
+        .settlement-counts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .settlement-counts span { background: rgba(30,41,59,.8); border: 1px solid rgba(148,163,184,.16); border-radius: 999px; padding: 5px 8px; color: #cbd5e1; font-size: 12px; }
+        .settlement-progress { display: grid; gap: 7px; }
+        .settlement-step { display: flex; align-items: center; gap: 8px; color: #94a3b8; font-size: 12px; }
+        .settlement-dot { width: 18px; height: 18px; border-radius: 999px; border: 1px solid rgba(148,163,184,.35); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; flex: 0 0 auto; }
+        .settlement-step.done { color: #bbf7d0; }
+        .settlement-step.done .settlement-dot { background: #16a34a; border-color: #16a34a; color: #fff; }
+        .settlement-step.current { color: #fde68a; }
+        .settlement-step.current .settlement-dot { background: #f59e0b; border-color: #f59e0b; color: #111827; }
+        .settlement-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+        .settlement-helper { color: #94a3b8; font-size: 12px; line-height: 1.5; }
+        .badge-neutral { background: #64748b; }
+        .badge-info { background: #2563eb; }
+        @media (max-width: 1180px) {
+            .settlement-row-top, .settlement-body { grid-template-columns: repeat(2,minmax(0,1fr)); }
+        }
+        @media (max-width: 760px) {
+            .settlement-row-top, .settlement-body, .settlement-schedule { grid-template-columns: 1fr; }
+            .settlement-period { grid-template-columns: 1fr; }
+            .settlement-arrow { display: none; }
+        }
+    </style>
 
-    @if(! $isUpcoming && ($filters['employee_scope'] ?? '') === 'terminated')
-        <div class="card"><strong>Terminated Final Settlement</strong><br><span class="muted">Final salary work that still needs generation or payment.</span></div>
+    <h1>{{ $pageTitle }}</h1>
+    <p>{{ $isUpcoming ? 'Salary dates within the next five days. This is a notification-only stage.' : ($isFinalSettlementQueue ? 'Review final settlement status, work status readiness, salary schedule, and payment progress from one workspace.' : 'Complete work status, salary generation, approval, and payment from this queue.') }}</p>
+
+    @if($isFinalSettlementQueue)
+        <div class="card">
+            <strong>Final Settlement Workspace</strong><br>
+            <span class="muted">Settlement period, salary date, payment deadline, work status, and action readiness are prepared by the payroll services before this page renders.</span>
+        </div>
     @endif
 
     <div class="card">
@@ -47,142 +93,174 @@
         </form>
     </div>
 
-    <div class="card table-wrap">
-        <table>
-            @if($isUpcoming)
+    @if($isUpcoming)
+        <div class="card table-wrap">
+            <table>
                 <tr><th>Employee</th><th>Client</th><th>Salary Date</th><th>Days Remaining</th><th>Expected Salary</th><th>Work Status Count</th><th>Status</th></tr>
-            @else
-                <tr><th>Employee</th><th>Client</th><th>{{ ($filters['employee_scope'] ?? '') === 'terminated' ? 'Settlement Salary Date' : 'Salary Date' }}</th><th>Amount</th><th>Current Stage</th><th>Deadline Status</th><th>Action</th></tr>
-            @endif
-
+                @forelse($stageRows as $row)
+                    @php
+                        $display = $row['display'];
+                        $stage = $row['stage'];
+                        $estimate = data_get($stage, 'estimate', []);
+                    @endphp
+                    <tr>
+                        <td><a href="{{ $display['employee_url'] }}">{{ $display['employee_code'] }}</a><br><strong>{{ $display['employee_name'] }}</strong></td>
+                        <td>{{ $display['client_name'] }}</td>
+                        <td>{{ $display['settlement_salary_date'] }}</td>
+                        <td>{{ data_get($stage, 'salary_date') ? today()->diffInDays(data_get($stage, 'salary_date')) : '-' }}</td>
+                        <td>{{ $display['estimated_salary_label'] }}</td>
+                        <td>{{ number_format((float)data_get($estimate, 'actual_work_status_count', data_get($estimate, 'working_salary_count', 0)), 2) }}</td>
+                        <td><span class="badge badge-info">Upcoming Salary</span></td>
+                    </tr>
+                @empty
+                    <tr><td colspan="7">No upcoming salaries found.</td></tr>
+                @endforelse
+            </table>
+        </div>
+    @else
+        <div class="settlement-workspace">
             @forelse($stageRows as $row)
                 @php
+                    $display = $row['display'];
                     $employee = $row['employee'];
                     $stage = $row['stage'];
                     $payroll = data_get($stage, 'payroll');
-                    $estimate = data_get($stage, 'estimate', []);
-                    $salaryDate = data_get($stage, 'settlement_salary_date')
-                        ?: data_get($stage, 'salary_date')
-                        ?: $payroll?->salaryDueDate();
-                    $paymentDeadline = data_get($stage, 'payment_deadline')
-                        ?: ($employee->status === 'terminated' ? $employee->finalSettlementPaymentDeadline() : null);
-                    $amount = $payroll
-                        ? max((float)$payroll->payable_salary - (float)$payroll->paid_amount, 0)
-                        : (float)data_get($estimate, 'estimated_payable_salary', 0);
-                    $client = $payroll?->client ?: $employee->activeAssignments->first()?->client;
-                    $category = $stage['category'];
-                    $stageLabel = $stage['label'];
-                    if ($payroll?->isFinalSettlementPayroll() && (float)$payroll->paid_amount > 0 && (float)$payroll->paid_amount < (float)$payroll->payable_salary) {
-                        $stageLabel = 'Final Settlement Partial';
-                    }
-                    $deadlineDate = $employee->status === 'terminated' ? $paymentDeadline : $salaryDate;
-                    $daysUntilDue = $deadlineDate ? (int) today()->diffInDays($deadlineDate, false) : null;
-                    $overdueDays = $daysUntilDue !== null && $daysUntilDue < 0 ? abs($daysUntilDue) : 0;
+                    $isFinalRow = $employee->status === 'terminated';
                 @endphp
-                <tr>
-                    <td><a href="/admin/employees/{{ $employee->id }}">{{ $employee->employee_id }}</a><br><strong>{{ $employee->name }}</strong></td>
-                    <td>{{ $client?->company_name ?: '-' }}</td>
-                    <td>
-                        {{ $salaryDate?->toDateString() ?: '-' }}
-                        @if($employee->status === 'terminated')
-                            <br><small class="muted">Payment Deadline: {{ $paymentDeadline?->toDateString() ?: '-' }}</small>
-                        @endif
-                    </td>
-                    @if($isUpcoming)
-                        <td>{{ $salaryDate ? today()->diffInDays($salaryDate) : '-' }}</td>
-                        <td>BDT {{ number_format($amount, 2) }}</td>
-                        <td>{{ number_format((float)data_get($estimate, 'actual_work_status_count', data_get($estimate, 'working_salary_count', 0)), 2) }}</td>
-                        <td><span class="badge badge-info">Upcoming Salary</span></td>
-                    @else
-                        <td>
-                            @if(! $payroll)
-                                <small class="muted">Estimated Amount Due</small><br>
-                            @endif
-                            BDT {{ number_format($amount, 2) }}
-                            @if(! $payroll)
-                                <br><small class="muted">{{ (int)data_get($estimate, 'work_status_records', 0) > 0 ? 'Based on Work Status' : 'Work Status Missing' }}</small>
-                                <br><small class="muted">Working: {{ number_format((float)data_get($estimate, 'actual_work_status_count', data_get($estimate, 'working_salary_count', 0)), 2) }}</small>
-                                <br><small class="muted">Payable Count: {{ number_format((float)data_get($estimate, 'effective_salary_count', data_get($estimate, 'working_salary_count', 0)), 2) }}</small>
-                                <br><small class="muted">Non Working: {{ number_format((float)data_get($estimate, 'non_working_count', 0), 2) }}</small>
-                            @elseif($payroll->isFinalSettlementPayroll())
-                                <br><small class="muted">Working: {{ number_format((float)$payroll->working_days, 2) }}</small>
-                                <br><small class="muted">Non Working: {{ number_format((float)$payroll->non_working_days, 2) }}</small>
-                            @endif
-                        </td>
-                        <td><span class="badge {{ in_array($category, ['unpaid', 'final_settlement_unpaid']) ? 'badge-danger' : 'badge-warning' }}">{{ $stageLabel }}</span></td>
-                        <td>
-                            @if($employee->status === 'terminated' && $salaryDate)
-                                @if($daysUntilDue > 0)
-                                    Final Settlement Due In: {{ $daysUntilDue }} Days
-                                @elseif($daysUntilDue === 0)
-                                    Final Settlement Due Today
-                                @else
-                                    Final Settlement Overdue: {{ $overdueDays }} Days
-                                @endif
-                            @elseif($overdueDays > 0)
-                                {{ $overdueDays }} Days Overdue
-                            @else
-                                -
-                            @endif
-                            @if($category === \App\Services\PayrollCategoryService::FINAL_SETTLEMENT_PENDING)
-                                <br><small class="muted">Final salary not generated yet</small>
-                            @endif
-                        </td>
-                        <td>
-                            @if($category === \App\Services\PayrollCategoryService::PENDING_WORK_STATUS || ($category === \App\Services\PayrollCategoryService::FINAL_SETTLEMENT_PENDING && (int)data_get($estimate, 'work_status_records', 0) === 0))
-                                @php
-                                    $query = ['entry_mode' => 'monthly', 'employee_id' => $employee->id, 'salary_month' => $salaryDate?->format('Y-m'), 'status' => 'working', 'note' => 'Salary cycle work status entry', 'return_to' => '/admin/payroll?status=due'];
-                                    if (! $employee->isAgencyInternal() && $client) { $query['client_id'] = $client->id; }
-                                @endphp
-                                <a class="btn" href="/admin/work-status/create?{{ http_build_query(array_filter($query)) }}">Add Work Status</a>
-                            @elseif(in_array($category, [\App\Services\PayrollCategoryService::SALARY_READY, \App\Services\PayrollCategoryService::FINAL_SETTLEMENT_PENDING], true))
-                                @php
-                                    $generateQuery = [
-                                        'employee_id' => $employee->id,
-                                        'client_id' => $client?->id,
-                                        'salary_date' => $salaryDate?->toDateString(),
-                                        'cycle_start' => data_get($estimate, 'salary_period_start')?->toDateString(),
-                                        'cycle_end' => data_get($estimate, 'salary_period_end')?->toDateString(),
-                                        'calculation_type' => 'date_to_date',
-                                        'use_work_status' => 1,
-                                    ];
-                                @endphp
-                                <a class="btn" href="/admin/payroll/create?{{ http_build_query(array_filter($generateQuery, fn ($value) => $value !== null && $value !== '')) }}">{{ $employee->status === 'terminated' ? 'Generate Final Salary' : 'Generate Salary' }}</a>
-                            @elseif($payroll)
-                                <a href="/admin/payroll/{{ $payroll->id }}">View</a> |
-                                <a href="/admin/payroll/{{ $payroll->id }}/edit">Edit</a>
-                                @if($payroll->canMarkPaid() && $payroll->payroll_status !== 'paid')
-                                    | <button class="btn" type="button" onclick="document.getElementById('confirm-payment-{{ $payroll->id }}').style.display='flex';">Confirm Payment</button>
-                                @endif
-                            @endif
-                        </td>
-                    @endif
-                </tr>
 
-                @if(! $isUpcoming && $payroll?->canMarkPaid() && $payroll->payroll_status !== 'paid')
-                    <tr><td colspan="7" style="padding:0;border:0;">
-                        <div id="confirm-payment-{{ $payroll->id }}" style="display:none;position:fixed;inset:0;background:rgba(2,6,23,.74);z-index:100;align-items:center;justify-content:center;padding:20px;">
-                            <div class="card" style="max-width:720px;width:100%;">
-                                <h2>Confirm Payment</h2>
-                                <p>{{ $payroll->snapshotEmployeeName() }} | Payable BDT {{ number_format($payroll->payable_salary, 2) }}</p>
-                                <form method="POST" action="/admin/payroll/{{ $payroll->id }}/confirm-payment" enctype="multipart/form-data">
-                                    @csrf
-                                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
-                                        <label>Payment Date<br><input type="date" name="payment_date" value="{{ today()->toDateString() }}" required></label>
-                                        <label>Finance Account<br><select name="finance_account_id" required><option value="">Select Account</option>@foreach($financeAccounts as $account)<option value="{{ $account->id }}">{{ $account->account_name }} - BDT {{ number_format($account->current_balance, 2) }}</option>@endforeach</select></label>
-                                        <label>Transaction Reference<br><input type="text" name="transaction_id" required></label>
-                                        <label>Payment Proof<br><input type="file" name="salary_payment_attachment" accept="image/*"></label>
-                                        <label style="grid-column:1/-1;">Payment Note<br><textarea name="payment_note" required>Salary payment for {{ $payroll->salary_month?->format('F Y') }}</textarea></label>
-                                    </div>
-                                    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:12px;"><button type="button" class="btn" onclick="document.getElementById('confirm-payment-{{ $payroll->id }}').style.display='none';">Cancel</button><button class="btn" type="submit">Confirm Payment</button></div>
-                                </form>
+                <div class="settlement-row">
+                    <div class="settlement-row-top">
+                        <div class="settlement-person">
+                            <div class="settlement-label">Employee Summary</div>
+                            <a class="settlement-code" href="{{ $display['employee_url'] }}">{{ $display['employee_code'] }}</a><br>
+                            <strong>{{ $display['employee_name'] }}</strong>
+                            <div class="settlement-meta">
+                                {{ $display['department'] }} · {{ $display['role'] }}<br>
+                                {{ $display['employment_type'] }} · <span class="badge badge-neutral">{{ $display['current_status'] }}</span>
                             </div>
                         </div>
-                    </td></tr>
+
+                        <div>
+                            <div class="settlement-label">Client</div>
+                            <div class="settlement-value">{{ $display['client_name'] }}</div>
+                            @if($display['legacy_metadata'])
+                                <div style="margin-top:8px;">
+                                    <span class="badge badge-warning" title="Resolved using compatibility mapping.">Legacy Payroll Metadata</span>
+                                </div>
+                            @endif
+                        </div>
+
+                        <div>
+                            <div class="settlement-label">Termination Summary</div>
+                            @if($isFinalRow)
+                                <div class="settlement-meta">Last Working Date: <strong>{{ $display['last_working_date'] }}</strong></div>
+                                <div class="settlement-period" title="Final settlement period is resolved by payroll cycle services.">
+                                    <span>{{ $display['settlement_period_start'] }}</span>
+                                    <b class="settlement-arrow">→</b>
+                                    <span>{{ $display['settlement_period_end'] }}</span>
+                                </div>
+                            @else
+                                <div class="settlement-meta">Regular payroll queue item</div>
+                            @endif
+                        </div>
+
+                        <div>
+                            <div class="settlement-label">Current Status</div>
+                            <div class="settlement-status">
+                                <span class="badge {{ $display['stage_badge_class'] }}">{{ $display['stage_label'] }}</span>
+                                <span class="badge {{ $display['deadline_badge_class'] }}">{{ $display['deadline_label'] }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settlement-body">
+                        <div class="settlement-panel">
+                            <div class="settlement-label">Salary Schedule</div>
+                            <div class="settlement-schedule">
+                                <div class="settlement-mini"><small>Salary Day</small><strong>{{ $display['salary_day'] }}</strong></div>
+                                <div class="settlement-mini" title="The official salary date for this final settlement cycle."><small>{{ $isFinalRow ? 'Settlement Salary Date' : 'Salary Date' }}</small><strong>{{ $display['settlement_salary_date'] }}</strong></div>
+                                <div class="settlement-mini" title="The last date allowed for settlement payment before it becomes overdue."><small>Payment Deadline</small><strong>{{ $display['payment_deadline'] }}</strong></div>
+                            </div>
+                        </div>
+
+                        <div class="settlement-panel">
+                            <div class="settlement-label">Estimated Salary</div>
+                            <div class="settlement-money">{{ $display['estimated_salary_label'] }}</div>
+                            <div class="settlement-helper">{{ $display['estimated_salary_help'] }}</div>
+                        </div>
+
+                        <div class="settlement-panel">
+                            <div class="settlement-label">Work Status</div>
+                            <div class="settlement-value">{{ $display['work_status_label'] }}</div>
+                            @if(! $display['has_work_status'])
+                                <div class="settlement-helper">{{ $display['work_status_help'] }}</div>
+                            @else
+                                <div class="settlement-counts">
+                                    <span>Working {{ number_format($display['working_count'], 2) }}</span>
+                                    <span>Payable {{ number_format($display['payable_count'], 2) }}</span>
+                                    <span>Non Working {{ number_format($display['non_working_count'], 2) }}</span>
+                                </div>
+                            @endif
+                        </div>
+
+                        <div class="settlement-panel">
+                            <div class="settlement-label">Action</div>
+                            <div class="settlement-actions">
+                                @if($display['add_work_status_url'])
+                                    <a class="btn" href="{{ $display['add_work_status_url'] }}">Add Work Status</a>
+                                    <span class="settlement-helper">Generates Work Status only for the Final Settlement Period.</span>
+                                @elseif($display['generate_salary_url'])
+                                    <a class="btn" href="{{ $display['generate_salary_url'] }}">{{ $isFinalRow ? 'Generate Final Salary' : 'Generate Salary' }}</a>
+                                @elseif($payroll)
+                                    <a class="btn" href="{{ $display['payroll_view_url'] }}">View Payroll</a>
+                                    <a href="{{ $display['payroll_edit_url'] }}">Edit</a>
+                                    @if($display['can_confirm_payment'])
+                                        <button class="btn" type="button" onclick="document.getElementById('confirm-payment-{{ $payroll->id }}').style.display='flex';">Confirm Payment</button>
+                                    @endif
+                                @else
+                                    <span class="settlement-helper">No action available.</span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    @if($isFinalRow)
+                        <div class="settlement-panel" style="margin-top:14px;">
+                            <div class="settlement-label">Final Settlement Progress</div>
+                            <div class="settlement-progress">
+                                @foreach($display['progress_steps'] as $step)
+                                    <div class="settlement-step {{ $step['state'] }}">
+                                        <span class="settlement-dot">{{ $step['state'] === 'done' ? '✓' : ($step['state'] === 'current' ? '•' : '') }}</span>
+                                        <span>{{ $step['label'] }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                </div>
+
+                @if($payroll?->canMarkPaid() && $payroll->payroll_status !== 'paid')
+                    <div id="confirm-payment-{{ $payroll->id }}" style="display:none;position:fixed;inset:0;background:rgba(2,6,23,.74);z-index:100;align-items:center;justify-content:center;padding:20px;">
+                        <div class="card" style="max-width:720px;width:100%;">
+                            <h2>Confirm Payment</h2>
+                            <p>{{ $payroll->snapshotEmployeeName() }} | Payable BDT {{ number_format($payroll->payable_salary, 2) }}</p>
+                            <form method="POST" action="/admin/payroll/{{ $payroll->id }}/confirm-payment" enctype="multipart/form-data">
+                                @csrf
+                                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+                                    <label>Payment Date<br><input type="date" name="payment_date" value="{{ today()->toDateString() }}" required></label>
+                                    <label>Finance Account<br><select name="finance_account_id" required><option value="">Select Account</option>@foreach($financeAccounts as $account)<option value="{{ $account->id }}">{{ $account->account_name }} - BDT {{ number_format($account->current_balance, 2) }}</option>@endforeach</select></label>
+                                    <label>Transaction Reference<br><input type="text" name="transaction_id" required></label>
+                                    <label>Payment Proof<br><input type="file" name="salary_payment_attachment" accept="image/*"></label>
+                                    <label style="grid-column:1/-1;">Payment Note<br><textarea name="payment_note" required>Salary payment for {{ $payroll->salary_month?->format('F Y') }}</textarea></label>
+                                </div>
+                                <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:12px;"><button type="button" class="btn" onclick="document.getElementById('confirm-payment-{{ $payroll->id }}').style.display='none';">Cancel</button><button class="btn" type="submit">Confirm Payment</button></div>
+                            </form>
+                        </div>
+                    </div>
                 @endif
             @empty
-                <tr><td colspan="7">{{ $isUpcoming ? 'No upcoming salaries found.' : 'No unpaid salary work found.' }}</td></tr>
+                <div class="card">{{ $isFinalSettlementQueue ? 'No final settlement work found.' : 'No unpaid salary work found.' }}</div>
             @endforelse
-        </table>
-    </div>
+        </div>
+    @endif
 @endsection
