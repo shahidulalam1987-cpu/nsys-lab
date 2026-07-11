@@ -83,6 +83,16 @@ class NotificationCenterService
     {
         $open = $this->sync();
 
+        return $this->summaryFrom($open);
+    }
+
+    public function readSummary(): array
+    {
+        return $this->summaryFrom($this->openNotifications());
+    }
+
+    private function summaryFrom(Collection $open): array
+    {
         return [
             'critical' => $open->where('priority', 'critical')->count(),
             'warning' => $open->where('priority', 'warning')->count(),
@@ -105,6 +115,16 @@ class NotificationCenterService
     {
         $open = $this->sync();
 
+        return $this->groupedFrom($open, $limitPerPriority);
+    }
+
+    public function readGroupedOpenNotifications(int $limitPerPriority = 8): array
+    {
+        return $this->groupedFrom($this->openNotifications(), $limitPerPriority);
+    }
+
+    private function groupedFrom(Collection $open, int $limitPerPriority = 8): array
+    {
         return [
             'critical' => $open->where('priority', 'critical')->take($limitPerPriority)->values(),
             'warning' => $open->where('priority', 'warning')->take($limitPerPriority)->values(),

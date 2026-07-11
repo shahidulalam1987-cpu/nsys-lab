@@ -2,7 +2,7 @@
 
 @section('content')
     <h1>Create BM</h1>
-    <a class="btn" href="/admin/business-managers">Back to BM Management</a>
+    <a class="btn" href="/admin/business-managers">Back to Business Managers</a>
 
     @include('admin.business-managers.partials.form', [
         'action' => '/admin/business-managers',

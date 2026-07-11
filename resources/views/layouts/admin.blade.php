@@ -177,6 +177,7 @@
 
         .content {
             flex: 1;
+            min-width: 0;
             padding: 30px;
         }
 
@@ -418,83 +419,30 @@
                 min-width: 800px;
             }
         }
+
+        @media (max-width: 900px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 520px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 
 <body>
     @php
-        $authUser = auth()->user();
-        $canDashboard = $authUser->hasPermission('dashboard.view');
-        $canFinance = $authUser->hasPermission('finance.view');
-        $canClients = $authUser->hasPermission('clients.view');
-        $canEmployees = $authUser->hasAnyPermission(['employees.view', 'departments.view', 'employee_roles.view', 'assignments.view', 'attendance.view', 'work_status.view', 'payroll.view', 'notices.view']);
-        $canFacebook = $authUser->hasAnyPermission(['facebook.view', 'daily_reports.view', 'marketing_operations.view']);
-        $canTikTok = $authUser->hasPermission('tiktok.view');
-        $canMarketingOperations = $authUser->hasAnyPermission(['marketing_operations.view', 'facebook.view', 'daily_reports.view', 'tiktok.view']);
-        $canSystemTools = $authUser->hasPermission('system_tools.view');
-        $employeeLanding = $authUser->hasPermission('employees.view') ? '/admin/employee-dashboard' : '/admin/work-status';
-        $facebookLanding = '/admin/marketing-operations';
-        $isSystemTools = request()->is('admin/bug-tracker*')
-            || request()->is('admin/automation*')
-            || request()->is('admin/documents*')
-            || request()->is('admin/activity-log*')
-            || request()->is('admin/security-audit*')
-            || request()->is('admin/test-data-reset*');
-        $isClientDepartment = request()->is('admin/client-dashboard')
-            || request()->is('admin/clients*')
-            || request()->is('admin/client-users*')
-            || (($canClients) && (request()->is('admin/client-fund*') || request()->is('admin/salary-payments*')));
-        $isEmployeeDepartment = request()->is('admin/employee-dashboard')
-            || request()->is('admin/employees*')
-            || request()->is('admin/departments*')
-            || request()->is('admin/employee-roles*')
-            || request()->is('admin/salary-month-sheet*')
-            || request()->is('admin/attendance*')
-            || request()->is('admin/assignments*')
-            || request()->is('admin/work-status*')
-            || request()->is('admin/employee-notices*')
-            || request()->is('admin/employee-kpi*')
-            || request()->is('admin/leaderboard*')
-            || request()->is('admin/performance-targets*')
-            || request()->is('admin/bonuses*')
-            || request()->is('admin/payroll*');
-        $isTikTok = request()->is('admin/tiktok*');
-        $isFinancialManagement = request()->is('admin/financial-management*')
-            || request()->is('admin/finance*')
-            || request()->is('admin/facebook-cards*')
-            || request()->is('admin/facebook-financial*')
-            || (($canFinance && ! $canClients) && (request()->is('admin/client-fund*') || request()->is('admin/salary-payments*')));
-        $isFacebook = request()->is('admin/marketing-operations*')
-            || request()->is('admin/tiktok*')
-            || request()->is('admin/facebook-dashboard')
-            || request()->is('admin/business-managers*')
-            || request()->is('admin/ad-accounts*')
-            || request()->is('admin/ad-account-ledger*')
-            || request()->is('admin/client-pages*')
-            || request()->is('admin/campaigns*')
-            || request()->is('admin/daily-reports*')
-            || request()->is('admin/employee-submissions*')
-            || request()->is('admin/performance-verification*')
-            || request()->is('admin/profit-history*');
-        $isAdminDashboard = request()->is('admin/dashboard') || request()->is('admin/notifications*') || request()->is('admin/executive-performance*');
-        $notificationHeaderSummary = $canSystemTools
-            ? app(\App\Services\NotificationCenterService::class)->summary()
-            : ['unread' => 0];
-        $openBugCount = $canSystemTools ? \App\Models\BugReport::where('status', 'open')->count() : 0;
-        $clientFundBadges = ($isEmployeeDepartment || $isClientDepartment)
-            ? app(\App\Services\ClientFundDashboardService::class)->sidebarBadges()
-            : ['upcoming_salary_count' => 0, 'unpaid_salary_count' => 0, 'pending_payment_count' => 0];
-        $facebookBadges = ($authUser->hasAnyPermission(['facebook.view', 'marketing_operations.view']) && ($isFacebook || $isAdminDashboard))
-            ? [
-                'billing_alert_count' => \App\Models\AdAccount::all()->filter(fn ($account) => in_array($account->billingStatus(), ['upcoming', 'overdue'], true))->count(),
-            ]
-            : ['billing_alert_count' => 0];
-        $financialBadges = ($canFinance && ($isFinancialManagement || $isAdminDashboard))
-            ? [
-                'low_card_count' => \App\Models\FacebookCard::all()->filter(fn ($card) => $card->effectiveStatus() === 'low_balance')->count(),
-                'low_funding_count' => \App\Models\FundingBalance::all()->filter(fn ($balance) => $balance->isLowBalance())->count(),
-            ]
-            : ['low_card_count' => 0, 'low_funding_count' => 0];
+        $navigation = app(\App\Services\NavigationService::class)->forRequest(request());
+        $sections = $navigation['sections'];
+        $activeSection = $navigation['active_section'];
+        $breadcrumbs = $navigation['breadcrumbs'];
+        $notificationItem = collect($sections)
+            ->flatMap(fn ($section) => $section['items'])
+            ->firstWhere('key', 'notifications');
     @endphp
 
     <div class="topbar">
@@ -502,55 +450,25 @@
             <div class="brand">NSYS Agency Admin</div>
 
             <div class="department-tabs">
-                @if($canDashboard)
-                <a class="department-tab {{ $isAdminDashboard ? 'active-department' : '' }}" href="/admin/dashboard">
-                    Agency Dashboard
-                    @if($notificationHeaderSummary['unread'] > 0)
-                        <span class="header-count-badge">{{ $notificationHeaderSummary['unread'] }}</span>
-                    @endif
-                </a>
-                @endif
-                @if($canFinance)
-                <a class="department-tab {{ $isFinancialManagement ? 'active-department' : '' }}" href="/admin/financial-management">
-                    Finance
-                    @if(($financialBadges['low_card_count'] + $financialBadges['low_funding_count']) > 0)
-                        <span class="header-count-badge">{{ $financialBadges['low_card_count'] + $financialBadges['low_funding_count'] }}</span>
-                    @endif
-                </a>
-                @endif
-                @if($canClients)
-                <a class="department-tab {{ $isClientDepartment ? 'active-department' : '' }}" href="/admin/client-dashboard">Clients</a>
-                @endif
-                @if($canEmployees)
-                <a class="department-tab {{ $isEmployeeDepartment ? 'active-department' : '' }}" href="{{ $employeeLanding }}">Employees</a>
-                @endif
-                @if($canMarketingOperations)
-                <a class="department-tab {{ $isFacebook ? 'active-department' : '' }}" href="{{ $facebookLanding }}">
-                    Marketing Operations
-                    @if($facebookBadges['billing_alert_count'] > 0)
-                        <span class="header-count-badge">{{ $facebookBadges['billing_alert_count'] }}</span>
-                    @endif
-                </a>
-                @endif
-                @if($canSystemTools)
-                <a class="department-tab {{ $isSystemTools ? 'active-department' : '' }}" href="/admin/bug-tracker">
-                    System Tools
-                    @if($openBugCount > 0)
-                        <span class="header-count-badge">{{ $openBugCount }}</span>
-                    @endif
-                </a>
-                @endif
+                @foreach($sections as $section)
+                    <a class="department-tab {{ $section['active'] ? 'active-department' : '' }}" href="{{ $section['url'] }}">
+                        {{ $section['label'] }}
+                        @if($section['badge'] > 0)
+                            <span class="header-count-badge">{{ $section['badge'] }}</span>
+                        @endif
+                    </a>
+                @endforeach
             </div>
         </div>
 
         <div style="display:flex;align-items:center;gap:10px;">
-            @if($canSystemTools)
-            <a class="department-tab {{ request()->is('admin/notifications*') ? 'active-department' : '' }}" href="/admin/notifications" title="Notification Center">
-                Alerts
-                @if($notificationHeaderSummary['unread'] > 0)
-                    <span class="header-count-badge">{{ $notificationHeaderSummary['unread'] }}</span>
-                @endif
-            </a>
+            @if($notificationItem)
+                <a class="department-tab {{ $notificationItem['active'] ? 'active-department' : '' }}" href="{{ $notificationItem['url'] }}" title="Notification Center">
+                    Alerts
+                    @if($notificationItem['badge'] > 0)
+                        <span class="header-count-badge">{{ $notificationItem['badge'] }}</span>
+                    @endif
+                </a>
             @endif
             <form method="POST" action="/logout">
                 @csrf
@@ -561,180 +479,38 @@
 
     <div class="layout">
         <div class="sidebar">
-            @if($isSystemTools)
-                <div class="sidebar-section-title">System Tools</div>
-                <a class="{{ request()->is('admin/bug-tracker*') ? 'active-menu' : '' }}" href="/admin/bug-tracker">Bug Tracker</a>
-                <a class="{{ request()->is('admin/automation*') ? 'active-menu' : '' }}" href="/admin/automation">Automation</a>
-                <a class="{{ request()->is('admin/documents*') ? 'active-menu' : '' }}" href="/admin/documents">Documents</a>
-                <a class="{{ request()->is('admin/activity-log*') ? 'active-menu' : '' }}" href="/admin/activity-log">Activity Log</a>
-                <a class="{{ request()->is('admin/security-audit*') ? 'active-menu' : '' }}" href="/admin/security-audit">Security Audit</a>
-                <a class="{{ request()->is('admin/test-data-reset*') ? 'active-menu' : '' }}" href="/admin/test-data-reset">Test Data Reset</a>
-                <div class="sidebar-section-title">Future Ready</div>
-                <a class="sidebar-muted" href="#" onclick="return false;">Backup</a>
-                <a class="sidebar-muted" href="#" onclick="return false;">System Health</a>
-                <a class="sidebar-muted" href="#" onclick="return false;">Error Logs</a>
-            @elseif($isTikTok)
-                <div class="sidebar-section-title">Marketing Operations</div>
-                <a class="{{ request()->is('admin/marketing-operations') ? 'active-menu' : '' }}" href="/admin/marketing-operations">Dashboard</a>
-                <a class="{{ request()->is('admin/marketing-operations/moderator/operations*') ? 'active-menu' : '' }}" href="/admin/marketing-operations/moderator/operations">Moderator Operations</a>
-                <a class="{{ request()->is('admin/marketing-operations/ad-manager/operations*') ? 'active-menu' : '' }}" href="/admin/marketing-operations/ad-manager/operations">Ad Manager Operations</a>
-                <a class="{{ request()->is('admin/marketing-operations/auditor/operations*') ? 'active-menu' : '' }}" href="/admin/marketing-operations/auditor/operations">Auditor Operations</a>
-                <a class="{{ request()->is('admin/marketing-operations/monitor/operations*') ? 'active-menu' : '' }}" href="/admin/marketing-operations/monitor/operations">Monitor Operations</a>
-                <a class="{{ request()->is('admin/marketing-operations/agency') ? 'active-menu' : '' }}" href="/admin/marketing-operations/agency">Agency Operations</a>
-                <a class="{{ request()->is('admin/marketing-operations/reports') ? 'active-menu' : '' }}" href="/admin/marketing-operations/reports">Reports</a>
-                <a class="{{ request()->is('admin/marketing-operations/settings') ? 'active-menu' : '' }}" href="/admin/marketing-operations/settings">Settings</a>
-            @elseif($isFinancialManagement)
-                <div class="sidebar-section-title">Finance</div>
-
-                <a class="sidebar-link-with-badge {{ request()->is('admin/facebook-financial/funding-dashboard*') ? 'active-menu' : '' }}" href="/admin/facebook-financial/funding-dashboard">
-                    <span>Funding Dashboard</span>
-                    @if($financialBadges['low_funding_count'] > 0)
-                        <span class="sidebar-count-badge danger">{{ $financialBadges['low_funding_count'] }}</span>
-                    @endif
-                </a>
-                <a class="{{ request()->is('admin/finance/accounts*') ? 'active-menu' : '' }}" href="/admin/finance/accounts">Finance Accounts</a>
-                <a class="sidebar-link-with-badge {{ request()->is('admin/facebook-cards*') || request()->is('admin/facebook-financial/card-loads*') || request()->is('admin/facebook-financial/card-transactions*') || request()->is('admin/facebook-financial/binance-purchases*') ? 'active-menu' : '' }}" href="/admin/facebook-cards">
-                    <span>Card Management</span>
-                    @if($financialBadges['low_card_count'] > 0)
-                        <span class="sidebar-count-badge danger">{{ $financialBadges['low_card_count'] }}</span>
-                    @endif
-                </a>
-                <a class="{{ request()->is('admin/finance/family-expenses*') ? 'active-menu' : '' }}" href="/admin/finance/family-expenses">Family Expenses</a>
-                <a class="{{ request()->is('admin/finance/loans*') ? 'active-menu' : '' }}" href="/admin/finance/loans">Loan Management</a>
-            @elseif($isClientDepartment)
-                <div class="sidebar-section-title">Clients</div>
-
-                <div class="sidebar-section-title">Client Management</div>
-                <a class="{{ request()->is('admin/client-dashboard') ? 'active-menu' : '' }}" href="/admin/client-dashboard">Client Dashboard</a>
-                <a class="{{ request()->is('admin/clients') || request()->is('admin/clients/create') ? 'active-menu' : '' }}" href="/admin/clients">Client List</a>
-                <a class="{{ request()->is('admin/client-users*') ? 'active-menu' : '' }}" href="/admin/client-users">Client Users</a>
-                <a class="{{ request()->is('admin/clients/*') ? 'active-menu' : '' }}" href="/admin/clients">Client Details</a>
-
-                <div class="sidebar-section-title">Client Fund</div>
-                <a class="{{ request()->is('admin/client-fund*') ? 'active-menu' : '' }}" href="/admin/client-fund">Dashboard</a>
-                <a class="{{ request()->is('admin/salary-payments/create') ? 'active-menu' : '' }}" href="/admin/salary-payments/create">Receive Payment</a>
-                <a class="sidebar-link-with-badge {{ request()->is('admin/salary-payments/pending') ? 'active-menu' : '' }}" href="/admin/salary-payments/pending">
-                    <span>Pending Payments</span>
-                    @if($clientFundBadges['pending_payment_count'] > 0)
-                        <span class="sidebar-count-badge danger">{{ $clientFundBadges['pending_payment_count'] }}</span>
-                    @endif
-                </a>
-                <a class="{{ request()->is('admin/salary-payments') && ! request()->filled('status') ? 'active-menu' : '' }}" href="/admin/salary-payments">Payment History</a>
-
-                <div class="sidebar-section-title">Client Portal</div>
-                <a class="sidebar-muted" href="#" onclick="return false;">Client Portal</a>
-            @elseif($isEmployeeDepartment)
-                <div class="sidebar-section-title">Employees</div>
-
-                <div class="sidebar-section-title">Employee Management</div>
-                @if($authUser->hasPermission('employees.view'))
-                <a class="{{ request()->is('admin/employee-dashboard') ? 'active-menu' : '' }}" href="/admin/employee-dashboard">Employee Dashboard</a>
-                <a class="{{ request()->is('admin/employees*') ? 'active-menu' : '' }}" href="/admin/employees">Employee List</a>
-                @if($authUser->hasPermission('departments.view'))
-                <a class="{{ request()->is('admin/departments*') ? 'active-menu' : '' }}" href="/admin/departments">Departments</a>
-                @endif
-                @if($authUser->hasPermission('employee_roles.view'))
-                <a class="{{ request()->is('admin/employee-roles*') ? 'active-menu' : '' }}" href="/admin/employee-roles">Roles</a>
-                @endif
-                @if($authUser->hasPermission('kpi.view'))<a class="{{ request()->is('admin/employee-kpi*') ? 'active-menu' : '' }}" href="/admin/employee-kpi">Performance Dashboard</a>@endif
-                @if($authUser->hasPermission('leaderboard.view'))<a class="{{ request()->is('admin/leaderboard*') ? 'active-menu' : '' }}" href="/admin/leaderboard">Leaderboard</a>@endif
-                @if($authUser->hasPermission('targets.manage'))<a class="{{ request()->is('admin/performance-targets*') ? 'active-menu' : '' }}" href="/admin/performance-targets">Performance Targets</a>@endif
-                @endif
-                @if($authUser->hasPermission('bonus.view'))<a class="{{ request()->is('admin/bonuses*') ? 'active-menu' : '' }}" href="/admin/bonuses">Bonus Review</a>@endif
-
-                @if($authUser->hasPermission('assignments.view'))
-                <div class="sidebar-section-title">Assignments</div>
-                <a class="{{ request()->is('admin/assignments*') ? 'active-menu' : '' }}" href="/admin/assignments">Assignment Management</a>
-                @endif
-
-                <div class="sidebar-section-title">Operations</div>
-                @if($authUser->hasPermission('work_status.view'))
-                <a class="{{ request()->is('admin/work-status*') ? 'active-menu' : '' }}" href="/admin/work-status">Work Status</a>
-                @endif
-                @if($authUser->hasPermission('attendance.view'))
-                <a class="{{ request()->is('admin/attendance*') ? 'active-menu' : '' }}" href="/admin/attendance">Attendance</a>
-                @endif
-
-                @if($authUser->hasPermission('notices.view'))
-                <div class="sidebar-section-title">Employee Portal</div>
-                <a class="{{ request()->is('admin/employee-notices*') ? 'active-menu' : '' }}" href="/admin/employee-notices">Notice Board</a>
-                @endif
-
-                @if($authUser->hasPermission('payroll.view'))
-                <div class="sidebar-section-title">Payroll</div>
-                <a class="{{ request()->is('admin/payroll') && ! request()->filled('status') ? 'active-menu' : '' }}" href="/admin/payroll">Payroll Dashboard</a>
-                <a class="sidebar-link-with-badge {{ request()->is('admin/payroll') && request('status') === 'upcoming' ? 'active-menu' : '' }}" href="/admin/payroll?status=upcoming">
-                    <span>Upcoming Salary</span>
-                    @if($clientFundBadges['upcoming_salary_count'] > 0)
-                        <span class="sidebar-count-badge">{{ $clientFundBadges['upcoming_salary_count'] }}</span>
-                    @endif
-                </a>
-                <a class="sidebar-link-with-badge {{ request()->is('admin/payroll') && request('status') === 'due' ? 'active-menu' : '' }}" href="/admin/payroll?status=due">
-                    <span>Unpaid Salary</span>
-                    @if($clientFundBadges['unpaid_salary_count'] > 0)
-                        <span class="sidebar-count-badge danger">{{ $clientFundBadges['unpaid_salary_count'] }}</span>
-                    @endif
-                </a>
-                <a class="{{ request()->is('admin/salary-month-sheet*') ? 'active-menu' : '' }}" href="/admin/salary-month-sheet">Salary Report</a>
-                @endif
-            @elseif($isFacebook)
-                <div class="sidebar-section-title">Marketing Operations</div>
-                <a class="{{ request()->is('admin/marketing-operations') || request()->is('admin/facebook-dashboard') ? 'active-menu' : '' }}" href="/admin/marketing-operations">Dashboard</a>
-                <a class="{{ request()->is('admin/marketing-operations/moderator/operations*') ? 'active-menu' : '' }}" href="/admin/marketing-operations/moderator/operations">Moderator Operations</a>
-                <a class="{{ request()->is('admin/marketing-operations/ad-manager/operations*') ? 'active-menu' : '' }}" href="/admin/marketing-operations/ad-manager/operations">Ad Manager Operations</a>
-                <a class="{{ request()->is('admin/marketing-operations/auditor/operations*') ? 'active-menu' : '' }}" href="/admin/marketing-operations/auditor/operations">Auditor Operations</a>
-                <a class="{{ request()->is('admin/marketing-operations/monitor/operations*') ? 'active-menu' : '' }}" href="/admin/marketing-operations/monitor/operations">Monitor Operations</a>
-                <a class="{{ request()->is('admin/marketing-operations/agency') ? 'active-menu' : '' }}" href="/admin/marketing-operations/agency">Agency Operations</a>
-                <a class="{{ request()->is('admin/marketing-operations/reports') ? 'active-menu' : '' }}" href="/admin/marketing-operations/reports">Reports</a>
-                <a class="{{ request()->is('admin/marketing-operations/settings') ? 'active-menu' : '' }}" href="/admin/marketing-operations/settings">Settings</a>
-                <div class="sidebar-section-title">Legacy Meta Tools</div>
-                @if($authUser->hasPermission('facebook.view'))
-                <a class="{{ request()->is('admin/business-managers*') ? 'active-menu' : '' }}" href="/admin/business-managers">BM Management</a>
-                <a class="sidebar-link-with-badge {{ request()->is('admin/ad-accounts*') ? 'active-menu' : '' }}" href="/admin/ad-accounts">
-                    <span>Ad Account Management</span>
-                    @if($facebookBadges['billing_alert_count'] > 0)
-                        <span class="sidebar-count-badge danger">{{ $facebookBadges['billing_alert_count'] }}</span>
-                    @endif
-                </a>
-                <a class="{{ request()->is('admin/ad-account-ledger*') ? 'active-menu' : '' }}" href="/admin/ad-account-ledger">Ad Account Ledger</a>
-                <a class="{{ request()->is('admin/client-pages*') ? 'active-menu' : '' }}" href="/admin/client-pages">Page Management</a>
-                <a class="{{ request()->is('admin/campaigns*') ? 'active-menu' : '' }}" href="/admin/campaigns">Campaign Management</a>
-                @endif
-                @if($authUser->hasPermission('daily_reports.view'))
-                <a class="{{ request()->is('admin/daily-reports*') ? 'active-menu' : '' }}" href="/admin/daily-reports">Daily Performance Entry</a>
-                <a class="{{ request()->is('admin/employee-submissions*') ? 'active-menu' : '' }}" href="/admin/employee-submissions">Employee Submissions</a>
-                @if($authUser->hasPermission('performance.view'))<a class="{{ request()->is('admin/performance-verification*') ? 'active-menu' : '' }}" href="/admin/performance-verification">Performance Verification</a>@endif
-                @endif
-                @if($authUser->hasPermission('facebook.view'))
-                <a class="{{ request()->is('admin/profit-history') ? 'active-menu' : '' }}" href="/admin/profit-history">Analytics Dashboard</a>
-                <a class="sidebar-muted" href="#" onclick="return false;">Orders & Leads</a>
-                <a class="sidebar-muted" href="#" onclick="return false;">Client Reports</a>
-                @endif
-            @else
-                <div class="sidebar-section-title">Agency Dashboard</div>
-                <a class="{{ request()->is('admin/dashboard') ? 'active-menu' : '' }}" href="/admin/dashboard">Overview</a>
-                <a class="{{ request()->is('admin/executive-performance*') ? 'active-menu' : '' }}" href="/admin/executive-performance">Executive Dashboard</a>
-                <a class="{{ request()->is('admin/automation*') ? 'active-menu' : '' }}" href="/admin/automation">Automation</a>
-                <a class="sidebar-link-with-badge {{ request()->is('admin/notifications*') ? 'active-menu' : '' }}" href="/admin/notifications">
-                    <span>Notification Center</span>
-                    @if($notificationHeaderSummary['unread'] > 0)
-                        <span class="sidebar-count-badge danger">{{ $notificationHeaderSummary['unread'] }}</span>
-                    @endif
-                </a>
+            @if($activeSection)
+                <div class="sidebar-section-title">{{ $activeSection['label'] }}</div>
+                @foreach($activeSection['items'] as $item)
+                    <a class="{{ $item['active'] ? 'active-menu' : '' }} {{ $item['badge'] > 0 ? 'sidebar-link-with-badge' : '' }}" href="{{ $item['url'] }}">
+                        <span>{{ $item['label'] }}</span>
+                        @if($item['badge'] > 0)
+                            <span class="{{ trim('sidebar-count-badge ' . ($item['badge_danger'] ? 'danger' : '')) }}">{{ $item['badge'] }}</span>
+                        @endif
+                    </a>
+                @endforeach
             @endif
         </div>
 
         <div class="content">
+            @if(! empty($breadcrumbs))
+                <div style="color:var(--muted);font-size:13px;margin-bottom:14px;">
+                    @foreach($breadcrumbs as $crumb)
+                        @if(! $loop->first) <span>/</span> @endif
+                        @if(! $loop->last)
+                            <a href="{{ $crumb['url'] }}">{{ $crumb['label'] }}</a>
+                        @else
+                            <span>{{ $crumb['label'] }}</span>
+                        @endif
+                    @endforeach
+                </div>
+            @endif
+
             @if(session('success'))
-    <div class="card" style="
-        background: rgba(34,197,94,.15);
-        border:1px solid #22c55e;
-        color:#22c55e;
-        margin-bottom:20px;
-    ">
-        {{ session('success') }}
-    </div>
-@endif
+                <div class="card" style="background: rgba(34,197,94,.15); border:1px solid #22c55e; color:#22c55e; margin-bottom:20px;">
+                    {{ session('success') }}
+                </div>
+            @endif
             @yield('content')
         </div>
     </div>

@@ -51,7 +51,7 @@ class BoostingManagementFoundationTest extends TestCase
         $this->actingAs($admin)
             ->get('/admin/business-managers')
             ->assertOk()
-            ->assertSee('BM Management')
+            ->assertSee('Business Managers')
             ->assertSee('NSYS Main BM')
             ->assertSee('Verified');
 
@@ -97,7 +97,7 @@ class BoostingManagementFoundationTest extends TestCase
         $this->actingAs($admin)
             ->get('/admin/ad-accounts')
             ->assertOk()
-            ->assertSee('Ad Account Management')
+            ->assertSee('Ad Accounts')
             ->assertSee('NSYS Ad Account 1')
             ->assertSee('6,500.00');
 

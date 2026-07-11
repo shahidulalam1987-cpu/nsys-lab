@@ -309,8 +309,8 @@
             <div class="brand">NSYS Client Portal</div>
 
             <div class="department-tabs">
-                <a class="department-tab {{ ! $isEmployeeDepartment ? 'active-department' : '' }}" href="/client/dashboard">Boosting Department</a>
-                <a class="department-tab {{ $isEmployeeDepartment ? 'active-department' : '' }}" href="/client/employee-dashboard">Employee Department</a>
+                <a class="department-tab {{ ! $isEmployeeDepartment ? 'active-department' : '' }}" href="/client/dashboard">Marketing / Ads</a>
+                <a class="department-tab {{ $isEmployeeDepartment ? 'active-department' : '' }}" href="/client/employee-dashboard">Employee Services</a>
             </div>
         </div>
 

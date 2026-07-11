@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
 @section('content')
-    <h1>Marketing Operations Reports</h1>
+    <h1>Agency Operations Reports</h1>
     <p>Unified report list across moderator, ad manager, auditor, monitor, trainer, and management operations.</p>
 
     <div class="card">

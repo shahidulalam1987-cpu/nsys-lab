@@ -3,7 +3,7 @@
 @section('content')
     <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;">
         <div>
-            <h1>BM Management</h1>
+            <h1>Business Managers</h1>
             <p>Manage Meta Business Managers for boosting operations.</p>
         </div>
         <a class="btn" href="/admin/business-managers/create">Create BM</a>

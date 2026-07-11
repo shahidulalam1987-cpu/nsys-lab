@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
 @section('content')
-    <h1>Marketing Operations Settings</h1>
+    <h1>Agency Operations Settings</h1>
     <p>Central timing configuration for submission windows, review windows, SLA buffers, and reminders.</p>
 
     <div class="card">

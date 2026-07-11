@@ -3,7 +3,7 @@
 @section('content')
     <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;">
         <div>
-            <h1>Ad Account Management</h1>
+            <h1>Ad Accounts</h1>
             <p>Manage ad accounts, thresholds, billing dates, and account health.</p>
         </div>
         <a class="btn" href="/admin/ad-accounts/create">Create Ad Account</a>

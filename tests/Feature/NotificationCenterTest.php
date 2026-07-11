@@ -72,6 +72,8 @@ class NotificationCenterTest extends TestCase
             'monthly_salary' => 10000,
         ]);
 
+        app(\App\Services\NotificationCenterService::class)->sync();
+
         $response = $this->actingAs($admin)->get('/admin/dashboard');
 
         $response->assertOk();

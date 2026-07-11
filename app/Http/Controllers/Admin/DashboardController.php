@@ -138,8 +138,8 @@ class DashboardController extends Controller
         $fundingAlerts['total_available_usd'] = $fundingAlerts['binance_balance']
             + $fundingAlerts['redotpay_balance']
             + $fundingAlerts['tavao_balance'];
-        $notificationSummary = $notificationCenterService->summary();
-        $notificationGroups = $notificationCenterService->groupedOpenNotifications();
+        $notificationSummary = $notificationCenterService->readSummary();
+        $notificationGroups = $notificationCenterService->readGroupedOpenNotifications();
 
         return view('admin.dashboard', compact(
             'today',

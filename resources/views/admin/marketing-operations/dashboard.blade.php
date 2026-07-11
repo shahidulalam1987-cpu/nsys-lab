@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
 @section('content')
-    <h1>Marketing Operations</h1>
+    <h1>Agency Operations</h1>
     <p>Central operations center for Meta, TikTok, Google Ads, YouTube, and future marketing platforms.</p>
 
     <div class="stats-grid">
@@ -33,7 +33,7 @@
             <div class="stat-card"><p>Missing Reports</p><h2>{{ number_format(($enterpriseSummary['missing_moderator_reports'] ?? 0) + ($enterpriseSummary['missing_ad_reports'] ?? 0)) }}</h2></div>
             <div class="stat-card"><p>Submission %</p><h2>{{ number_format($submissionPercent, 2) }}%</h2></div>
         </div>
-        <p>Moderator and Ad Manager submission windows are controlled from Marketing Operations Settings.</p>
+        <p>Moderator and Ad Manager submission windows are controlled from Agency Operations Settings.</p>
     </div>
 
     <div class="card">
@@ -51,7 +51,7 @@
 
     <div class="card">
         <h2>Legacy Compatibility</h2>
-        <p>Existing marketing operations routes remain available for old records.</p>
+        <p>Existing agency operations routes remain available for old records.</p>
         <div style="display:flex;flex-wrap:wrap;gap:10px;">
             <a class="btn" href="/admin/marketing-operations/moderator_order/create">Moderator Report</a>
             <a class="btn" href="/admin/marketing-operations/ad_manager_spend/create">Ad Manager Report</a>

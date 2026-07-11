@@ -1,8 +1,8 @@
 @extends('layouts.admin')
 
 @section('content')
-    <h1>BM Details</h1>
-    <a class="btn" href="/admin/business-managers">Back to BM Management</a>
+    <h1>Business Manager Details</h1>
+    <a class="btn" href="/admin/business-managers">Back to Business Managers</a>
     <a class="btn" href="/admin/business-managers/{{ $businessManager->id }}/edit">Edit BM</a>
 
     <div class="card" style="margin-top:20px;">

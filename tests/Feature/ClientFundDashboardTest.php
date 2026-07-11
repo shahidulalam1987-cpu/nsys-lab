@@ -249,15 +249,16 @@ class ClientFundDashboardTest extends TestCase
         $response->assertSee('Salary Status');
     }
 
-    public function test_client_fund_dashboard_link_is_in_employee_department_sidebar(): void
+    public function test_client_fund_dashboard_link_is_in_clients_navigation(): void
     {
         $response = $this->actingAs($this->admin())->get('/admin/client-fund');
 
         $response->assertOk();
-        $response->assertSee('Client Fund');
+        $response->assertSee('Client Funds');
         $response->assertSee('href="/admin/client-fund"', false);
-        $response->assertSee('Dashboard');
-        $response->assertSee('Receive Payment');
+        $response->assertSee('Clients');
+        $response->assertSee('Client Dashboard');
+        $response->assertSee('Receive Client Payment');
         $response->assertSee('Pending Payments');
         $response->assertSee('Payment History');
     }

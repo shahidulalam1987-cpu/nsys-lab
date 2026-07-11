@@ -2,7 +2,7 @@
 
 @section('content')
     <h1>Ad Account Details</h1>
-    <a class="btn" href="/admin/ad-accounts">Back to Ad Account Management</a>
+    <a class="btn" href="/admin/ad-accounts">Back to Ad Accounts</a>
     <a class="btn" href="/admin/ad-accounts/{{ $adAccount->id }}/edit">Edit Ad Account</a>
     <a class="btn" href="/admin/ad-account-ledger?ad_account_id={{ $adAccount->id }}">Financial Ledger</a>
 

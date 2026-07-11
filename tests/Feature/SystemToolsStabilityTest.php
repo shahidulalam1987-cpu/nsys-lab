@@ -20,12 +20,18 @@ class SystemToolsStabilityTest extends TestCase
         $this->actingAs($client)->get('/admin/activity-log')->assertForbidden();
 
         $this->actingAs($admin)
-            ->get('/admin/activity-log')
+            ->get('/admin/automation')
             ->assertOk()
+            ->assertSee('Automation')
             ->assertSee('Activity Log')
             ->assertSee('Security Audit')
             ->assertSee('Test Data Reset')
             ->assertSee('System Tools');
+
+        $this->actingAs($admin)
+            ->get('/admin/activity-log')
+            ->assertOk()
+            ->assertSee('Activity Log');
 
         $this->actingAs($admin)
             ->get('/admin/security-audit')
