@@ -176,7 +176,7 @@ class EnterpriseMarketingOperationsService
     public function canManage(User $user): bool
     {
         return $user->isSuperAdmin()
-            || $user->hasAnyPermission(['marketing_operations.manage', 'marketing_operations.verify', 'marketing_operations.approve', 'marketing_operations.agency']);
+            || $user->hasAnyPermission(['agency_operations.manage', 'agency_operations.verify', 'agency_operations.approve']);
     }
 
     public function canSubmit(User $user, string $module): bool
@@ -185,7 +185,12 @@ class EnterpriseMarketingOperationsService
             return true;
         }
 
-        return $user->hasPermission('marketing_operations.submit') || (bool) $user->employee;
+        $permissionPrefix = str_replace('-', '_', $module) . '_operations';
+
+        return $user->hasAnyPermission([
+            $permissionPrefix . '.submit',
+            $permissionPrefix . '.manage',
+        ]) || (bool) $user->employee;
     }
 
     public function modelClass(string $module): string

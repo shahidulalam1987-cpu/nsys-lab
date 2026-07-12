@@ -670,6 +670,12 @@ class EmployeePayrollController extends Controller
                 return;
             }
 
+            if ($account->status !== 'active') {
+                $blockedMessage = 'Selected finance account is inactive.';
+
+                return;
+            }
+
             $paidAmount = (float) $payroll->payable_salary;
             $previousBalance = (float) $account->current_balance;
 
@@ -1173,7 +1179,7 @@ class EmployeePayrollController extends Controller
             'generate_salary_url' => $this->generateSalaryUrl($employee, $client, $salaryDate, $estimate, $category, $hasWorkStatus),
             'payroll_view_url' => $payroll ? '/admin/payroll/' . $payroll->id : null,
             'payroll_edit_url' => $payroll ? '/admin/payroll/' . $payroll->id . '/edit' : null,
-            'can_confirm_payment' => $payroll && $payroll->canMarkPaid() && $payroll->payroll_status !== 'paid',
+            'can_confirm_payment' => $payroll && $payroll->canMarkPaid() && $payroll->payroll_status !== 'paid' && auth()->user()->hasPermission('payroll.pay'),
         ];
 
         return $row;

@@ -123,7 +123,7 @@ class MarketingOperationsService
 
     public function canManage(User $user): bool
     {
-        return $user->isSuperAdmin() || $user->hasPermission('marketing_operations.manage');
+        return $user->isSuperAdmin() || $user->hasAnyPermission(['agency_operations.manage', 'agency_operations.verify', 'agency_operations.approve']);
     }
 
     public function canSubmit(User $user, string $type): bool
@@ -132,7 +132,12 @@ class MarketingOperationsService
             return true;
         }
 
-        return $user->hasPermission('marketing_operations.submit') || (bool) $user->employee;
+        return $user->hasAnyPermission([
+            'moderator_operations.submit',
+            'ad_manager_operations.submit',
+            'auditor_operations.submit',
+            'monitor_operations.submit',
+        ]) || (bool) $user->employee;
     }
 
     private function validateReport(Request $request, string $type): array

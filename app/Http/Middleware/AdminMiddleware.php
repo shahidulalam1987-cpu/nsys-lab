@@ -12,7 +12,19 @@ class AdminMiddleware
     {
         if (auth()->check() && (
             auth()->user()->role === 'admin'
-            || auth()->user()->hasAnyRole(['moderator', 'ad_manager', 'auditor', 'monitor'])
+            || auth()->user()->hasAnyRole([
+                'agency_owner',
+                'agency_operations_manager',
+                'moderator',
+                'ad_manager',
+                'auditor',
+                'monitor',
+                'trainer',
+                'hr_manager',
+                'finance_manager',
+                'business_manager',
+                'page_manager',
+            ])
         )) {
             return $next($request);
         }

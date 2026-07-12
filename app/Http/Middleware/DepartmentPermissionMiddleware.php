@@ -2,12 +2,18 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\ActivityLogger;
+use App\Services\PermissionRouteRegistry;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class DepartmentPermissionMiddleware
 {
+    public function __construct(private PermissionRouteRegistry $registry)
+    {
+    }
+
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
@@ -20,92 +26,23 @@ class DepartmentPermissionMiddleware
             return $next($request);
         }
 
-        $permissions = $this->requiredPermissions($request);
+        $permissions = $this->registry->permissionsFor($request);
 
-        if ($permissions && $user->hasAnyPermission($permissions)) {
+        if ($permissions
+            && ! in_array(PermissionRouteRegistry::SUPER_ADMIN_ONLY, $permissions, true)
+            && $user->hasAnyPermission($permissions)) {
             return $next($request);
         }
 
+        if (! $request->isMethod('GET')) {
+            app(ActivityLogger::class)->log(
+                'Security',
+                'Admin Route Denied',
+                'Denied '.$request->method().' '.$request->path().' for '.$user->primaryRoleName().'.',
+                $request
+            );
+        }
+
         abort(403, 'Your role cannot access this department.');
-    }
-
-    private function requiredPermissions(Request $request): array
-    {
-        $manage = ! $request->isMethod('GET');
-
-        return match (true) {
-            $request->is('admin/dashboard') => ['dashboard.view'],
-
-            $request->is('admin/notifications*', 'admin/automation*') => [$manage ? 'system_tools.manage' : 'system_tools.view'],
-
-            $request->is('admin/documents*') => [$manage ? 'documents.manage' : 'documents.view', $manage ? 'system_tools.manage' : 'system_tools.view'],
-
-            $request->is('admin/bug-tracker*', 'admin/activity-log*', 'admin/security-audit*', 'admin/test-data-reset*')
-                => [$manage ? 'system_tools.manage' : 'system_tools.view'],
-
-            $request->is('admin/client-fund*', 'admin/salary-payments*')
-                => [$manage ? 'client_fund.manage' : 'client_fund.view'],
-
-            $request->is('admin/financial-management', 'admin/finance*', 'admin/facebook-cards*', 'admin/facebook-financial*')
-                => [$manage ? 'finance.manage' : 'finance.view'],
-
-            $request->is('admin/payroll*', 'admin/salary-month-sheet*')
-                => [$manage ? 'payroll.manage' : 'payroll.view'],
-
-            $request->is('admin/attendance*')
-                => [$manage ? 'attendance.manage' : 'attendance.view'],
-
-            $request->is('admin/work-status*')
-                => [$manage ? 'work_status.manage' : 'work_status.view'],
-
-            $request->is('admin/assignments*', 'admin/employee-assignments*')
-                => [$manage ? 'assignments.manage' : 'assignments.view'],
-
-            $request->is('admin/employee-notices*')
-                => [$manage ? 'notices.manage' : 'notices.view'],
-
-            $request->is('admin/departments*')
-                => [$manage ? 'departments.manage' : 'departments.view'],
-
-            $request->is('admin/employee-roles*')
-                => [$manage ? 'employee_roles.manage' : 'employee_roles.view'],
-
-            $request->is('admin/client-pages*')
-                => [$manage ? 'employees.manage' : 'employees.view', $manage ? 'facebook.manage' : 'facebook.view'],
-
-            $request->is('admin/employee-dashboard', 'admin/employees*', 'admin/salary-days*')
-                => [$manage ? 'employees.manage' : 'employees.view'],
-
-            $request->is('admin/client-dashboard', 'admin/clients*', 'admin/client-users*', 'admin/invoices*')
-                => [$manage ? 'clients.manage' : 'clients.view'],
-
-            $request->is('admin/daily-reports*', 'admin/export/daily-reports')
-                => [$manage ? 'daily_reports.manage' : 'daily_reports.view'],
-
-            $request->is('admin/employee-submissions/*/approve') => ['performance.approve'],
-            $request->is('admin/employee-submissions/*/merge') => ['performance.merge'],
-            $request->is('admin/employee-submissions*', 'admin/performance-verification*')
-                => [$manage ? 'performance.manage' : 'performance.view'],
-
-            $request->is('admin/marketing-operations*')
-                => $manage
-                    ? ['marketing_operations.manage', 'marketing_operations.submit', 'marketing_operations.verify', 'marketing_operations.approve', 'performance.manage', 'facebook.manage', 'daily_reports.manage']
-                    : ['marketing_operations.view', 'marketing_operations.submit', 'performance.view', 'facebook.view', 'daily_reports.view'],
-
-            $request->is('admin/employee-kpi*') => ['kpi.view'],
-            $request->is('admin/leaderboard*') => ['leaderboard.view'],
-            $request->is('admin/performance-targets*') => ['targets.manage'],
-            $request->is('admin/bonuses/*/approve') => ['bonus.approve'],
-            $request->is('admin/bonuses*') => [$manage ? 'bonus.manage' : 'bonus.view'],
-            $request->is('admin/executive-performance*') => ['dashboard.view'],
-
-            $request->is('admin/facebook-dashboard', 'admin/business-managers*', 'admin/ad-accounts*', 'admin/ad-account-ledger*', 'admin/campaigns*', 'admin/payments*', 'admin/profit-history*', 'admin/export/profit-history', 'admin/export/payments')
-                => [$manage ? 'facebook.manage' : 'facebook.view'],
-
-            $request->is('admin/tiktok*')
-                => [$manage ? 'tiktok.manage' : 'tiktok.view'],
-
-            default => [],
-        };
     }
 }

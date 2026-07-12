@@ -108,8 +108,8 @@ class ExecutiveDashboardPhase1Test extends TestCase
 
         $this->actingAs($financeManager)->get('/admin/executive-performance')->assertForbidden();
 
-        $ownerRole = Role::create(['name' => 'Agency Owner', 'slug' => 'agency_owner']);
-        $ownerRole->permissions()->sync([Permission::where('key', 'dashboard.view')->valueOrFail('id')]);
+        $ownerRole = Role::firstOrCreate(['slug' => 'agency_owner'], ['name' => 'Agency Owner']);
+        $ownerRole->permissions()->syncWithoutDetaching([Permission::where('key', 'admin_dashboard.view')->valueOrFail('id')]);
         $owner = User::factory()->create(['role' => 'admin', 'status' => 'active']);
         $owner->roles()->sync([$ownerRole->id]);
 

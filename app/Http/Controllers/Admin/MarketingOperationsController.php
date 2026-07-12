@@ -62,7 +62,7 @@ class MarketingOperationsController extends Controller
 
     public function updateSettings(Request $request, MarketingOperationsSettingsService $settings)
     {
-        abort_unless($request->user()->isSuperAdmin() || $request->user()->hasPermission('marketing_operations.manage'), 403);
+        abort_unless($request->user()->isSuperAdmin() || $request->user()->hasPermission('agency_operations.manage'), 403);
 
         $data = $request->validate([
             'timezone' => ['required', 'timezone'],

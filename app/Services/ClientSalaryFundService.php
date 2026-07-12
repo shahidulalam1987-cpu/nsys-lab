@@ -32,9 +32,10 @@ class ClientSalaryFundService
 
         $this->ledger->debitOnce($payroll->client, ClientFundLedger::FUND_EMPLOYEE_SALARY, (float) $payroll->paid_amount, $payroll, [
             'reference' => $payroll->transaction_id ?: 'payroll:' . $payroll->id,
-            'description' => 'Payroll Confirm Payment - ' . $payroll->snapshotEmployeeName() . '.',
+            'description' => 'Payroll Confirm Payment - ' . $payroll->snapshotEmployeeName() . '. Salary paid by agency before sufficient client salary fund deposit.',
             'created_by' => auth()->id(),
             'balance_error' => 'Insufficient employee salary fund balance.',
+            'allow_negative' => true,
         ]);
     }
 

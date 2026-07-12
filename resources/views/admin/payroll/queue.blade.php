@@ -239,11 +239,28 @@
                     @endif
                 </div>
 
-                @if($payroll?->canMarkPaid() && $payroll->payroll_status !== 'paid')
+                @if($payroll?->canMarkPaid() && $payroll->payroll_status !== 'paid' && auth()->user()->hasPermission('payroll.pay'))
                     <div id="confirm-payment-{{ $payroll->id }}" style="display:none;position:fixed;inset:0;background:rgba(2,6,23,.74);z-index:100;align-items:center;justify-content:center;padding:20px;">
                         <div class="card" style="max-width:720px;width:100%;">
                             <h2>Confirm Payment</h2>
                             <p>{{ $payroll->snapshotEmployeeName() }} | Payable BDT {{ number_format($payroll->payable_salary, 2) }}</p>
+                            @php
+                                $salaryFundBalance = $payroll->client ? (float) $payroll->client->salary_fund_balance() : null;
+                                $projectedSalaryFundBalance = $salaryFundBalance !== null
+                                    ? $salaryFundBalance - (float) $payroll->payable_salary
+                                    : null;
+                            @endphp
+                            @if($salaryFundBalance !== null && $projectedSalaryFundBalance < 0)
+                                <div class="card" style="background:rgba(245,158,11,.14);border-color:#f59e0b;color:#fde68a;margin:12px 0;">
+                                    <strong>Client Employee Salary Fund is insufficient.</strong>
+                                    <p>After payment the balance will become BDT {{ number_format($projectedSalaryFundBalance, 2) }}. This amount will be tracked as Due From Client.</p>
+                                    <div class="stats-grid">
+                                        <div class="stat-card"><p>Current Salary Fund Balance</p><h2>BDT {{ number_format($salaryFundBalance, 2) }}</h2></div>
+                                        <div class="stat-card"><p>Salary Payment Amount</p><h2>BDT {{ number_format($payroll->payable_salary, 2) }}</h2></div>
+                                        <div class="stat-card"><p>Projected Salary Fund Balance</p><h2>BDT {{ number_format($projectedSalaryFundBalance, 2) }}</h2></div>
+                                    </div>
+                                </div>
+                            @endif
                             <form method="POST" action="/admin/payroll/{{ $payroll->id }}/confirm-payment" enctype="multipart/form-data">
                                 @csrf
                                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">

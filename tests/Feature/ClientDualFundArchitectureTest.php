@@ -13,7 +13,9 @@ use App\Models\EmployeePayroll;
 use App\Models\FinanceAccount;
 use App\Models\SalaryPayment;
 use App\Models\User;
+use App\Services\ClientFundLedgerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class ClientDualFundArchitectureTest extends TestCase
@@ -100,6 +102,100 @@ class ClientDualFundArchitectureTest extends TestCase
             ->where('fund_type', ClientFundLedger::FUND_EMPLOYEE_SALARY)
             ->where('direction', ClientFundLedger::DIRECTION_DEBIT)
             ->count());
+    }
+
+    public function test_payroll_confirm_payment_allows_negative_salary_fund_and_records_due_from_client(): void
+    {
+        $client = $this->client();
+        $this->ledger($client, ClientFundLedger::FUND_EMPLOYEE_SALARY, ClientFundLedger::DIRECTION_DEBIT, 7083.48);
+        $account = $this->financeAccount(['current_balance' => 20000]);
+        $payroll = $this->payroll($client, ['payroll_status' => 'approved', 'payable_salary' => 5000]);
+
+        $payload = [
+            'payment_date' => '2026-06-20',
+            'finance_account_id' => $account->id,
+            'transaction_id' => 'PAYROLL-NEGATIVE-FUND-1',
+            'payment_note' => 'Salary paid before client fund deposit.',
+        ];
+
+        $this->actingAs($this->admin())->post('/admin/payroll/'.$payroll->id.'/confirm-payment', $payload)
+            ->assertRedirect('/admin/payroll/'.$payroll->id);
+
+        $this->assertSame(-12083.48, $client->fresh()->salary_fund_balance());
+        $this->assertSame(15000.0, (float) $account->fresh()->current_balance);
+        $this->assertSame('paid', $payroll->fresh()->payment_status);
+        $this->assertStringStartsWith('NSYS-SP-2026-', (string) $payroll->fresh()->salary_receipt_number);
+
+        $this->assertDatabaseHas('client_fund_ledgers', [
+            'client_id' => $client->id,
+            'fund_type' => ClientFundLedger::FUND_EMPLOYEE_SALARY,
+            'direction' => ClientFundLedger::DIRECTION_DEBIT,
+            'amount_bdt' => 5000,
+            'balance_before' => -7083.48,
+            'balance_after' => -12083.48,
+            'source_type' => EmployeePayroll::class,
+            'source_id' => $payroll->id,
+            'reference' => 'PAYROLL-NEGATIVE-FUND-1',
+        ]);
+        $this->assertDatabaseHas('finance_account_ledgers', [
+            'finance_account_id' => $account->id,
+            'employee_payroll_id' => $payroll->id,
+            'transaction_type' => 'salary_payment',
+            'amount' => 5000,
+            'reference' => 'PAYROLL-NEGATIVE-FUND-1',
+        ]);
+
+        $this->actingAs($this->admin())->post('/admin/payroll/'.$payroll->id.'/confirm-payment', $payload)
+            ->assertSessionHas('success', 'This salary payment is already confirmed.');
+
+        $this->assertSame(-12083.48, $client->fresh()->salary_fund_balance());
+        $this->assertSame(15000.0, (float) $account->fresh()->current_balance);
+        $this->assertSame(1, ClientFundLedger::where('source_type', EmployeePayroll::class)
+            ->where('source_id', $payroll->id)
+            ->where('fund_type', ClientFundLedger::FUND_EMPLOYEE_SALARY)
+            ->where('direction', ClientFundLedger::DIRECTION_DEBIT)
+            ->count());
+    }
+
+    public function test_unrelated_salary_fund_debit_still_blocks_negative_balance(): void
+    {
+        $client = $this->client();
+
+        $this->expectException(ValidationException::class);
+
+        app(ClientFundLedgerService::class)->debit($client, ClientFundLedger::FUND_EMPLOYEE_SALARY, 100, [
+            'reference' => 'MANUAL-DEBIT-1',
+            'description' => 'Manual salary fund debit.',
+        ]);
+    }
+
+    public function test_confirm_payment_page_shows_projected_negative_salary_fund_warning(): void
+    {
+        $client = $this->client();
+        $this->ledger($client, ClientFundLedger::FUND_EMPLOYEE_SALARY, ClientFundLedger::DIRECTION_DEBIT, 7083.48);
+        $payroll = $this->payroll($client, ['payroll_status' => 'approved', 'payable_salary' => 5000]);
+
+        $this->actingAs($this->admin())->get('/admin/payroll/'.$payroll->id)
+            ->assertOk()
+            ->assertSee('Client Employee Salary Fund is insufficient.')
+            ->assertSee('Due From Client')
+            ->assertSee('BDT -7,083.48')
+            ->assertSee('BDT 5,000.00')
+            ->assertSee('BDT -12,083.48');
+    }
+
+    public function test_confirm_payment_validation_errors_are_visible_after_redirect(): void
+    {
+        $client = $this->client();
+        $payroll = $this->payroll($client, ['payroll_status' => 'approved', 'payable_salary' => 5000]);
+
+        $this->followingRedirects()
+            ->actingAs($this->admin())
+            ->from('/admin/payroll/'.$payroll->id)
+            ->post('/admin/payroll/'.$payroll->id.'/confirm-payment', [])
+            ->assertOk()
+            ->assertSee('Please fix the following:')
+            ->assertSee('payment date field is required');
     }
 
     public function test_performance_report_debits_ads_fund_and_update_is_idempotent(): void

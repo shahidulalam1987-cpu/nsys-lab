@@ -511,6 +511,21 @@
                     {{ session('success') }}
                 </div>
             @endif
+            @if(session('error'))
+                <div class="card" style="background: rgba(239,68,68,.15); border:1px solid #ef4444; color:#fecaca; margin-bottom:20px;">
+                    {{ session('error') }}
+                </div>
+            @endif
+            @if($errors instanceof \Illuminate\Support\ViewErrorBag && $errors->any())
+                <div class="card" style="background: rgba(245,158,11,.15); border:1px solid #f59e0b; color:#fde68a; margin-bottom:20px;">
+                    <strong>Please fix the following:</strong>
+                    <ul style="margin:10px 0 0 18px;">
+                        @foreach($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
             @yield('content')
         </div>
     </div>

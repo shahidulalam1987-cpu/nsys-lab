@@ -52,14 +52,14 @@
         <a class="btn" href="/admin/payroll/{{ $payroll->id }}/edit">Edit Salary</a>
         <a class="btn" href="/admin/payroll/{{ $payroll->id }}/salary-statement">Download Salary PDF</a>
 
-        @if($payroll->canApprove())
+        @if($payroll->canApprove() && auth()->user()->hasPermission('payroll.approve'))
             <form method="POST" action="/admin/payroll/{{ $payroll->id }}/approve">
                 @csrf
                 <button class="btn" type="submit">Approve Payroll</button>
             </form>
         @endif
 
-        @if($payroll->canMarkPaid() && $payroll->payroll_status !== 'paid')
+        @if($payroll->canMarkPaid() && $payroll->payroll_status !== 'paid' && auth()->user()->hasPermission('payroll.pay'))
             <button class="btn btn-success" type="button" onclick="document.getElementById('confirm-payment-panel').style.display='block';">Confirm Payment</button>
         @endif
     </div>
@@ -77,7 +77,7 @@
         <div class="stat-card"><p>Remaining Due</p><h2>BDT {{ number_format($remainingDue, 2) }}</h2></div>
     </div>
 
-    @if($payroll->canMarkPaid() && $payroll->payroll_status !== 'paid')
+    @if($payroll->canMarkPaid() && $payroll->payroll_status !== 'paid' && auth()->user()->hasPermission('payroll.pay'))
         <div class="card" id="confirm-payment-panel" style="display:none;border-color:#22c55e;">
             <h2>Confirm Payment</h2>
             <p>Record finance account, transaction reference, and salary transfer note before moving this salary to Salary Report.</p>
@@ -87,6 +87,23 @@
                 <div class="stat-card"><p>Client</p><h2>{{ $payroll->client?->company_name ?: '-' }}</h2></div>
                 <div class="stat-card"><p>Payable Amount</p><h2>BDT {{ number_format($payroll->payable_salary, 2) }}</h2></div>
             </div>
+            @php
+                $salaryFundBalance = $payroll->client ? (float) $payroll->client->salary_fund_balance() : null;
+                $projectedSalaryFundBalance = $salaryFundBalance !== null
+                    ? $salaryFundBalance - (float) $payroll->payable_salary
+                    : null;
+            @endphp
+            @if($salaryFundBalance !== null && $projectedSalaryFundBalance < 0)
+                <div class="card" style="background:rgba(245,158,11,.14);border-color:#f59e0b;color:#fde68a;">
+                    <strong>Client Employee Salary Fund is insufficient.</strong>
+                    <p>After payment the balance will become BDT {{ number_format($projectedSalaryFundBalance, 2) }}. This amount will be tracked as Due From Client.</p>
+                    <div class="stats-grid">
+                        <div class="stat-card"><p>Current Salary Fund Balance</p><h2>BDT {{ number_format($salaryFundBalance, 2) }}</h2></div>
+                        <div class="stat-card"><p>Salary Payment Amount</p><h2>BDT {{ number_format($payroll->payable_salary, 2) }}</h2></div>
+                        <div class="stat-card"><p>Projected Salary Fund Balance</p><h2>BDT {{ number_format($projectedSalaryFundBalance, 2) }}</h2></div>
+                    </div>
+                </div>
+            @endif
             <div class="card" style="background:rgba(255,255,255,.05);">
                 <h3>Bank Information Snapshot</h3>
                 <p><strong>Bank Name:</strong> {{ $payroll->snapshotBankName() }}</p>
