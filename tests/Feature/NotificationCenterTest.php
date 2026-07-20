@@ -120,6 +120,71 @@ class NotificationCenterTest extends TestCase
         $this->assertNotNull($notification->fresh()->resolved_at);
     }
 
+    public function test_active_critical_alert_reopens_after_dismissal(): void
+    {
+        Carbon::setTestNow('2026-06-13');
+        $admin = $this->admin();
+        $client = $this->client();
+
+        $bm = BusinessManager::create([
+            'bm_name' => 'Critical BM',
+            'bm_id' => 'BM-' . uniqid(),
+            'owner_name' => 'Owner',
+            'owner_email' => 'owner@example.com',
+            'verification_status' => 'verified',
+            'status' => 'active',
+        ]);
+
+        AdAccount::create([
+            'ad_account_name' => 'Critical Payment Issue',
+            'ad_account_id' => 'act_' . uniqid(),
+            'business_manager_id' => $bm->id,
+            'client_id' => $client->id,
+            'threshold_amount' => 1000,
+            'current_threshold_usage' => 100,
+            'current_balance' => 500,
+            'status' => 'payment_issue',
+        ]);
+
+        $this->actingAs($admin)->get('/admin/notifications')->assertOk();
+
+        $notification = SystemNotification::where('notification_key', 'facebook.payment_issue')->firstOrFail();
+
+        $this->actingAs($admin)->post('/admin/notifications/' . $notification->id . '/status', [
+            'status' => 'dismissed',
+        ])->assertRedirect();
+
+        $this->assertSame('dismissed', $notification->fresh()->status);
+
+        $this->actingAs($admin)->get('/admin/notifications')->assertOk();
+
+        $this->assertSame('unread', $notification->fresh()->status);
+    }
+
+    public function test_active_warning_alert_can_stay_dismissed(): void
+    {
+        Carbon::setTestNow('2026-06-13');
+        $admin = $this->admin();
+
+        FundingBalance::create([
+            'source' => 'redotpay',
+            'current_balance' => 25,
+            'balance_date' => '2026-06-13',
+        ]);
+
+        $this->actingAs($admin)->get('/admin/notifications')->assertOk();
+
+        $notification = SystemNotification::where('notification_key', 'finance.low_redotpay')->firstOrFail();
+
+        $this->actingAs($admin)->post('/admin/notifications/' . $notification->id . '/status', [
+            'status' => 'dismissed',
+        ])->assertRedirect();
+
+        $this->actingAs($admin)->get('/admin/notifications')->assertOk();
+
+        $this->assertSame('dismissed', $notification->fresh()->status);
+    }
+
     public function test_terminated_employee_final_settlement_uses_separate_notification(): void
     {
         Carbon::setTestNow('2026-06-24');

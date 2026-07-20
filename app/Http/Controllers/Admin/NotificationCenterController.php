@@ -12,7 +12,7 @@ class NotificationCenterController extends Controller
 {
     public function index(Request $request, NotificationCenterService $notificationCenter)
     {
-        $notificationCenter->sync();
+        $openNotifications = $notificationCenter->sync();
 
         $filters = $request->validate([
             'priority' => ['nullable', Rule::in(array_keys(SystemNotification::PRIORITIES))],
@@ -31,7 +31,7 @@ class NotificationCenterController extends Controller
         return view('admin.notifications.index', [
             'notifications' => $notifications,
             'filters' => $filters,
-            'summary' => $notificationCenter->summary(),
+            'summary' => $notificationCenter->summaryFor($openNotifications),
             'departments' => SystemNotification::query()->select('department')->distinct()->orderBy('department')->pluck('department'),
         ]);
     }

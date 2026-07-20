@@ -43,9 +43,7 @@ class NotificationCenterService
                 'notification_key' => $alert['notification_key'],
             ]);
 
-            $status = $notification->exists && ! in_array($notification->status, ['resolved'], true)
-                ? $notification->status
-                : 'unread';
+            $status = $this->syncedStatus($notification, $alert);
 
             $notification->fill(array_merge($alert, [
                 'type' => $alert['type'] ?? 'alert',
@@ -82,15 +80,15 @@ class NotificationCenterService
     {
         $open = $this->sync();
 
-        return $this->summaryFrom($open);
+        return $this->summaryFor($open);
     }
 
     public function readSummary(): array
     {
-        return $this->summaryFrom($this->openNotifications());
+        return $this->summaryFor($this->openNotifications());
     }
 
-    private function summaryFrom(Collection $open): array
+    public function summaryFor(Collection $open): array
     {
         return [
             'critical' => $open->where('priority', 'critical')->count(),
@@ -129,6 +127,19 @@ class NotificationCenterService
             'warning' => $open->where('priority', 'warning')->take($limitPerPriority)->values(),
             'information' => $open->where('priority', 'information')->take($limitPerPriority)->values(),
         ];
+    }
+
+    private function syncedStatus(SystemNotification $notification, array $alert): string
+    {
+        if (! $notification->exists || $notification->status === 'resolved') {
+            return 'unread';
+        }
+
+        if ($notification->status === 'dismissed' && ($alert['priority'] ?? null) === 'critical') {
+            return 'unread';
+        }
+
+        return $notification->status;
     }
 
     private function employeeAlerts(): array
