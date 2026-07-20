@@ -152,7 +152,7 @@
                 <a class="stat-card" href="/admin/profit-history" style="text-decoration:none;"><p>Monthly Spend</p><h2>USD {{ number_format($usdProfitSummary['monthly_usd_spend'], 2) }}</h2></a>
                 <a class="stat-card" href="/admin/profit-history" style="text-decoration:none;"><p>Total Orders</p><h2>{{ number_format($totalFacebookOrders) }}</h2></a>
                 <a class="stat-card" href="/admin/facebook-financial/profit-dashboard" style="text-decoration:none;"><p>Monthly Estimated Profit</p><h2>BDT {{ number_format($usdProfitSummary['monthly_estimated_profit'], 2) }}</h2></a>
-                <a class="stat-card" href="/admin/client-fund" style="text-decoration:none;"><p>Client Due</p><h2>BDT {{ number_format($clientFundSummary['unpaid_salary_due'], 2) }}</h2></a>
+                <a class="stat-card" href="/admin/client-dashboard" style="text-decoration:none;"><p>Client Balance</p><h2>BDT {{ number_format($clientFundSummary['combined_client_balance'] ?? $clientFundSummary['available_balance'], 2) }}</h2></a>
                 <a class="stat-card" href="/admin/facebook-financial/funding-dashboard" style="text-decoration:none;"><p>Total Available USD</p><h2>USD {{ number_format($fundingAlerts['total_available_usd'], 2) }}</h2></a>
             </div>
         </div>
@@ -165,7 +165,7 @@
                 <a class="stat-card" href="/admin/employee-dashboard" style="text-decoration:none;"><p>Employees</p><h2>Open</h2></a>
                 <a class="stat-card" href="/admin/business-managers" style="text-decoration:none;"><p>Business Management</p><h2>Open</h2></a>
                 <a class="stat-card" href="/admin/financial-management" style="text-decoration:none;"><p>Finance</p><h2>Open</h2></a>
-                <a class="stat-card" href="/admin/automation" style="text-decoration:none;"><p>System Tools</p><h2>Open</h2></a>
+                <a class="stat-card" href="/admin/bug-tracker" style="text-decoration:none;"><p>System Tools</p><h2>Open</h2></a>
             </div>
         </div>
         @endif

@@ -13,7 +13,6 @@ use App\Models\Employee;
 use App\Models\EmployeeAttendance;
 use App\Models\EmployeePayroll;
 use App\Models\CardTransaction;
-use App\Models\FacebookCard;
 use App\Models\FundingBalance;
 use App\Models\SalaryPayment;
 use App\Services\ClientFundDashboardService;
@@ -28,12 +27,6 @@ class DashboardController extends Controller
 
         $totalClients = Client::count();
         $totalEmployees = Employee::count();
-        $clientAssignedEmployees = Employee::where('employee_type', 'client_assigned')->count();
-        $agencyInternalEmployees = Employee::where('employee_type', 'agency_internal')->count();
-        $employeeDepartmentCounts = Employee::selectRaw('department, COUNT(*) as total')
-            ->groupBy('department')
-            ->pluck('total', 'department');
-        $totalFacebookSpend = (float) DailyPerformanceReport::sum('spend');
         $totalFacebookOrders = (int) DailyPerformanceReport::sum('orders');
         $todayPerformance = DailyPerformanceReport::whereDate('report_date', $today)->get();
         $todayUsdSpend = (float) $todayPerformance->sum('spend');
@@ -61,8 +54,6 @@ class DashboardController extends Controller
         ];
         $clientFundDashboard = $clientFundDashboardService->dashboard();
         $clientFundSummary = $clientFundDashboard['summary'];
-        $netAvailableFund = (float) ($clientFundSummary['available_balance'] ?? 0) - (float) ($clientFundSummary['upcoming_salary'] ?? 0);
-        $clientFundRows = $clientFundDashboard['rows'];
         $payrollStages = $payrollCategoryService->employeeStages();
         $dueCategories = [
             PayrollCategoryService::PENDING_WORK_STATUS,
@@ -74,7 +65,6 @@ class DashboardController extends Controller
         ];
         $dueStages = $payrollStages->filter(fn (array $row) => in_array(data_get($row, 'stage.category'), $dueCategories, true));
         $employeeSalaryDue = (float) $dueStages->sum(fn (array $row) => $this->stageDueAmount($row['stage']));
-        $employeePayrolls = EmployeePayroll::current()->with(['employee', 'client'])->get();
         $upcomingCycles = $payrollCategoryService->upcomingCycles();
         $unpaidStages = $payrollStages->filter(fn (array $row) => in_array(data_get($row, 'stage.category'), [
             PayrollCategoryService::PENDING_WORK_STATUS,
@@ -87,9 +77,6 @@ class DashboardController extends Controller
             PayrollCategoryService::FINAL_SETTLEMENT_UNPAID,
         ], true));
         $adAccounts = AdAccount::all();
-        $facebookBillingAlerts = $adAccounts
-            ->filter(fn (AdAccount $account) => in_array($account->billingStatus(), ['upcoming', 'overdue'], true))
-            ->count();
         $paymentIssueAdAccounts = $adAccounts->where('status', 'payment_issue')->count();
         $upcomingBillingAccounts = $adAccounts->filter(fn (AdAccount $account) => $account->billingStatus() === 'upcoming')->count();
         $overdueBillingAccounts = $adAccounts->filter(fn (AdAccount $account) => $account->billingStatus() === 'overdue')->count();
@@ -98,12 +85,6 @@ class DashboardController extends Controller
         $monthPerformance = DailyPerformanceReport::whereMonth('report_date', now()->month)
             ->whereYear('report_date', now()->year)
             ->get();
-        $cards = FacebookCard::with('adAccount')->latest()->get();
-        $totalCardBalance = (float) $cards->sum('current_balance');
-        $lowBalanceCards = $cards->filter(fn (FacebookCard $card) => $card->effectiveStatus() === 'low_balance')->count();
-        $disabledCards = $cards->where('status', 'disabled')->count();
-        $negativeBalanceCards = $cards->filter(fn (FacebookCard $card) => (float) $card->current_balance < 0)->count();
-        $highFeeTransactions = CardTransaction::where('fee_usd', '>=', 5)->count();
         $employeeAlerts = [
             'upcoming_count' => $upcomingCycles->count(),
             'upcoming_amount' => (float) $upcomingCycles->sum(fn (array $cycle) => (float) data_get($cycle, 'estimate.estimated_payable_salary', 0)),
@@ -122,13 +103,6 @@ class DashboardController extends Controller
             'monthly_transactions' => $monthPerformance->count(),
             'monthly_billing_amount' => (float) $monthPerformance->sum('spend'),
         ];
-        $cardAlerts = [
-            'total_balance' => $totalCardBalance,
-            'low_balance_cards' => $lowBalanceCards,
-            'disabled_cards' => $disabledCards,
-            'negative_balance_cards' => $negativeBalanceCards,
-            'high_fee_transactions' => $highFeeTransactions,
-        ];
         $fundingBalances = FundingBalance::all()->keyBy('source');
         $fundingAlerts = [
             'binance_balance' => (float) ($fundingBalances->get('binance')?->current_balance ?? 0),
@@ -145,22 +119,13 @@ class DashboardController extends Controller
             'today',
             'totalClients',
             'totalEmployees',
-            'clientAssignedEmployees',
-            'agencyInternalEmployees',
-            'employeeDepartmentCounts',
-            'totalFacebookSpend',
             'totalFacebookOrders',
             'usdProfitSummary',
             'clientFundSummary',
-            'clientFundRows',
-            'netAvailableFund',
             'employeeSalaryDue',
-            'facebookBillingAlerts',
             'employeeAlerts',
             'facebookAlerts',
-            'cardAlerts',
             'fundingAlerts',
-            'cards',
             'notificationSummary',
             'notificationGroups'
         ));
