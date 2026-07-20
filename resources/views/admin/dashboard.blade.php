@@ -107,16 +107,15 @@
         @else
 
         <div class="card">
-            <h2>Notification Center</h2>
+            <h2>Action Alerts</h2>
             <div class="stats-grid">
                 <a class="stat-card" href="/admin/notifications?priority=critical" style="text-decoration:none;border-color:#ef4444;"><p>Critical Alerts</p><h2>{{ number_format($notificationSummary['critical']) }}</h2></a>
-                <a class="stat-card" href="/admin/notifications?priority=warning" style="text-decoration:none;border-color:#f59e0b;"><p>Warning Alerts</p><h2>{{ number_format($notificationSummary['warning']) }}</h2></a>
-                <a class="stat-card" href="/admin/payroll?status=upcoming" style="text-decoration:none;"><p>Upcoming Salaries</p><h2>{{ number_format($notificationSummary['upcoming_salaries']) }}</h2></a>
+                <a class="stat-card" href="/admin/payroll?status=due" style="text-decoration:none;border-color:#ef4444;"><p>Unpaid Salary</p><h2>{{ number_format($employeeAlerts['unpaid_count']) }}</h2><p>BDT {{ number_format($employeeAlerts['unpaid_amount'], 2) }}</p></a>
+                <a class="stat-card" href="/admin/payroll?status=due&employee_scope=terminated" style="text-decoration:none;border-color:#f59e0b;"><p>Final Settlement</p><h2>{{ number_format($employeeAlerts['final_settlement_count']) }}</h2><p>BDT {{ number_format($employeeAlerts['final_settlement_amount'], 2) }}</p></a>
                 <a class="stat-card" href="/admin/salary-payments/pending" style="text-decoration:none;"><p>Pending Client Payments</p><h2>{{ number_format($notificationSummary['pending_client_payments']) }}</h2></a>
                 <a class="stat-card" href="/admin/facebook-financial/funding-dashboard" style="text-decoration:none;"><p>Low Funding Balance</p><h2>{{ number_format($notificationSummary['low_funding_balance']) }}</h2></a>
                 <a class="stat-card" href="/admin/ad-accounts" style="text-decoration:none;"><p>Ad Account Billing Due</p><h2>{{ number_format($notificationSummary['ad_account_billing_due']) }}</h2></a>
-                <div class="stat-card"><p>Today's Profit</p><h2>BDT {{ number_format($notificationSummary['today_profit'], 2) }}</h2></div>
-                <div class="stat-card"><p>Monthly Profit</p><h2>BDT {{ number_format($notificationSummary['monthly_profit'], 2) }}</h2></div>
+                <a class="stat-card" href="/admin/payroll?status=upcoming" style="text-decoration:none;"><p>Upcoming Salary</p><h2>{{ number_format($employeeAlerts['upcoming_count']) }}</h2><p>BDT {{ number_format($employeeAlerts['upcoming_amount'], 2) }}</p></a>
             </div>
 
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:18px;">
@@ -145,62 +144,28 @@
         </div>
 
         <div class="card">
-            <h2>Agency Overview</h2>
+            <h2>Agency Snapshot</h2>
             <div class="stats-grid">
-                <div class="stat-card"><p>Total Clients</p><h2>{{ number_format($totalClients) }}</h2></div>
-                <div class="stat-card"><p>Total Employees</p><h2>{{ number_format($totalEmployees) }}</h2></div>
-                <div class="stat-card"><p>Today Facebook Spend</p><h2>USD {{ number_format($usdProfitSummary['today_usd_spend'], 2) }}</h2></div>
-                <div class="stat-card"><p>Monthly Facebook Spend</p><h2>USD {{ number_format($usdProfitSummary['monthly_usd_spend'], 2) }}</h2></div>
-                <div class="stat-card"><p>Total Orders</p><h2>{{ number_format($totalFacebookOrders) }}</h2></div>
+                <a class="stat-card" href="/admin/clients" style="text-decoration:none;"><p>Total Clients</p><h2>{{ number_format($totalClients) }}</h2></a>
+                <a class="stat-card" href="/admin/employees" style="text-decoration:none;"><p>Total Employees</p><h2>{{ number_format($totalEmployees) }}</h2></a>
+                <a class="stat-card" href="/admin/profit-history" style="text-decoration:none;"><p>Today Spend</p><h2>USD {{ number_format($usdProfitSummary['today_usd_spend'], 2) }}</h2></a>
+                <a class="stat-card" href="/admin/profit-history" style="text-decoration:none;"><p>Monthly Spend</p><h2>USD {{ number_format($usdProfitSummary['monthly_usd_spend'], 2) }}</h2></a>
+                <a class="stat-card" href="/admin/profit-history" style="text-decoration:none;"><p>Total Orders</p><h2>{{ number_format($totalFacebookOrders) }}</h2></a>
+                <a class="stat-card" href="/admin/facebook-financial/profit-dashboard" style="text-decoration:none;"><p>Monthly Estimated Profit</p><h2>BDT {{ number_format($usdProfitSummary['monthly_estimated_profit'], 2) }}</h2></a>
                 <a class="stat-card" href="/admin/client-fund" style="text-decoration:none;"><p>Client Due</p><h2>BDT {{ number_format($clientFundSummary['unpaid_salary_due'], 2) }}</h2></a>
-                <a class="stat-card" href="/admin/payroll/upcoming" style="text-decoration:none;"><p>Upcoming Salary</p><h2>{{ number_format($employeeAlerts['upcoming_count']) }}</h2><p>BDT {{ number_format($employeeAlerts['upcoming_amount'], 2) }}</p></a>
-                <a class="stat-card" href="/admin/payroll/unpaid" style="text-decoration:none;"><p>Unpaid Salary</p><h2>{{ number_format($employeeAlerts['unpaid_count']) }}</h2><p>BDT {{ number_format($employeeAlerts['unpaid_amount'], 2) }}</p></a>
-                <a class="stat-card" href="/admin/payroll?status=due&employee_scope=terminated" style="text-decoration:none;border-color:#f59e0b;"><p>Final Settlement Due</p><h2>{{ number_format($employeeAlerts['final_settlement_count']) }}</h2><p>BDT {{ number_format($employeeAlerts['final_settlement_amount'], 2) }}</p></a>
-                <a class="stat-card" href="/admin/client-fund" style="text-decoration:none;"><p>Client Fund Available</p><h2>BDT {{ number_format($clientFundSummary['available_balance'], 2) }}</h2></a>
-                <a class="stat-card" href="/admin/payroll/upcoming" style="text-decoration:none;"><p>Upcoming Salary Due</p><h2>BDT {{ number_format($clientFundSummary['upcoming_salary'], 2) }}</h2></a>
-                <div class="stat-card"><p>Net Available Fund</p><h2>BDT {{ number_format($netAvailableFund, 2) }}</h2><p>Client Fund - Upcoming Salary</p></div>
-            </div>
-        </div>
-
-        <div class="card">
-            <h2>Finance Summary</h2>
-            <div class="stats-grid">
-                <a class="stat-card" href="/admin/facebook-financial/funding-dashboard" style="text-decoration:none;"><p>Binance Balance</p><h2>USD {{ number_format($fundingAlerts['binance_balance'], 2) }}</h2></a>
-                <a class="stat-card" href="/admin/facebook-financial/funding-dashboard" style="text-decoration:none;"><p>RedotPay Balance</p><h2>USD {{ number_format($fundingAlerts['redotpay_balance'], 2) }}</h2></a>
-                <a class="stat-card" href="/admin/facebook-financial/funding-dashboard" style="text-decoration:none;"><p>Tavao Balance</p><h2>USD {{ number_format($fundingAlerts['tavao_balance'], 2) }}</h2></a>
                 <a class="stat-card" href="/admin/facebook-financial/funding-dashboard" style="text-decoration:none;"><p>Total Available USD</p><h2>USD {{ number_format($fundingAlerts['total_available_usd'], 2) }}</h2></a>
-                <div class="stat-card"><p>Today Estimated Profit</p><h2>BDT {{ number_format($usdProfitSummary['today_estimated_profit'], 2) }}</h2></div>
-                <div class="stat-card"><p>Monthly Estimated Profit</p><h2>BDT {{ number_format($usdProfitSummary['monthly_estimated_profit'], 2) }}</h2></div>
-                <a class="stat-card" href="/admin/facebook-financial/profit-dashboard" style="text-decoration:none;">
-                    <p>Actual Profit</p>
-                    @if($usdProfitSummary['actual_profit_available'])
-                        <h2>BDT {{ number_format($usdProfitSummary['monthly_actual_profit'], 2) }}</h2>
-                    @else
-                        <h2>Estimated Only</h2>
-                    @endif
-                </a>
             </div>
         </div>
 
         <div class="card">
-            <h2>NSYS USD Profit Tracking</h2>
-            <p>Target profit is BDT {{ number_format($usdProfitSummary['target_profit_per_usd'], 2) }} per USD. Actual profit uses funding cost data when card transaction records exist.</p>
+            <h2>Department Shortcuts</h2>
             <div class="stats-grid">
-                <div class="stat-card"><p>Today USD Spend</p><h2>USD {{ number_format($usdProfitSummary['today_usd_spend'], 2) }}</h2></div>
-                <div class="stat-card"><p>Today Estimated Profit</p><h2>BDT {{ number_format($usdProfitSummary['today_estimated_profit'], 2) }}</h2><p>USD Spend x BDT 15</p></div>
-                <div class="stat-card"><p>Monthly USD Spend</p><h2>USD {{ number_format($usdProfitSummary['monthly_usd_spend'], 2) }}</h2></div>
-                <div class="stat-card"><p>Monthly Estimated Profit</p><h2>BDT {{ number_format($usdProfitSummary['monthly_estimated_profit'], 2) }}</h2><p>USD Spend x BDT 15</p></div>
-                <div class="stat-card"><p>Average Profit Per USD</p><h2>BDT {{ number_format($usdProfitSummary['average_profit_per_usd'], 2) }}</h2><p>Target rate</p></div>
-                <div class="stat-card">
-                    <p>Actual Profit</p>
-                    @if($usdProfitSummary['actual_profit_available'])
-                        <h2>BDT {{ number_format($usdProfitSummary['monthly_actual_profit'], 2) }}</h2>
-                        <p>BDT {{ number_format($usdProfitSummary['actual_profit_per_usd'], 2) }} per USD</p>
-                    @else
-                        <h2>Estimated Only</h2>
-                        <p>Funding cost data not available yet.</p>
-                    @endif
-                </div>
+                <a class="stat-card" href="/admin/marketing-operations" style="text-decoration:none;"><p>Agency Operations</p><h2>Open</h2></a>
+                <a class="stat-card" href="/admin/client-dashboard" style="text-decoration:none;"><p>Clients</p><h2>Open</h2></a>
+                <a class="stat-card" href="/admin/employee-dashboard" style="text-decoration:none;"><p>Employees</p><h2>Open</h2></a>
+                <a class="stat-card" href="/admin/business-managers" style="text-decoration:none;"><p>Business Management</p><h2>Open</h2></a>
+                <a class="stat-card" href="/admin/financial-management" style="text-decoration:none;"><p>Finance</p><h2>Open</h2></a>
+                <a class="stat-card" href="/admin/automation" style="text-decoration:none;"><p>System Tools</p><h2>Open</h2></a>
             </div>
         </div>
         @endif
