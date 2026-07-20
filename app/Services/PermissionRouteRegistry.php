@@ -106,20 +106,12 @@ class PermissionRouteRegistry
                 'icon' => 'building-2',
                 'items' => [
                     ['key' => 'business_managers', 'label' => 'Business Managers', 'url' => '/admin/business-managers', 'active' => ['/admin/business-managers*'], 'permissions' => ['business_managers.view']],
+                    ['key' => 'pages', 'label' => 'Pages', 'url' => '/admin/client-pages', 'active' => ['/admin/client-pages*'], 'permissions' => ['pages.view']],
                     ['key' => 'ad_accounts', 'label' => 'Ad Accounts', 'url' => '/admin/ad-accounts', 'active' => ['/admin/ad-accounts*'], 'permissions' => ['ad_accounts.view'], 'badge' => 'ad_account_billing', 'badge_danger' => true],
                     ['key' => 'ad_account_ledger', 'label' => 'Ad Account Ledger', 'url' => '/admin/ad-account-ledger', 'active' => ['/admin/ad-account-ledger*'], 'permissions' => ['ad_account_ledger.view']],
                     ['key' => 'ad_account_pages', 'label' => 'Ad Account Page Mapping', 'url' => '/admin/ad-account-pages', 'active' => ['/admin/ad-account-pages*'], 'permissions' => ['ad_accounts.view']],
                     ['key' => 'ad_account_cards', 'label' => 'Ad Account Card Mapping', 'url' => '/admin/ad-account-cards', 'active' => ['/admin/ad-account-cards*'], 'permissions' => ['ad_accounts.view']],
                     ['key' => 'billing_history', 'label' => 'Billing History', 'url' => '/admin/ad-account-billing-history', 'active' => ['/admin/ad-account-billing-history*'], 'permissions' => ['ad_accounts.view']],
-                ],
-            ],
-            [
-                'key' => 'page_management',
-                'label' => 'Page Management',
-                'url' => '/admin/client-pages',
-                'icon' => 'panels-top-left',
-                'items' => [
-                    ['key' => 'pages', 'label' => 'Pages', 'url' => '/admin/client-pages', 'active' => ['/admin/client-pages*'], 'permissions' => ['pages.view']],
                     ['key' => 'campaigns', 'label' => 'Campaigns', 'url' => '/admin/campaigns', 'active' => ['/admin/campaigns*'], 'permissions' => ['campaigns.view']],
                     ['key' => 'datasets', 'label' => 'Datasets', 'url' => '/admin/datasets', 'active' => ['/admin/datasets*'], 'permissions' => ['campaigns.view']],
                     ['key' => 'daily_performance', 'label' => 'Daily Performance', 'url' => '/admin/daily-reports', 'active' => ['/admin/daily-reports*'], 'permissions' => ['daily_performance.view']],

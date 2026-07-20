@@ -24,9 +24,9 @@ class EnterpriseNavigationArchitectureTest extends TestCase
             ->assertSee('Clients')
             ->assertSee('Employees')
             ->assertSee('Business Management')
-            ->assertSee('Page Management')
             ->assertSee('Finance')
             ->assertSee('System Tools')
+            ->assertDontSee('Page Management')
             ->assertDontSee('Marketing Operations')
             ->assertDontSee('Facebook Dashboard')
             ->assertDontSee('TikTok');
@@ -45,7 +45,7 @@ class EnterpriseNavigationArchitectureTest extends TestCase
             ->assertDontSee('Facebook Dashboard');
     }
 
-    public function test_business_and_page_modules_have_dedicated_navigation_sections(): void
+    public function test_business_management_contains_pages_campaigns_and_reporting(): void
     {
         $admin = $this->admin();
 
@@ -53,13 +53,16 @@ class EnterpriseNavigationArchitectureTest extends TestCase
             ->assertOk()
             ->assertSee('Business Management')
             ->assertSee('Business Managers')
+            ->assertSee('Pages')
             ->assertSee('Ad Accounts')
             ->assertSee('Ad Account Ledger')
+            ->assertSee('Campaigns')
+            ->assertSee('Daily Performance')
             ->assertDontSee('Card Management');
 
         $this->actingAs($admin)->get('/admin/client-pages')
             ->assertOk()
-            ->assertSee('Page Management')
+            ->assertSee('Business Management')
             ->assertSee('Pages')
             ->assertSee('Campaigns')
             ->assertSee('Daily Performance')
@@ -123,7 +126,8 @@ class EnterpriseNavigationArchitectureTest extends TestCase
 
         $this->assertContains('Admin Dashboard', $labels);
         $this->assertContains('Agency Operations', $labels);
-        $this->assertContains('Page Management', $labels);
+        $this->assertContains('Business Management', $labels);
+        $this->assertNotContains('Page Management', $labels);
         $this->assertSame($navigation['sections'], app(NavigationService::class)->forRequest($request)['sections']);
     }
 

@@ -92,8 +92,8 @@ class EnterpriseNavigationPermissionPhase2Test extends TestCase
         $sections = collect(app(NavigationService::class)->forRequest($request)['sections']);
         $labels = $sections->pluck('label')->all();
 
-        $this->assertContains('Page Management', $labels);
-        $this->assertNotContains('Business Management', $labels);
+        $this->assertContains('Business Management', $labels);
+        $this->assertNotContains('Page Management', $labels);
         $this->assertNotContains('Finance', $labels);
 
         $this->actingAs($page)->get('/admin/client-pages')->assertOk();
