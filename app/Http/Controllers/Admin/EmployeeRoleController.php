@@ -16,8 +16,15 @@ class EmployeeRoleController extends Controller
     public function index()
     {
         $roles = EmployeeRole::with('department')->withCount('employees')->ordered()->get();
+        $summary = [
+            'total' => $roles->count(),
+            'active' => $roles->where('status', 'active')->count(),
+            'inactive' => $roles->where('status', 'inactive')->count(),
+            'assigned_employees' => $roles->sum('employees_count'),
+            'department_linked' => $roles->whereNotNull('department_id')->count(),
+        ];
 
-        return view('admin.employee-roles.index', compact('roles'));
+        return view('admin.employee-roles.index', compact('roles', 'summary'));
     }
 
     public function create()
