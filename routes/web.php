@@ -55,6 +55,7 @@ use App\Http\Controllers\Admin\ExecutivePerformanceController;
 use App\Http\Controllers\Admin\AutomationController;
 use App\Http\Controllers\Admin\DocumentManagementController;
 use App\Http\Controllers\Admin\MarketingOperationsController;
+use App\Http\Controllers\Admin\MigrationGapController;
 use App\Http\Controllers\Employee\PerformanceController as EmployeePerformanceController;
 
 Route::get('/', [DashboardController::class, 'index']);
@@ -296,6 +297,20 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::get('/admin/ad-accounts/{adAccount}/edit', [AdAccountController::class, 'edit']);
     Route::post('/admin/ad-accounts/{adAccount}/update', [AdAccountController::class, 'update']);
     Route::post('/admin/ad-accounts/{adAccount}/delete', [AdAccountController::class, 'destroy']);
+    Route::get('/admin/ad-account-pages', [MigrationGapController::class, 'adAccountPages']);
+    Route::post('/admin/ad-account-pages', [MigrationGapController::class, 'storeAdAccountPage']);
+    Route::get('/admin/ad-account-cards', [MigrationGapController::class, 'adAccountCards']);
+    Route::post('/admin/ad-account-cards', [MigrationGapController::class, 'storeAdAccountCard']);
+    Route::get('/admin/ad-account-billing-history', [MigrationGapController::class, 'billingHistory']);
+    Route::post('/admin/ad-account-billing-history', [MigrationGapController::class, 'storeBillingHistory']);
+    Route::get('/admin/datasets', [MigrationGapController::class, 'datasets']);
+    Route::post('/admin/datasets', [MigrationGapController::class, 'storeDataset']);
+    Route::get('/admin/meta-spend-snapshots', [MigrationGapController::class, 'metaSnapshots']);
+    Route::post('/admin/meta-spend-snapshots', [MigrationGapController::class, 'storeMetaSnapshot']);
+    Route::get('/admin/meta-sync-logs', [MigrationGapController::class, 'metaSyncLogs']);
+    Route::post('/admin/meta-sync-logs', [MigrationGapController::class, 'storeMetaSyncLog']);
+    Route::get('/admin/whatsapp-logs', [MigrationGapController::class, 'whatsAppLogs']);
+    Route::post('/admin/whatsapp-logs', [MigrationGapController::class, 'storeWhatsAppLog']);
 
     Route::get('/admin/facebook-cards', [FacebookCardController::class, 'index']);
     Route::get('/admin/facebook-cards/create', [FacebookCardController::class, 'create']);
@@ -337,6 +352,12 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::post('/admin/facebook-financial/funding-dashboard/update', [FacebookFinancialController::class, 'storeFundingBalance']);
     Route::get('/admin/facebook-financial/funding-history/{history}', [FacebookFinancialController::class, 'fundingHistoryShow']);
     Route::get('/admin/facebook-financial/profit-dashboard', [FacebookFinancialController::class, 'profitDashboard']);
+    Route::get('/admin/payment-providers', [MigrationGapController::class, 'providers']);
+    Route::post('/admin/payment-providers', [MigrationGapController::class, 'storeProvider']);
+    Route::get('/admin/provider-transactions', [MigrationGapController::class, 'providerTransactions']);
+    Route::post('/admin/provider-transactions', [MigrationGapController::class, 'storeProviderTransaction']);
+    Route::get('/admin/provider-fees', [MigrationGapController::class, 'providerFees']);
+    Route::post('/admin/provider-fees', [MigrationGapController::class, 'storeProviderFee']);
 
     Route::get('/admin/campaigns', [CampaignController::class, 'index']);
     Route::get('/admin/campaigns/create', [CampaignController::class, 'create']);

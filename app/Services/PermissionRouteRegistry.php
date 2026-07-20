@@ -108,6 +108,9 @@ class PermissionRouteRegistry
                     ['key' => 'business_managers', 'label' => 'Business Managers', 'url' => '/admin/business-managers', 'active' => ['/admin/business-managers*'], 'permissions' => ['business_managers.view']],
                     ['key' => 'ad_accounts', 'label' => 'Ad Accounts', 'url' => '/admin/ad-accounts', 'active' => ['/admin/ad-accounts*'], 'permissions' => ['ad_accounts.view'], 'badge' => 'ad_account_billing', 'badge_danger' => true],
                     ['key' => 'ad_account_ledger', 'label' => 'Ad Account Ledger', 'url' => '/admin/ad-account-ledger', 'active' => ['/admin/ad-account-ledger*'], 'permissions' => ['ad_account_ledger.view']],
+                    ['key' => 'ad_account_pages', 'label' => 'Ad Account Page Mapping', 'url' => '/admin/ad-account-pages', 'active' => ['/admin/ad-account-pages*'], 'permissions' => ['ad_accounts.view']],
+                    ['key' => 'ad_account_cards', 'label' => 'Ad Account Card Mapping', 'url' => '/admin/ad-account-cards', 'active' => ['/admin/ad-account-cards*'], 'permissions' => ['ad_accounts.view']],
+                    ['key' => 'billing_history', 'label' => 'Billing History', 'url' => '/admin/ad-account-billing-history', 'active' => ['/admin/ad-account-billing-history*'], 'permissions' => ['ad_accounts.view']],
                 ],
             ],
             [
@@ -118,8 +121,12 @@ class PermissionRouteRegistry
                 'items' => [
                     ['key' => 'pages', 'label' => 'Pages', 'url' => '/admin/client-pages', 'active' => ['/admin/client-pages*'], 'permissions' => ['pages.view']],
                     ['key' => 'campaigns', 'label' => 'Campaigns', 'url' => '/admin/campaigns', 'active' => ['/admin/campaigns*'], 'permissions' => ['campaigns.view']],
+                    ['key' => 'datasets', 'label' => 'Datasets', 'url' => '/admin/datasets', 'active' => ['/admin/datasets*'], 'permissions' => ['campaigns.view']],
                     ['key' => 'daily_performance', 'label' => 'Daily Performance', 'url' => '/admin/daily-reports', 'active' => ['/admin/daily-reports*'], 'permissions' => ['daily_performance.view']],
                     ['key' => 'page_performance', 'label' => 'Page Performance', 'url' => '/admin/profit-history', 'active' => ['/admin/profit-history*'], 'permissions' => ['daily_performance.view']],
+                    ['key' => 'meta_snapshots', 'label' => 'Meta Spend Snapshots', 'url' => '/admin/meta-spend-snapshots', 'active' => ['/admin/meta-spend-snapshots*'], 'permissions' => ['daily_performance.view']],
+                    ['key' => 'meta_sync_logs', 'label' => 'Meta Sync Logs', 'url' => '/admin/meta-sync-logs', 'active' => ['/admin/meta-sync-logs*'], 'permissions' => ['daily_performance.view']],
+                    ['key' => 'whatsapp_logs', 'label' => 'WhatsApp Logs', 'url' => '/admin/whatsapp-logs', 'active' => ['/admin/whatsapp-logs*'], 'permissions' => ['daily_performance.view']],
                 ],
             ],
             [
@@ -133,6 +140,9 @@ class PermissionRouteRegistry
                     ['key' => 'finance_accounts', 'label' => 'Finance Accounts', 'url' => '/admin/finance/accounts', 'active' => ['/admin/finance/accounts*'], 'permissions' => ['finance_accounts.view']],
                     ['key' => 'client_funds', 'label' => 'Client Funds', 'url' => '/admin/client-fund', 'active' => ['/admin/client-fund*'], 'permissions' => ['client_funds.view']],
                     ['key' => 'card_management', 'label' => 'Card Management', 'url' => '/admin/facebook-cards', 'active' => ['/admin/facebook-cards*', '/admin/facebook-financial/card-loads*', '/admin/facebook-financial/card-transactions*', '/admin/facebook-financial/binance-purchases*'], 'permissions' => ['cards.view'], 'badge' => 'low_card_balance', 'badge_danger' => true],
+                    ['key' => 'payment_providers', 'label' => 'Payment Providers', 'url' => '/admin/payment-providers', 'active' => ['/admin/payment-providers*'], 'permissions' => ['cards.view']],
+                    ['key' => 'provider_transactions', 'label' => 'Provider Transactions', 'url' => '/admin/provider-transactions', 'active' => ['/admin/provider-transactions*'], 'permissions' => ['cards.view']],
+                    ['key' => 'provider_fees', 'label' => 'Provider Fee Tracking', 'url' => '/admin/provider-fees', 'active' => ['/admin/provider-fees*'], 'permissions' => ['cards.view']],
                     ['key' => 'family_expenses', 'label' => 'Family Expenses', 'url' => '/admin/finance/family-expenses', 'active' => ['/admin/finance/family-expenses*'], 'permissions' => ['family_expenses.view']],
                     ['key' => 'loan_management', 'label' => 'Loan Management', 'url' => '/admin/finance/loans', 'active' => ['/admin/finance/loans*'], 'permissions' => ['loans.view']],
                     ['key' => 'reconciliation', 'label' => 'Reconciliation', 'url' => '/admin/finance/reports/reconciliation', 'active' => ['/admin/finance/reports/reconciliation*'], 'permissions' => ['reconciliation.view']],
@@ -314,8 +324,13 @@ class PermissionRouteRegistry
             ['patterns' => ['admin/business-managers*'], 'view' => ['business_managers.view'], 'write' => ['business_managers.manage']],
             ['patterns' => ['admin/ad-accounts*'], 'view' => ['ad_accounts.view'], 'write' => ['ad_accounts.manage']],
             ['patterns' => ['admin/ad-account-ledger*'], 'view' => ['ad_account_ledger.view']],
+            ['patterns' => ['admin/ad-account-pages*'], 'view' => ['ad_accounts.view'], 'write' => ['ad_accounts.manage']],
+            ['patterns' => ['admin/ad-account-cards*'], 'view' => ['ad_accounts.view'], 'write' => ['ad_accounts.manage']],
+            ['patterns' => ['admin/ad-account-billing-history*'], 'view' => ['ad_accounts.view'], 'write' => ['ad_accounts.manage']],
             ['patterns' => ['admin/client-pages*'], 'view' => ['pages.view'], 'write' => ['pages.manage']],
             ['patterns' => ['admin/campaigns*'], 'view' => ['campaigns.view'], 'write' => ['campaigns.manage']],
+            ['patterns' => ['admin/datasets*'], 'view' => ['campaigns.view'], 'write' => ['campaigns.manage']],
+            ['patterns' => ['admin/meta-spend-snapshots*', 'admin/meta-sync-logs*', 'admin/whatsapp-logs*'], 'view' => ['daily_performance.view'], 'write' => ['daily_performance.manage']],
             ['patterns' => ['admin/daily-reports*', 'admin/profit-history*', 'admin/export/daily-reports', 'admin/export/profit-history'], 'view' => ['daily_performance.view'], 'write' => ['daily_performance.manage']],
 
             ['patterns' => ['admin/client-dashboard', 'admin/clients*', 'admin/client-users*', 'admin/invoices*'], 'view' => ['clients.view'], 'write' => ['clients.manage']],
@@ -344,6 +359,7 @@ class PermissionRouteRegistry
             ['patterns' => ['admin/finance/reports/reconciliation*'], 'view' => ['reconciliation.view'], 'write' => ['reconciliation.manage']],
             ['patterns' => ['admin/finance/reports*'], 'view' => ['finance.view'], 'write' => ['finance.manage']],
             ['patterns' => ['admin/facebook-cards*', 'admin/facebook-financial*'], 'view' => ['cards.view'], 'write' => ['cards.manage']],
+            ['patterns' => ['admin/payment-providers*', 'admin/provider-transactions*', 'admin/provider-fees*'], 'view' => ['cards.view'], 'write' => ['cards.manage']],
 
             ['patterns' => ['admin/tiktok*'], 'view' => ['page_management.view'], 'write' => ['page_management.manage']],
         ];
