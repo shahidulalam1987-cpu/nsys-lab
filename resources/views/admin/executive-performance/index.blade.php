@@ -18,11 +18,11 @@
 
 <style>
     .executive-header {
-        align-items: flex-start;
+        align-items: center;
         display: flex;
-        gap: 14px;
+        gap: 12px;
         justify-content: space-between;
-        margin-bottom: 18px;
+        margin-bottom: 14px;
     }
 
     .executive-toolbar,
@@ -36,9 +36,9 @@
     .executive-filter {
         align-items: end;
         display: grid;
-        gap: 8px;
-        grid-template-columns: repeat(5, minmax(130px, 1fr));
-        margin-top: 12px;
+        gap: 7px;
+        grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+        margin-top: 10px;
     }
 
     .executive-filter label {
@@ -52,19 +52,19 @@
     .snapshot-grid,
     .alert-grid {
         display: grid;
-        gap: 12px;
-        grid-template-columns: repeat(4, minmax(160px, 1fr));
-        margin: 14px 0;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
+        margin: 12px 0;
     }
 
     .kpi-grid {
-        grid-template-columns: repeat(5, minmax(150px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
     }
 
     .mini-grid {
         display: grid;
-        gap: 12px;
-        grid-template-columns: repeat(4, minmax(160px, 1fr));
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
     }
 
     .kpi-card,
@@ -74,8 +74,8 @@
         border-radius: 10px;
         color: inherit;
         display: block;
-        min-height: 92px;
-        padding: 14px;
+        min-height: 76px;
+        padding: 12px;
         text-decoration: none;
     }
 
@@ -89,14 +89,25 @@
     .kpi-card p,
     .status-card p {
         color: var(--muted);
-        font-size: 12px;
-        margin: 0 0 8px;
+        font-size: 11px;
+        margin: 0 0 6px;
     }
 
     .kpi-card h2,
     .kpi-card h3,
     .status-card h3 {
         margin: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .kpi-card h2,
+    .status-card h2 {
+        font-size: 19px;
+    }
+
+    .kpi-card h3,
+    .status-card h3 {
+        font-size: 17px;
     }
 
     .tone-positive {
@@ -136,12 +147,12 @@
     }
 
     .executive-section {
-        margin-top: 22px;
+        margin-top: 18px;
     }
 
     .two-column {
         display: grid;
-        gap: 14px;
+        gap: 12px;
         grid-template-columns: 1fr 1fr;
     }
 
@@ -150,7 +161,7 @@
     }
 
     .compact-table {
-        min-width: 760px;
+        min-width: 640px;
     }
 
     .compact-table td,
@@ -222,12 +233,12 @@
         border: 1px dashed rgba(255,255,255,.18);
         border-radius: 10px;
         color: var(--muted);
-        padding: 18px;
+        padding: 14px;
         text-align: center;
     }
 
     .chart-wrap {
-        min-height: 320px;
+        min-height: 260px;
         position: relative;
     }
 
@@ -247,14 +258,7 @@
         padding: 0 6px;
     }
 
-    @media (max-width: 1180px) {
-        .kpi-grid,
-        .snapshot-grid,
-        .mini-grid,
-        .alert-grid {
-            grid-template-columns: repeat(2, minmax(150px, 1fr));
-        }
-
+    @media (max-width: 1280px) {
         .two-column,
         .search-groups {
             grid-template-columns: 1fr;
@@ -266,12 +270,16 @@
             display: block;
         }
 
-        .executive-filter,
-        .kpi-grid,
-        .snapshot-grid,
-        .mini-grid,
-        .alert-grid {
+        .executive-filter {
             grid-template-columns: 1fr;
+        }
+
+        .compact-table {
+            min-width: 560px;
+        }
+
+        .chart-wrap {
+            min-height: 220px;
         }
     }
 </style>
