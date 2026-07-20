@@ -89,14 +89,14 @@ class ExecutiveDashboardPhase1Test extends TestCase
         $response->assertSee('Live Alerts');
         $response->assertSee('Trend Charts');
         $response->assertSee('Quick Actions');
-        $response->assertSee('Global Search');
         $response->assertSee("Today's Business Snapshot", false);
         $response->assertSee('Business Health');
-        $response->assertSee('Clickable KPI Drilldown');
         $response->assertSee('Highest Revenue Client');
         $response->assertSee('Highest Growth Client');
         $response->assertSee('Recent Activity Timeline');
         $response->assertSee('executiveTrendChart');
+        $response->assertDontSee('Global Search Preview');
+        $response->assertDontSee('Clickable KPI Drilldown');
         $response->assertSee('href="/admin/payroll?status=generated"', false);
         $response->assertSee('href="/admin/salary-payments/pending"', false);
     }
@@ -170,7 +170,7 @@ class ExecutiveDashboardPhase1Test extends TestCase
         $response->assertSee('Pending Client Payments');
         $response->assertSee('Client fund payments need approval.');
         $response->assertSee('No approved Daily Performance Report is available for the selected period.');
-        $response->assertSee('No assignments found.');
+        $response->assertDontSee('No assignments found.');
         $response->assertSee('labels:', false);
     }
 

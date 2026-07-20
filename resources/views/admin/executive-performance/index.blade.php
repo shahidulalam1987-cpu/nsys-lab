@@ -328,31 +328,19 @@
     @endif
 </div>
 
-<div class="executive-section two-column">
+<div class="executive-section">
     <div class="card">
         <h2>Business Health</h2>
-        <a class="status-card tone-{{ $health['tone'] }}" href="/admin/notifications">
-            <p>Overall Health</p>
-            <h2>{{ $health['status'] }}</h2>
-            <p>{{ number_format($health['critical_count']) }} critical checks, {{ number_format($health['warning_count']) }} warning checks</p>
-        </a>
-        <div class="mini-grid" style="margin-top:12px;">
-            @foreach($health['checks'] as $check)
-                <div class="kpi-card tone-{{ $check['count'] > 0 ? 'negative' : 'neutral' }}">
+        <div class="mini-grid">
+            <a class="status-card tone-{{ $health['tone'] }}" href="/admin/notifications">
+                <p>Overall Health</p>
+                <h2>{{ $health['status'] }}</h2>
+                <p>{{ number_format($health['critical_count']) }} critical, {{ number_format($health['warning_count']) }} warning</p>
+            </a>
+            @foreach(array_slice($health['checks'], 0, 3) as $check)
+                <a class="kpi-card tone-{{ $check['count'] > 0 ? 'negative' : 'neutral' }}" href="/admin/notifications">
                     <p>{{ $check['label'] }}</p>
                     <h3>{{ number_format($check['count']) }}</h3>
-                </div>
-            @endforeach
-        </div>
-    </div>
-
-    <div class="card">
-        <h2>Clickable KPI Drilldown</h2>
-        <div class="mini-grid">
-            @foreach($dashboard['kpi_cards'] as $card)
-                <a class="kpi-card tone-{{ $card['tone'] }}" href="{{ $card['url'] }}">
-                    <p>{{ $card['label'] }}</p>
-                    <h3>{{ $card['display'] }}</h3>
                 </a>
             @endforeach
         </div>
@@ -365,13 +353,9 @@
         <a class="kpi-card tone-positive" href="/admin/executive-performance"><p>Total Orders</p><h2>{{ number_format($month['orders']) }}</h2></a>
         <a class="kpi-card tone-positive" href="/admin/executive-performance"><p>Total Spend</p><h2>USD {{ number_format($month['spend_usd'], 2) }}</h2><p>BDT {{ number_format($month['spend_bdt'], 2) }}</p></a>
         <a class="kpi-card tone-positive" href="/admin/client-fund"><p>Total Revenue</p><h2>BDT {{ number_format($month['revenue'], 2) }}</h2></a>
-        <a class="kpi-card tone-{{ $month['profit'] > 0 ? 'positive' : ($month['profit'] < 0 ? 'negative' : 'neutral') }}" href="/admin/facebook-financial/profit-dashboard"><p>Estimated Profit</p><h2>BDT {{ number_format($month['profit'], 2) }}</h2></a>
         <a class="kpi-card tone-{{ $month['net_profit'] > 0 ? 'positive' : ($month['net_profit'] < 0 ? 'negative' : 'neutral') }}" href="/admin/facebook-financial/profit-dashboard"><p>Net Profit</p><h2>BDT {{ number_format($month['net_profit'], 2) }}</h2></a>
         <a class="kpi-card tone-positive" href="/admin/payroll/payment-report"><p>Payroll Paid</p><h2>BDT {{ number_format($month['payroll_paid'], 2) }}</h2></a>
-        <a class="kpi-card tone-positive" href="/admin/client-fund"><p>Salary Fund Received</p><h2>BDT {{ number_format($month['salary_fund_received'], 2) }}</h2></a>
-        <a class="kpi-card tone-negative" href="/admin/client-fund"><p>Salary Fund Used</p><h2>BDT {{ number_format($month['salary_fund_used'], 2) }}</h2></a>
-        <a class="kpi-card tone-positive" href="/admin/client-fund"><p>Ads Fund Received</p><h2>BDT {{ number_format($month['ads_fund_received'], 2) }}</h2></a>
-        <a class="kpi-card tone-negative" href="/admin/client-fund"><p>Ads Fund Used</p><h2>BDT {{ number_format($month['ads_fund_used'], 2) }}</h2></a>
+        <a class="kpi-card tone-{{ $finance['outstanding_salary_due'] > 0 ? 'negative' : 'neutral' }}" href="/admin/payroll?status=due"><p>Salary Due</p><h2>BDT {{ number_format($finance['outstanding_salary_due'], 2) }}</h2></a>
     </div>
 </div>
 
@@ -380,13 +364,8 @@
     <div class="kpi-grid">
         <a class="kpi-card tone-neutral" href="/admin/marketing-operations"><p>Top Moderator</p><h2>{{ $marketingWidgets['top_moderator'] ?: '-' }}</h2></a>
         <a class="kpi-card tone-neutral" href="/admin/marketing-operations"><p>Top Ad Manager</p><h2>{{ $marketingWidgets['top_ad_manager'] ?: '-' }}</h2></a>
-        <a class="kpi-card tone-neutral" href="/admin/marketing-operations"><p>Top Auditor</p><h2>{{ $marketingWidgets['top_auditor'] ?: '-' }}</h2></a>
-        <a class="kpi-card tone-neutral" href="/admin/marketing-operations"><p>Top Monitor</p><h2>{{ $marketingWidgets['top_monitor'] ?: '-' }}</h2></a>
-        <a class="kpi-card tone-neutral" href="/admin/marketing-operations"><p>Top Trainer</p><h2>{{ $marketingWidgets['top_trainer'] ?: '-' }}</h2></a>
         <a class="kpi-card tone-{{ $marketingWidgets['repeated_mistakes'] > 0 ? 'negative' : 'neutral' }}" href="/admin/marketing-operations/reports?status=repeated"><p>Repeated Mistakes</p><h2>{{ number_format($marketingWidgets['repeated_mistakes']) }}</h2></a>
         <a class="kpi-card tone-{{ $marketingWidgets['training_due'] > 0 ? 'warning' : 'neutral' }}" href="/admin/marketing-operations/reports?report_type=trainer_training"><p>Training Due</p><h2>{{ number_format($marketingWidgets['training_due']) }}</h2></a>
-        <a class="kpi-card tone-{{ $marketingWidgets['critical_operations_status'] > 0 ? 'negative' : 'neutral' }}" href="/admin/marketing-operations/reports?report_type=management_review"><p>Critical Operations</p><h2>{{ number_format($marketingWidgets['critical_operations_status']) }}</h2></a>
-        <a class="kpi-card tone-neutral" href="/admin/marketing-operations/reports?report_type=auditor_audit"><p>Average Response Time</p><h2>{{ number_format($marketingWidgets['average_response_time'], 2) }}</h2></a>
         <a class="kpi-card tone-neutral" href="/admin/marketing-operations/reports?report_type=ad_manager_spend"><p>Average CPP</p><h2>{{ number_format($marketingWidgets['average_cpp'], 2) }}</h2></a>
     </div>
 </div>
@@ -394,10 +373,7 @@
 <div class="executive-section">
     <h2>Finance Summary</h2>
     <div class="mini-grid">
-        <a class="kpi-card tone-neutral" href="/admin/finance/accounts"><p>Finance Accounts</p><h3>{{ number_format($finance['finance_accounts']) }}</h3></a>
         <a class="kpi-card tone-{{ $finance['finance_account_balance'] > 0 ? 'positive' : ($finance['finance_account_balance'] < 0 ? 'negative' : 'neutral') }}" href="/admin/finance/accounts"><p>Current Balance</p><h3>BDT {{ number_format($finance['finance_account_balance'], 2) }}</h3></a>
-        <a class="kpi-card tone-{{ $finance['binance_balance'] > 0 ? 'positive' : 'neutral' }}" href="/admin/facebook-financial/funding-dashboard"><p>Binance Balance</p><h3>USD {{ number_format($finance['binance_balance'], 2) }}</h3></a>
-        <a class="kpi-card tone-{{ $finance['facebook_card_balance'] > 0 ? 'positive' : 'neutral' }}" href="/admin/facebook-cards"><p>Facebook Card Balance</p><h3>USD {{ number_format($finance['facebook_card_balance'], 2) }}</h3></a>
         <a class="kpi-card tone-{{ $finance['salary_fund_balance'] > 0 ? 'positive' : ($finance['salary_fund_balance'] < 0 ? 'negative' : 'neutral') }}" href="/admin/client-fund"><p>Employee Salary Fund Balance</p><h3>BDT {{ number_format($finance['salary_fund_balance'], 2) }}</h3></a>
         <a class="kpi-card tone-{{ $finance['ads_fund_balance'] > 0 ? 'positive' : ($finance['ads_fund_balance'] < 0 ? 'negative' : 'neutral') }}" href="/admin/client-fund"><p>Facebook Ads Fund Balance</p><h3>BDT {{ number_format($finance['ads_fund_balance'], 2) }}</h3></a>
         <a class="kpi-card tone-{{ $finance['outstanding_client_due'] > 0 ? 'negative' : 'neutral' }}" href="/admin/clients"><p>Outstanding Client Due</p><h3>BDT {{ number_format($finance['outstanding_client_due'], 2) }}</h3></a>
@@ -476,13 +452,9 @@
         <h2>Employee Analytics</h2>
         <div class="mini-grid">
             <div class="kpi-card"><p>Top Moderator</p><h3>{{ $employees['top_moderator']['employee']->name ?? '-' }}</h3><p>{{ number_format($employees['top_moderator']['confirmed_orders'] ?? 0) }} orders</p></div>
-            <div class="kpi-card"><p>Top Facebook Manager</p><h3>{{ $employees['top_ad_manager']['employee']->name ?? '-' }}</h3><p>USD {{ number_format($employees['top_ad_manager']['approved_spend'] ?? 0, 2) }}</p></div>
+            <div class="kpi-card"><p>Top Ad Manager</p><h3>{{ $employees['top_ad_manager']['employee']->name ?? '-' }}</h3><p>USD {{ number_format($employees['top_ad_manager']['approved_spend'] ?? 0, 2) }}</p></div>
             <div class="kpi-card"><p>Top Performer</p><h3>{{ $employees['top_performer']['employee']->name ?? '-' }}</h3><p>BDT {{ number_format($employees['top_performer']['profit_contribution'] ?? 0, 2) }}</p></div>
-            <div class="kpi-card"><p>Lowest Performer</p><h3>{{ $employees['lowest_performer']['employee']->name ?? '-' }}</h3><p>{{ number_format($employees['lowest_performer']['approval_rate'] ?? 0, 2) }}% approval</p></div>
             <div class="kpi-card"><p>Approval Rate</p><h3>{{ number_format($employees['approval_rate'], 2) }}%</h3></div>
-            <div class="kpi-card"><p>Average Orders</p><h3>{{ number_format($employees['average_orders'], 2) }}</h3></div>
-            <div class="kpi-card"><p>Average Spend</p><h3>USD {{ number_format($employees['average_spend'], 2) }}</h3></div>
-            <div class="kpi-card"><p>Average Productivity</p><h3>{{ number_format($employees['average_productivity'], 2) }}%</h3></div>
             <a class="kpi-card tone-{{ $employees['pending_reviews'] > 0 ? 'negative' : 'neutral' }}" href="/admin/performance-verification"><p>Pending Reviews</p><h3>{{ number_format($employees['pending_reviews']) }}</h3></a>
         </div>
     </div>
@@ -543,70 +515,15 @@
     </div>
 </div>
 
-<div class="executive-section two-column">
+<div class="executive-section">
     <div class="card">
         <h2>Quick Actions</h2>
-        @foreach($dashboard['quick_actions'] as $group => $actions)
-            <h3>{{ $group }}</h3>
-            <div class="quick-action-row" style="margin-bottom:12px;">
-                @foreach($actions as $action)
-                    <a class="btn" href="{{ $action['url'] }}"><span class="action-icon">{{ $action['icon'] }}</span>{{ $action['label'] }}</a>
-                @endforeach
-            </div>
-        @endforeach
-    </div>
-
-    <div class="card">
-        <h2>Global Search Preview</h2>
-        <div class="search-groups">
-            <div>
-                <h3>Clients</h3>
-                @forelse($dashboard['search']['clients'] as $client)
-                    <a class="search-result" href="/admin/clients/{{ $client->id }}">{{ $client->company_name }}</a>
-                @empty
-                    <div class="empty-state">No clients found.</div>
-                @endforelse
-            </div>
-            <div>
-                <h3>Employees</h3>
-                @forelse($dashboard['search']['employees'] as $employee)
-                    <a class="search-result" href="/admin/employees/{{ $employee->id }}">{{ $employee->employee_id }} | {{ $employee->name }}</a>
-                @empty
-                    <div class="empty-state">No employees found.</div>
-                @endforelse
-            </div>
-            <div>
-                <h3>Pages</h3>
-                @forelse($dashboard['search']['pages'] as $page)
-                    <a class="search-result" href="/admin/client-pages/{{ $page->id }}/edit">{{ $page->page_name }}</a>
-                @empty
-                    <div class="empty-state">No pages found.</div>
-                @endforelse
-            </div>
-            <div>
-                <h3>Campaigns</h3>
-                @forelse($dashboard['search']['campaigns'] as $campaign)
-                    <a class="search-result" href="/admin/campaigns/{{ $campaign->id }}">{{ $campaign->campaign_name }}<br><span class="muted">{{ $campaign->campaign_id }}</span></a>
-                @empty
-                    <div class="empty-state">No campaigns found.</div>
-                @endforelse
-            </div>
-            <div>
-                <h3>Finance Accounts</h3>
-                @forelse($dashboard['search']['finance_accounts'] as $account)
-                    <a class="search-result" href="/admin/finance/accounts/{{ $account->id }}/edit">{{ $account->account_name }} <span class="muted">{{ $account->currency }}</span></a>
-                @empty
-                    <div class="empty-state">No finance accounts found.</div>
-                @endforelse
-            </div>
-            <div>
-                <h3>Assignments</h3>
-                @forelse($dashboard['search']['assignments'] as $assignment)
-                    <a class="search-result" href="/admin/assignments/{{ $assignment->id }}">{{ $assignment->employee?->name ?? 'Employee' }}<br><span class="muted">{{ $assignment->client?->company_name ?? 'No client' }}</span></a>
-                @empty
-                    <div class="empty-state">No assignments found.</div>
-                @endforelse
-            </div>
+        <div class="quick-action-row">
+            <a class="btn" href="/admin/executive-performance/export/pdf?{{ http_build_query($filters) }}"><span class="action-icon">PDF</span>Export PDF</a>
+            <a class="btn" href="/admin/profit-history"><span class="action-icon">BI</span>Performance Reports</a>
+            <a class="btn" href="/admin/client-fund"><span class="action-icon">CF</span>Client Funds</a>
+            <a class="btn" href="/admin/payroll?status=due"><span class="action-icon">PR</span>Payroll Queue</a>
+            <a class="btn" href="/admin/notifications"><span class="action-icon">AL</span>Alerts</a>
         </div>
     </div>
 </div>
