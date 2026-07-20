@@ -203,24 +203,18 @@ class PermissionRouteRegistry
             'ad_accounts.view' => ['Ad Accounts View', 'business_management'],
             'ad_accounts.manage' => ['Ad Accounts Manage', 'business_management'],
             'ad_account_ledger.view' => ['Ad Account Ledger View', 'business_management'],
-            'page_management.view' => ['Page Management View', 'page_management'],
-            'page_management.manage' => ['Page Management Manage', 'page_management'],
-            'pages.view' => ['Pages View', 'page_management'],
-            'pages.manage' => ['Pages Manage', 'page_management'],
-            'campaigns.view' => ['Campaigns View', 'page_management'],
-            'campaigns.manage' => ['Campaigns Manage', 'page_management'],
-            'daily_performance.view' => ['Daily Performance View', 'page_management'],
-            'daily_performance.manage' => ['Daily Performance Manage', 'page_management'],
+            'pages.view' => ['Pages View', 'business_management'],
+            'pages.manage' => ['Pages Manage', 'business_management'],
+            'campaigns.view' => ['Campaigns View', 'business_management'],
+            'campaigns.manage' => ['Campaigns Manage', 'business_management'],
+            'daily_performance.view' => ['Daily Performance View', 'agency_operations'],
+            'daily_performance.manage' => ['Daily Performance Manage', 'agency_operations'],
             'finance.view' => ['Finance View', 'finance'],
             'finance.manage' => ['Finance Manage', 'finance'],
             'finance_accounts.view' => ['Finance Accounts View', 'finance'],
             'finance_accounts.manage' => ['Finance Accounts Manage', 'finance'],
             'cards.view' => ['Cards View', 'finance'],
             'cards.manage' => ['Cards Manage', 'finance'],
-            'loans.view' => ['Loans View', 'finance'],
-            'loans.manage' => ['Loans Manage', 'finance'],
-            'family_expenses.view' => ['Family Expenses View', 'finance'],
-            'family_expenses.manage' => ['Family Expenses Manage', 'finance'],
             'reconciliation.view' => ['Reconciliation View', 'finance'],
             'reconciliation.manage' => ['Reconciliation Manage', 'finance'],
             'system_tools.view' => ['System Tools View', 'system_tools'],
@@ -241,9 +235,9 @@ class PermissionRouteRegistry
             'agency_owner' => [
                 'admin_dashboard.view', 'agency_operations.view', 'clients.view', 'client_payments.view', 'client_funds.view',
                 'employees.view', 'payroll.view', 'final_settlement.view', 'business_management.view', 'business_managers.view',
-                'ad_accounts.view', 'ad_account_ledger.view', 'page_management.view', 'pages.view', 'campaigns.view',
-                'daily_performance.view', 'finance.view', 'finance_accounts.view', 'cards.view', 'loans.view',
-                'family_expenses.view', 'reconciliation.view', 'documents.view',
+                'ad_accounts.view', 'ad_account_ledger.view', 'pages.view', 'campaigns.view',
+                'daily_performance.view', 'finance.view', 'finance_accounts.view', 'cards.view',
+                'reconciliation.view', 'documents.view',
             ],
             'agency_operations_manager' => [
                 'admin_dashboard.view', 'agency_operations.view', 'agency_operations.manage', 'agency_operations.verify', 'agency_operations.approve',
@@ -264,7 +258,7 @@ class PermissionRouteRegistry
             ],
             'finance_manager' => [
                 'admin_dashboard.view', 'finance.view', 'finance.manage', 'finance_accounts.view', 'finance_accounts.manage',
-                'cards.view', 'cards.manage', 'loans.view', 'loans.manage', 'family_expenses.view', 'family_expenses.manage',
+                'cards.view', 'cards.manage',
                 'reconciliation.view', 'reconciliation.manage', 'clients.view', 'client_payments.view', 'client_payments.manage',
                 'client_funds.view', 'client_funds.manage', 'documents.view',
             ],
@@ -273,7 +267,7 @@ class PermissionRouteRegistry
                 'ad_accounts.manage', 'ad_account_ledger.view', 'documents.view',
             ],
             'page_manager' => [
-                'page_management.view', 'pages.view', 'pages.manage', 'campaigns.view', 'campaigns.manage',
+                'business_management.view', 'pages.view', 'pages.manage', 'campaigns.view', 'campaigns.manage',
                 'daily_performance.view', 'daily_performance.manage', 'documents.view',
             ],
         ];
@@ -339,14 +333,10 @@ class PermissionRouteRegistry
 
             ['patterns' => ['admin/financial-management'], 'view' => ['finance.view']],
             ['patterns' => ['admin/finance/accounts*'], 'view' => ['finance_accounts.view'], 'write' => ['finance_accounts.manage']],
-            ['patterns' => ['admin/finance/family-expenses*'], 'view' => ['family_expenses.view'], 'write' => ['family_expenses.manage']],
-            ['patterns' => ['admin/finance/loans*'], 'view' => ['loans.view'], 'write' => ['loans.manage']],
             ['patterns' => ['admin/finance/reports/reconciliation*'], 'view' => ['reconciliation.view'], 'write' => ['reconciliation.manage']],
             ['patterns' => ['admin/finance/reports*'], 'view' => ['finance.view'], 'write' => ['finance.manage']],
             ['patterns' => ['admin/facebook-cards*', 'admin/facebook-financial*'], 'view' => ['cards.view'], 'write' => ['cards.manage']],
             ['patterns' => ['admin/payment-providers*', 'admin/provider-transactions*', 'admin/provider-fees*'], 'view' => ['cards.view'], 'write' => ['cards.manage']],
-
-            ['patterns' => ['admin/tiktok*'], 'view' => ['page_management.view'], 'write' => ['page_management.manage']],
         ];
     }
 

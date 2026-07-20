@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Client;
 use App\Models\Employee;
 use App\Models\EmployeePayroll;
-use App\Models\FamilyExpense;
 use App\Models\FinanceAccount;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -87,14 +86,14 @@ class FinanceSafetyLockTest extends TestCase
         $this->assertSame('approved', $payroll->fresh()->payroll_status);
     }
 
-    public function test_family_expense_cannot_use_usd_account(): void
+    public function test_archived_family_expense_route_does_not_touch_usd_account(): void
     {
         $account = $this->account(['currency' => 'USD', 'current_balance' => 1000]);
 
         $this->actingAs($this->admin())
             ->from('/admin/finance/family-expenses')
             ->post('/admin/finance/family-expenses', $this->expenseData($account))
-            ->assertSessionHasErrors(['finance_account_id' => 'Currency mismatch. This payment requires a BDT account.']);
+            ->assertNotFound();
 
         $this->assertSame(1000.0, (float) $account->fresh()->current_balance);
         $this->assertDatabaseCount('family_expenses', 0);
@@ -240,46 +239,32 @@ class FinanceSafetyLockTest extends TestCase
         ]);
     }
 
-    public function test_family_expense_creates_ledger_and_deducts_balance(): void
+    public function test_archived_family_expense_route_does_not_create_ledger_or_deduct_balance(): void
     {
         $admin = $this->admin();
         $account = $this->account(['current_balance' => 1000]);
 
-        $this->actingAs($admin)->post('/admin/finance/family-expenses', $this->expenseData($account, 250));
-
-        $expenseId = (int) FamilyExpense::value('id');
-        $this->assertSame(750.0, (float) $account->fresh()->current_balance);
-        $this->assertDatabaseHas('finance_account_ledgers', [
-            'finance_account_id' => $account->id,
-            'transaction_type' => 'family_expense',
-            'amount' => 250,
-            'previous_balance' => 1000,
-            'new_balance' => 750,
-            'reference' => 'family-expense:' . $expenseId,
-            'created_by' => $admin->id,
-        ]);
-    }
-
-    public function test_family_expense_delete_restores_balance_through_reversal_ledger(): void
-    {
-        $admin = $this->admin();
-        $account = $this->account(['current_balance' => 1000]);
-        $this->actingAs($admin)->post('/admin/finance/family-expenses', $this->expenseData($account, 250));
-        $expense = FamilyExpense::firstOrFail();
-
-        $this->actingAs($admin)->post('/admin/finance/family-expenses/' . $expense->id . '/delete');
+        $this->actingAs($admin)
+            ->post('/admin/finance/family-expenses', $this->expenseData($account, 250))
+            ->assertNotFound();
 
         $this->assertSame(1000.0, (float) $account->fresh()->current_balance);
-        $this->assertDatabaseMissing('family_expenses', ['id' => $expense->id]);
-        $this->assertDatabaseHas('finance_account_ledgers', [
-            'finance_account_id' => $account->id,
-            'transaction_type' => 'family_expense_reversal',
-            'amount' => 250,
-            'previous_balance' => 750,
-            'new_balance' => 1000,
-            'reference' => 'family-expense:' . $expense->id,
-            'created_by' => $admin->id,
-        ]);
+        $this->assertDatabaseCount('family_expenses', 0);
+        $this->assertDatabaseCount('finance_account_ledgers', 0);
+    }
+
+    public function test_archived_family_expense_delete_route_does_not_restore_or_mutate_balance(): void
+    {
+        $admin = $this->admin();
+        $account = $this->account(['current_balance' => 1000]);
+
+        $this->actingAs($admin)
+            ->post('/admin/finance/family-expenses/999/delete')
+            ->assertNotFound();
+
+        $this->assertSame(1000.0, (float) $account->fresh()->current_balance);
+        $this->assertDatabaseCount('family_expenses', 0);
+        $this->assertDatabaseCount('finance_account_ledgers', 0);
     }
 
     private function admin(): User

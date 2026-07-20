@@ -526,7 +526,7 @@
             ->get();
     @endphp
     <div class="content-card">
-        <h3 style="margin-top:0;">Marketing Operations History</h3>
+        <h3 style="margin-top:0;">Agency Operations History</h3>
         <div class="table-wrap">
             <table>
                 <tr><th>Date</th><th>Type</th><th>Platform</th><th>Client</th><th>Page</th><th>Status</th></tr>
@@ -540,7 +540,7 @@
                         <td>{{ $report->statusLabel() }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="6">No marketing operations records found.</td></tr>
+                    <tr><td colspan="6">No agency operations records found.</td></tr>
                 @endforelse
             </table>
         </div>

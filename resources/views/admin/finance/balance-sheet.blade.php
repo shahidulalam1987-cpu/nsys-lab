@@ -2,13 +2,11 @@
 
 @section('content')
     <h1>Balance Sheet</h1>
-    <p>Current account balances and loan position.</p>
+    <p>Current account balances for NSYS finance operations.</p>
 
     <div class="stats-grid">
         <div class="stat-card"><p>Total BDT Balance</p><h2>BDT {{ number_format($summary['total_bdt_balance'], 2) }}</h2></div>
         <div class="stat-card"><p>Total USD Balance</p><h2>USD {{ number_format($summary['total_usd_balance'], 2) }}</h2></div>
-        <div class="stat-card"><p>Remaining Payable</p><h2>BDT {{ number_format($summary['total_remaining_payable'], 2) }}</h2></div>
-        <div class="stat-card"><p>Remaining Receivable</p><h2>BDT {{ number_format($summary['total_remaining_receivable'], 2) }}</h2></div>
     </div>
 
     <div class="card">

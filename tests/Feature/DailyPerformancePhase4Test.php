@@ -153,7 +153,7 @@ class DailyPerformancePhase4Test extends TestCase
 
         $this->actingAs($admin)->get('/admin/clients/' . $client->id)
             ->assertOk()
-            ->assertSee('Boosting Performance Summary')
+            ->assertSee('Performance Summary')
             ->assertSee('Campaign Count');
 
         $this->actingAs($admin)->get('/admin/profit-history')

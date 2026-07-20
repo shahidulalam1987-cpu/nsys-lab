@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\FinanceAccount;
 use App\Models\FinanceAccountLedger;
-use App\Models\FinanceLoan;
 use App\Models\User;
 use App\Services\FinanceLedgerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -53,7 +52,7 @@ class FinanceCoreLedgerTest extends TestCase
         $this->assertDatabaseMissing('finance_account_ledgers', ['transaction_reference' => 'blocked-debit']);
     }
 
-    public function test_loan_taken_and_repayment_create_opposite_ledger_movements(): void
+    public function test_archived_loan_routes_do_not_create_ledger_movements(): void
     {
         $admin = $this->admin();
         $account = $this->account(1000);
@@ -66,33 +65,11 @@ class FinanceCoreLedgerTest extends TestCase
             'loan_date' => '2026-06-20',
             'due_date' => '2026-07-20',
             'note' => 'Working capital.',
-        ])->assertRedirect('/admin/finance/loans');
+        ])->assertNotFound();
 
-        $loan = FinanceLoan::firstOrFail();
-        $this->assertSame(1500.0, (float) $account->fresh()->current_balance);
-
-        $this->actingAs($admin)->post('/admin/finance/loans/' . $loan->id . '/repayments', [
-            'finance_account_id' => $account->id,
-            'payment_date' => '2026-06-21',
-            'amount' => 200,
-            'method' => 'Bank Transfer',
-            'note' => 'First repayment.',
-        ])->assertRedirect('/admin/finance/loans/' . $loan->id);
-
-        $this->assertSame(1300.0, (float) $account->fresh()->current_balance);
-        $this->assertSame(200.0, (float) $loan->fresh()->paid_amount);
-        $this->assertDatabaseHas('finance_account_ledgers', [
-            'finance_account_id' => $account->id,
-            'transaction_type' => 'loan_taken',
-            'direction' => 'credit',
-            'amount' => 500,
-        ]);
-        $this->assertDatabaseHas('finance_account_ledgers', [
-            'finance_account_id' => $account->id,
-            'transaction_type' => 'loan_repayment',
-            'direction' => 'debit',
-            'amount' => 200,
-        ]);
+        $this->assertSame(1000.0, (float) $account->fresh()->current_balance);
+        $this->assertDatabaseCount('finance_loans', 0);
+        $this->assertDatabaseCount('finance_account_ledgers', 0);
     }
 
     public function test_reconciliation_report_flags_balance_mismatch(): void

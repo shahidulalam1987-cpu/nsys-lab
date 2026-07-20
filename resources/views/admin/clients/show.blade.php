@@ -112,7 +112,7 @@
     </div>
 
     <div class="card">
-        <h2>Boosting Performance Summary</h2>
+        <h2>Performance Summary</h2>
         <div class="stats-grid">
             <div class="stat-card"><p>Total Spend</p><h2>USD {{ number_format($boostingPerformanceSummary['total_spend'], 2) }}</h2></div>
             <div class="stat-card"><p>Total Orders</p><h2>{{ number_format($boostingPerformanceSummary['total_orders']) }}</h2></div>

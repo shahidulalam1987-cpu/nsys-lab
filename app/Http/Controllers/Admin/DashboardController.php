@@ -264,11 +264,6 @@ class DashboardController extends Controller
         ));
     }
 
-    public function tiktokPlaceholder()
-    {
-        return view('admin.tiktok.placeholder');
-    }
-
     public function employeeDepartment(ClientFundDashboardService $clientFundDashboardService, PayrollCategoryService $payrollCategoryService)
     {
         $clientFundDashboard = $clientFundDashboardService->dashboard();

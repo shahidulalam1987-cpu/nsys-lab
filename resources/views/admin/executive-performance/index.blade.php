@@ -376,7 +376,7 @@
 </div>
 
 <div class="executive-section">
-    <h2>Marketing Operations Insights</h2>
+    <h2>Agency Operations Insights</h2>
     <div class="kpi-grid">
         <a class="kpi-card tone-neutral" href="/admin/marketing-operations"><p>Top Moderator</p><h2>{{ $marketingWidgets['top_moderator'] ?: '-' }}</h2></a>
         <a class="kpi-card tone-neutral" href="/admin/marketing-operations"><p>Top Ad Manager</p><h2>{{ $marketingWidgets['top_ad_manager'] ?: '-' }}</h2></a>

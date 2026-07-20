@@ -2,7 +2,7 @@
 
 @section('content')
     <h1>Agency Operations</h1>
-    <p>Central operations center for Meta, TikTok, Google Ads, YouTube, and future marketing platforms.</p>
+    <p>Central operations center for employee submissions, verification, review, and performance reporting.</p>
 
     <div class="stats-grid">
         <div class="stat-card"><p>Pending Review</p><h2>{{ number_format($summary['pending']) }}</h2></div>

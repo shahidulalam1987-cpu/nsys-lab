@@ -3,7 +3,6 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Admin\ClientController;
-use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
 use App\Http\Controllers\Admin\DailyReportController;
 use App\Http\Controllers\Admin\ProfitController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -127,12 +126,7 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::get('/admin/marketing-operations/{type}/create', [MarketingOperationsController::class, 'create']);
     Route::post('/admin/marketing-operations/{type}', [MarketingOperationsController::class, 'store']);
     Route::post('/admin/marketing-operations/reports/{report}/status', [MarketingOperationsController::class, 'updateStatus']);
-    Route::get('/admin/tiktok', [AdminDashboardController::class, 'tiktokPlaceholder']);
-    Route::get('/admin/tiktok/ad-accounts', [AdminDashboardController::class, 'tiktokPlaceholder']);
-    Route::get('/admin/tiktok/pages', [AdminDashboardController::class, 'tiktokPlaceholder']);
-    Route::get('/admin/tiktok/campaigns', [AdminDashboardController::class, 'tiktokPlaceholder']);
-    Route::get('/admin/tiktok/daily-performance', [AdminDashboardController::class, 'tiktokPlaceholder']);
-    Route::get('/admin/tiktok/analytics', [AdminDashboardController::class, 'tiktokPlaceholder']);
+    Route::any('/admin/tiktok/{path?}', fn () => abort(404, 'This platform module is not active.'))->where('path', '.*');
     Route::get('/admin/client-dashboard', [AdminDashboardController::class, 'clientDepartment']);
     Route::get('/admin/employee-dashboard', [AdminDashboardController::class, 'employeeDepartment']);
     Route::get('/admin/bug-tracker', [BugReportController::class, 'index']);
@@ -325,21 +319,9 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::get('/admin/finance/accounts/{account}/edit', [FinanceManagementController::class, 'editAccount']);
     Route::post('/admin/finance/accounts/{account}/update', [FinanceManagementController::class, 'updateAccount']);
     Route::post('/admin/finance/accounts/{account}/delete', [FinanceManagementController::class, 'destroyAccount']);
-    Route::get('/admin/finance/family-expenses', [FinanceManagementController::class, 'familyExpenses']);
-    Route::post('/admin/finance/family-expenses', [FinanceManagementController::class, 'storeFamilyExpense']);
-    Route::get('/admin/finance/family-expenses/{expense}/edit', [FinanceManagementController::class, 'editFamilyExpense']);
-    Route::post('/admin/finance/family-expenses/{expense}/update', [FinanceManagementController::class, 'updateFamilyExpense']);
-    Route::post('/admin/finance/family-expenses/{expense}/delete', [FinanceManagementController::class, 'destroyFamilyExpense']);
-    Route::get('/admin/finance/loans', [FinanceManagementController::class, 'loans']);
-    Route::post('/admin/finance/loans', [FinanceManagementController::class, 'storeLoan']);
-    Route::get('/admin/finance/loans/{loan}', [FinanceManagementController::class, 'showLoan']);
-    Route::get('/admin/finance/loans/{loan}/edit', [FinanceManagementController::class, 'editLoan']);
-    Route::post('/admin/finance/loans/{loan}/update', [FinanceManagementController::class, 'updateLoan']);
-    Route::post('/admin/finance/loans/{loan}/delete', [FinanceManagementController::class, 'destroyLoan']);
-    Route::post('/admin/finance/loans/{loan}/repayments', [FinanceManagementController::class, 'storeRepayment']);
+    Route::any('/admin/finance/family-expenses/{path?}', fn () => abort(404, 'This finance module is archived.'))->where('path', '.*');
+    Route::any('/admin/finance/loans/{path?}', fn () => abort(404, 'This finance module is archived.'))->where('path', '.*');
     Route::get('/admin/finance/reports/balance-sheet', [FinanceManagementController::class, 'balanceSheet']);
-    Route::get('/admin/finance/reports/loan-report', [FinanceManagementController::class, 'loanReport']);
-    Route::get('/admin/finance/reports/family-expenses', [FinanceManagementController::class, 'familyExpenseReport']);
     Route::get('/admin/finance/reports/reconciliation', [FinanceManagementController::class, 'reconciliationReport']);
     Route::get('/admin/facebook-financial/binance-purchases', [FacebookFinancialController::class, 'binancePurchases']);
     Route::post('/admin/facebook-financial/binance-purchases', [FacebookFinancialController::class, 'storeBinancePurchase']);
@@ -367,10 +349,10 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::post('/admin/campaigns/{campaign}/update', [CampaignController::class, 'update']);
     Route::post('/admin/campaigns/{campaign}/delete', [CampaignController::class, 'destroy']);
 
-    Route::get('/admin/payments', [AdminPaymentController::class, 'index']);
-    Route::get('/admin/payments/pending', [AdminPaymentController::class, 'pending']);
-    Route::post('/admin/payments/{id}/approve', [AdminPaymentController::class, 'approve']);
-    Route::post('/admin/payments/{id}/reject', [AdminPaymentController::class, 'reject']);
+    Route::get('/admin/payments/pending', fn () => redirect('/admin/salary-payments/pending'));
+    Route::get('/admin/payments', fn () => redirect('/admin/salary-payments'));
+    Route::post('/admin/payments/{id}/approve', fn () => redirect('/admin/salary-payments/pending')->with('error', 'Legacy payment approval is disabled. Use Client Payment approval.'));
+    Route::post('/admin/payments/{id}/reject', fn () => redirect('/admin/salary-payments/pending')->with('error', 'Legacy payment rejection is disabled. Use Client Payment approval.'));
 
     Route::get('/admin/daily-reports', [DailyReportController::class, 'index']);
     Route::get('/admin/daily-reports/create', [DailyReportController::class, 'create']);

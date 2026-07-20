@@ -2,8 +2,8 @@
 
 @section('content')
     @if(request()->is('admin/facebook-dashboard'))
-        <h1>Facebook Dashboard</h1>
-        <p>Facebook advertising summary for BM, ad accounts, campaigns, and daily performance.</p>
+        <h1>Business Management Dashboard</h1>
+        <p>Advertising business summary for business managers, ad accounts, campaigns, and daily performance.</p>
 
         <div class="stats-grid">
             <div class="stat-card"><p>Total BM</p><h2>{{ number_format($totalBusinessManagers) }}</h2></div>
@@ -92,8 +92,8 @@
                         <a class="stat-card" href="/admin/payroll?status=upcoming" style="text-decoration:none;"><p>Upcoming Salary</p><h2>{{ number_format($employeeAlerts['upcoming_count']) }}</h2></a>
                         <a class="stat-card" href="/admin/payroll?status=due" style="text-decoration:none;"><p>Unpaid Salary</p><h2>{{ number_format($employeeAlerts['unpaid_count']) }}</h2></a>
                     @endif
-                    @if(auth()->user()->hasPermission('facebook.view'))
-                        <a class="stat-card" href="/admin/facebook-dashboard" style="text-decoration:none;"><p>Monthly Spend</p><h2>USD {{ number_format($facebookAlerts['monthly_spend'], 2) }}</h2></a>
+                    @if(auth()->user()->hasPermission('business_management.view'))
+                        <a class="stat-card" href="/admin/profit-history" style="text-decoration:none;"><p>Monthly Spend</p><h2>USD {{ number_format($facebookAlerts['monthly_spend'], 2) }}</h2></a>
                         <a class="stat-card" href="/admin/profit-history" style="text-decoration:none;"><p>Total Orders</p><h2>{{ number_format($totalFacebookOrders) }}</h2></a>
                         <a class="stat-card" href="/admin/ad-accounts" style="text-decoration:none;"><p>Billing Alerts</p><h2>{{ number_format($facebookAlerts['upcoming_billing_accounts'] + $facebookAlerts['overdue_billing_accounts']) }}</h2></a>
                         <a class="stat-card" href="/admin/campaigns" style="text-decoration:none;"><p>Campaign Operations</p><h2>Open</h2></a>
@@ -101,9 +101,6 @@
                     @if(auth()->user()->hasRole('moderator'))
                         <a class="stat-card" href="/admin/work-status" style="text-decoration:none;"><p>My Work Status</p><h2>Open</h2></a>
                         <a class="stat-card" href="/admin/daily-reports" style="text-decoration:none;"><p>Assigned Daily Reports</p><h2>Open</h2></a>
-                    @endif
-                    @if(auth()->user()->hasPermission('tiktok.view'))
-                        <a class="stat-card" href="/admin/tiktok" style="text-decoration:none;"><p>TikTok</p><h2>Future Ready</h2></a>
                     @endif
                 </div>
             </div>

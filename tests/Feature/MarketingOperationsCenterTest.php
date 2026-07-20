@@ -145,7 +145,7 @@ class MarketingOperationsCenterTest extends TestCase
         $this->actingAs($admin)
             ->get('/admin/employees/' . $scope['employee']->id)
             ->assertOk()
-            ->assertSee('Marketing Operations History')
+            ->assertSee('Agency Operations History')
             ->assertSee('Trainer Report');
     }
 
@@ -164,7 +164,7 @@ class MarketingOperationsCenterTest extends TestCase
             ->assertDontSee('>TikTok<', false);
 
         $this->actingAs($admin)->get('/admin/daily-reports')->assertOk();
-        $this->actingAs($admin)->get('/admin/tiktok')->assertOk();
+        $this->actingAs($admin)->get('/admin/tiktok')->assertNotFound();
     }
 
     public function test_executive_dashboard_marketing_widgets_render(): void
@@ -172,7 +172,7 @@ class MarketingOperationsCenterTest extends TestCase
         $this->actingAs($this->admin())
             ->get('/admin/executive-performance')
             ->assertOk()
-            ->assertSee('Marketing Operations Insights')
+            ->assertSee('Agency Operations Insights')
             ->assertSee('Top Moderator')
             ->assertSee('Average CPP');
     }
