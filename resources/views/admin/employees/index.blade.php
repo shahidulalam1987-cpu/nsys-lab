@@ -112,6 +112,10 @@
             margin: 8px 0 0;
         }
 
+        .employee-pagination {
+            margin-top: 14px;
+        }
+
         .employee-table-wrap {
             overflow-x: auto;
         }
@@ -350,7 +354,7 @@
             <button class="btn" type="submit">Search</button>
         </form>
         <a class="employee-filter-reset" href="/admin/employees">Reset</a>
-        <p class="employee-filter-meta">Total Employees Found: {{ $employees->count() }}</p>
+        <p class="employee-filter-meta">Total Employees Found: {{ $employees->total() }}</p>
     </div>
 
     <div class="card employee-table-card">
@@ -367,6 +371,9 @@
                     <th>Action</th>
                 </tr>
                 @forelse($employees as $employee)
+                    @php
+                        $hasHistory = $employee->assignments_exists || $employee->salary_days_exists || $employee->payrolls_exists;
+                    @endphp
                     <tr>
                         <td>
                             <a class="employee-id-link" href="/admin/employees/{{ $employee->id }}">{{ $employee->employee_id }}</a>
@@ -398,15 +405,21 @@
                                 <a class="action-link" href="/admin/employees/{{ $employee->id }}">View</a>
                                 <a class="action-link" href="/admin/employees/{{ $employee->id }}/edit">Edit</a>
 
-                                <form method="POST" action="/admin/employees/{{ $employee->id }}/terminate">
-                                    @csrf
-                                    <button class="action-button action-button-warning" type="submit" onclick="return confirm('Terminate this employee? History and login will be preserved.');">Terminate</button>
-                                </form>
+                                @if($employee->status !== 'terminated')
+                                    <form method="POST" action="/admin/employees/{{ $employee->id }}/terminate">
+                                        @csrf
+                                        <button class="action-button action-button-warning" type="submit" onclick="return confirm('Terminate this employee? History and login will be preserved.');">Terminate</button>
+                                    </form>
+                                @endif
 
-                                <form method="POST" action="/admin/employees/{{ $employee->id }}/delete">
-                                    @csrf
-                                    <button class="action-button action-button-danger" type="submit" onclick="return confirm('Delete this employee? This is allowed only when no history exists.');">Delete</button>
-                                </form>
+                                @if($hasHistory)
+                                    <span class="action-button" title="Employee has assignments, salary days, or payroll history. Terminate instead of deleting.">Protected</span>
+                                @else
+                                    <form method="POST" action="/admin/employees/{{ $employee->id }}/delete">
+                                        @csrf
+                                        <button class="action-button action-button-danger" type="submit" onclick="return confirm('Delete this employee? This is allowed only when no history exists.');">Delete</button>
+                                    </form>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -414,6 +427,9 @@
                     <tr><td colspan="8">No employees found.</td></tr>
                 @endforelse
             </table>
+        </div>
+        <div class="employee-pagination">
+            {{ $employees->links() }}
         </div>
     </div>
 @endsection

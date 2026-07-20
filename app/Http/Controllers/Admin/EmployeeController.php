@@ -24,13 +24,17 @@ class EmployeeController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Employee::with(['user', 'departmentRecord', 'roleRecord']);
+        $query = Employee::with(['user', 'departmentRecord', 'roleRecord'])
+            ->withExists(['assignments', 'salaryDays', 'payrolls']);
 
         if ($request->search) {
             $query->where(function ($inner) use ($request) {
                 $inner->where('employee_id', 'like', '%' . $request->search . '%')
                     ->orWhere('name', 'like', '%' . $request->search . '%')
-                    ->orWhere('mobile', 'like', '%' . $request->search . '%');
+                    ->orWhere('mobile', 'like', '%' . $request->search . '%')
+                    ->orWhere('email', 'like', '%' . $request->search . '%')
+                    ->orWhereHas('departmentRecord', fn ($department) => $department->where('name', 'like', '%' . $request->search . '%'))
+                    ->orWhereHas('roleRecord', fn ($role) => $role->where('name', 'like', '%' . $request->search . '%'));
             });
         }
 
@@ -58,7 +62,7 @@ class EmployeeController extends Controller
             $query->where('salary_source', $request->salary_source);
         }
 
-        $employees = $query->latest()->get();
+        $employees = $query->latest()->paginate(25)->withQueryString();
         $statusCounts = Employee::selectRaw('status, COUNT(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');

@@ -53,7 +53,7 @@ class Employee extends Model
     ];
 
     public const SALARY_SOURCES = [
-        'client_fund' => 'Client Fund',
+        'client_fund' => 'Employee Salary Fund',
         'agency_payroll' => 'Agency Payroll',
     ];
 
@@ -212,7 +212,7 @@ class Employee extends Model
 
     public function salarySourceLabel(): string
     {
-        return self::SALARY_SOURCES[$this->salary_source ?: $this->defaultSalarySource()] ?? 'Client Fund';
+        return self::SALARY_SOURCES[$this->salary_source ?: $this->defaultSalarySource()] ?? 'Employee Salary Fund';
     }
 
     public function permissionGroupLabel(): string

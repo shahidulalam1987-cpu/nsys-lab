@@ -250,7 +250,7 @@ class EmployeePayroll extends Model
 
     public function salarySourceLabel(): string
     {
-        return Employee::SALARY_SOURCES[$this->salary_source ?: 'client_fund'] ?? 'Client Fund';
+        return Employee::SALARY_SOURCES[$this->salary_source ?: 'client_fund'] ?? 'Employee Salary Fund';
     }
 
     public function reportStatusKey(): string
