@@ -18,11 +18,15 @@ class FinanceCardNavigationTest extends TestCase
         $response->assertSee('Funding Dashboard');
         $response->assertSee('Finance Accounts');
         $response->assertSee('Card Management');
+        $response->assertDontSee('Client Funds');
         $response->assertDontSee('Family Expenses');
         $response->assertDontSee('Loan Management');
         $response->assertDontSee('Card Loads');
         $response->assertDontSee('Card Transactions');
         $response->assertDontSee('Binance Purchases');
+        $response->assertDontSee('Payment Providers');
+        $response->assertDontSee('Provider Transactions');
+        $response->assertDontSee('Provider Fee Tracking');
         $response->assertDontSee('Profit Dashboard');
         $response->assertDontSee('Balance Sheet');
     }
@@ -37,6 +41,9 @@ class FinanceCardNavigationTest extends TestCase
         $response->assertSee('Loads');
         $response->assertSee('Transactions');
         $response->assertSee('Binance Purchases');
+        $response->assertSee('Providers');
+        $response->assertSee('Provider Transactions');
+        $response->assertSee('Provider Fees');
         $response->assertSee('Statement');
     }
 

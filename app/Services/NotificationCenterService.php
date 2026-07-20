@@ -15,7 +15,6 @@ use App\Models\EmployeeTarget;
 use App\Models\PerformanceVerification;
 use App\Models\EmployeeWorkStatus;
 use App\Models\FinanceAccount;
-use App\Models\FinanceLoan;
 use App\Models\FundingBalance;
 use App\Models\SalaryPayment;
 use App\Models\SystemNotification;
@@ -270,9 +269,6 @@ class NotificationCenterService
         $balances = FundingBalance::all()->keyBy('source');
         $accounts = FinanceAccount::all();
         $negativeAccounts = $accounts->filter(fn (FinanceAccount $account) => (float) $account->current_balance < 0);
-        $loans = FinanceLoan::whereIn('status', ['open', 'partial'])->get();
-        $upcomingLoanDue = $loans->filter(fn (FinanceLoan $loan) => $loan->due_date && $loan->due_date->betweenIncluded(today(), today()->copy()->addDays(5)));
-        $overdueLoan = $loans->filter(fn (FinanceLoan $loan) => $loan->due_date && $loan->due_date->lt(today()));
         $highFees = CardTransaction::where('fee_usd', '>=', 5)
             ->whereMonth('transaction_date', now()->month)
             ->whereYear('transaction_date', now()->year)
@@ -284,8 +280,6 @@ class NotificationCenterService
             $this->fundingAlert($balances->get('redotpay'), 'finance.low_redotpay', 'RedotPay Balance Below 100 USD'),
             $this->fundingAlert($balances->get('tavao'), 'finance.low_tavao', 'Tavao Balance Below 100 USD'),
             $this->alertIf($negativeAccounts->count(), 'finance.negative_account_balance', 'Finance', 'critical', $negativeAccounts->count() . ' Finance Accounts Negative Balance', '/admin/finance/accounts', 'Finance Team'),
-            $this->alertIf($upcomingLoanDue->count(), 'finance.loan_due', 'Finance', 'warning', $upcomingLoanDue->count() . ' Loans Due Soon', '/admin/finance/loans', 'Finance Team'),
-            $this->alertIf($overdueLoan->count(), 'finance.loan_overdue', 'Finance', 'critical', $overdueLoan->count() . ' Loans Overdue', '/admin/finance/loans', 'Finance Team'),
             $this->alertIf($highFees, 'finance.high_card_fees', 'Finance', 'warning', $highFees . ' High Card Fee Transactions This Month', '/admin/facebook-financial/card-transactions', 'Finance Team'),
             $this->alertIf($pendingBonuses, 'employee.bonus_pending', 'Employee', 'warning', $pendingBonuses . ' Bonus Earnings Pending Approval', '/admin/bonuses', 'HR Team'),
         ]));

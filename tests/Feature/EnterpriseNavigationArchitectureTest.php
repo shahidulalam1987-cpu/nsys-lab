@@ -57,7 +57,8 @@ class EnterpriseNavigationArchitectureTest extends TestCase
             ->assertSee('Ad Accounts')
             ->assertSee('Ad Account Ledger')
             ->assertSee('Campaigns')
-            ->assertSee('Daily Performance')
+            ->assertSee('Performance Reports')
+            ->assertDontSee('Daily Performance')
             ->assertDontSee('Card Management');
 
         $this->actingAs($admin)->get('/admin/client-pages')
@@ -65,7 +66,8 @@ class EnterpriseNavigationArchitectureTest extends TestCase
             ->assertSee('Business Management')
             ->assertSee('Pages')
             ->assertSee('Campaigns')
-            ->assertSee('Daily Performance')
+            ->assertSee('Performance Reports')
+            ->assertDontSee('Daily Performance')
             ->assertDontSee('Employee Submissions');
     }
 

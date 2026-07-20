@@ -27,5 +27,8 @@
     <a class="{{ request()->is('admin/facebook-financial/card-loads*') ? 'active' : '' }}" href="/admin/facebook-financial/card-loads">Loads</a>
     <a class="{{ request()->is('admin/facebook-financial/card-transactions*') ? 'active' : '' }}" href="/admin/facebook-financial/card-transactions">Transactions</a>
     <a class="{{ request()->is('admin/facebook-financial/binance-purchases*') ? 'active' : '' }}" href="/admin/facebook-financial/binance-purchases">Binance Purchases</a>
+    <a class="{{ request()->is('admin/payment-providers*') ? 'active' : '' }}" href="/admin/payment-providers">Providers</a>
+    <a class="{{ request()->is('admin/provider-transactions*') ? 'active' : '' }}" href="/admin/provider-transactions">Provider Transactions</a>
+    <a class="{{ request()->is('admin/provider-fees*') ? 'active' : '' }}" href="/admin/provider-fees">Provider Fees</a>
     <a href="/admin/facebook-cards#statement">Statement</a>
 </div>
