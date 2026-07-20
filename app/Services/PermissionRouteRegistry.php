@@ -37,7 +37,6 @@ class PermissionRouteRegistry
                     ['key' => 'overview', 'label' => 'Overview', 'url' => '/admin/dashboard', 'active' => ['/admin/dashboard'], 'permissions' => ['admin_dashboard.view']],
                     ['key' => 'executive', 'label' => 'Executive Dashboard', 'url' => '/admin/executive-performance', 'active' => ['/admin/executive-performance*'], 'permissions' => ['admin_dashboard.view']],
                     ['key' => 'notifications', 'label' => 'Notification Center', 'url' => '/admin/notifications?status=unread', 'active' => ['/admin/notifications*'], 'permissions' => ['system_tools.view'], 'badge' => 'notifications_unread', 'badge_danger' => true],
-                    ['key' => 'recent_activity', 'label' => 'Recent Activity', 'url' => '/admin/activity-log', 'active' => ['/admin/activity-log*'], 'permissions' => ['activity_log.view']],
                 ],
             ],
             [
