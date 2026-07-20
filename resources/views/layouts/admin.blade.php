@@ -42,24 +42,34 @@
         .topbar-left {
             display: flex;
             align-items: center;
+            flex: 1 1 auto;
             gap: 22px;
+            min-width: 0;
         }
 
         .brand {
+            flex: 0 0 auto;
             font-size: 18px;
             font-weight: 800;
             background: linear-gradient(90deg, var(--blue), var(--cyan));
             -webkit-background-clip: text;
             color: transparent;
+            white-space: nowrap;
         }
 
         .department-tabs {
             display: flex;
             gap: 8px;
-            flex-wrap: wrap;
+            flex: 1 1 auto;
+            flex-wrap: nowrap;
+            min-width: 0;
+            overflow-x: auto;
+            padding-bottom: 2px;
+            scrollbar-width: thin;
         }
 
         .department-tab {
+            flex: 0 0 auto;
             color: var(--muted);
             text-decoration: none;
             padding: 9px 12px;
@@ -68,6 +78,14 @@
             background: rgba(255,255,255,.06);
             font-size: 13px;
             font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .topbar-actions {
+            align-items: center;
+            display: flex;
+            flex: 0 0 auto;
+            gap: 10px;
         }
 
         .department-tab:hover,
@@ -586,7 +604,7 @@
             </div>
         </div>
 
-        <div style="display:flex;align-items:center;gap:10px;">
+        <div class="topbar-actions">
             <label class="nav-toggle" for="admin-nav-toggle">Menu</label>
             @if($notificationItem)
                 <a class="department-tab {{ $notificationItem['active'] ? 'active-department' : '' }}" href="{{ $notificationItem['url'] }}" title="Notification Center">
