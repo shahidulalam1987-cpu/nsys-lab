@@ -237,9 +237,10 @@ class DashboardController extends Controller
         $agencyInternalEmployees = Employee::where('employee_type', 'agency_internal')->count();
         $departmentCounts = Department::query()
             ->withCount('employees')
-            ->having('employees_count', '>', 0)
             ->orderBy('sort_order')
             ->orderBy('name')
+            ->get()
+            ->filter(fn (Department $department) => $department->employees_count > 0)
             ->pluck('employees_count', 'name');
         $attendanceRecords = EmployeeAttendance::whereMonth('attendance_date', now()->month)
             ->whereYear('attendance_date', now()->year)
