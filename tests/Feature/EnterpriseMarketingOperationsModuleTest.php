@@ -272,9 +272,10 @@ class EnterpriseMarketingOperationsModuleTest extends TestCase
             ->assertSee('Ad Manager Operations')
             ->assertSee('Auditor Operations')
             ->assertSee('Monitor Operations')
-            ->assertSee('Agency Operations')
+            ->assertSee('Agency Review')
             ->assertSee('Settings')
-            ->assertDontSee('Trainer Reports');
+            ->assertDontSee('Legacy Compatibility')
+            ->assertDontSee('Trainer Report');
 
         $this->actingAs($admin)->get('/admin/marketing-operations/moderator_order/create')->assertOk();
         $this->actingAs($admin)->get('/admin/marketing-operations/ad_manager_spend/create')->assertOk();

@@ -43,24 +43,9 @@
             <a class="btn" href="/admin/marketing-operations/ad-manager/operations">Ad Manager Operations</a>
             <a class="btn" href="/admin/marketing-operations/auditor/operations">Auditor Operations</a>
             <a class="btn" href="/admin/marketing-operations/monitor/operations">Monitor Operations</a>
-            <a class="btn" href="/admin/marketing-operations/agency">Agency Operations</a>
+            <a class="btn" href="/admin/marketing-operations/agency">Agency Review</a>
             <a class="btn" href="/admin/marketing-operations/reports">Reports</a>
             <a class="btn" href="/admin/marketing-operations/settings">Settings</a>
-        </div>
-    </div>
-
-    <div class="card">
-        <h2>Legacy Compatibility</h2>
-        <p>Existing agency operations routes remain available for old records.</p>
-        <div style="display:flex;flex-wrap:wrap;gap:10px;">
-            <a class="btn" href="/admin/marketing-operations/moderator_order/create">Moderator Report</a>
-            <a class="btn" href="/admin/marketing-operations/ad_manager_spend/create">Ad Manager Report</a>
-            <a class="btn" href="/admin/marketing-operations/auditor_audit/create">Auditor Report</a>
-            <a class="btn" href="/admin/marketing-operations/monitor_issue/create">Monitor Report</a>
-            <a class="btn" href="/admin/marketing-operations/trainer_training/create">Trainer Report</a>
-            <a class="btn" href="/admin/marketing-operations/management_review/create">Management Report</a>
-            <a class="btn" href="/admin/marketing-operations/verification">Performance Verification</a>
-            <a class="btn" href="/admin/marketing-operations/reports">Reports</a>
         </div>
     </div>
 
