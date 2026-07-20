@@ -135,8 +135,6 @@ class PermissionRouteRegistry
                     ['key' => 'payment_providers', 'label' => 'Payment Providers', 'url' => '/admin/payment-providers', 'active' => ['/admin/payment-providers*'], 'permissions' => ['cards.view']],
                     ['key' => 'provider_transactions', 'label' => 'Provider Transactions', 'url' => '/admin/provider-transactions', 'active' => ['/admin/provider-transactions*'], 'permissions' => ['cards.view']],
                     ['key' => 'provider_fees', 'label' => 'Provider Fee Tracking', 'url' => '/admin/provider-fees', 'active' => ['/admin/provider-fees*'], 'permissions' => ['cards.view']],
-                    ['key' => 'family_expenses', 'label' => 'Family Expenses', 'url' => '/admin/finance/family-expenses', 'active' => ['/admin/finance/family-expenses*'], 'permissions' => ['family_expenses.view']],
-                    ['key' => 'loan_management', 'label' => 'Loan Management', 'url' => '/admin/finance/loans', 'active' => ['/admin/finance/loans*'], 'permissions' => ['loans.view']],
                     ['key' => 'reconciliation', 'label' => 'Reconciliation', 'url' => '/admin/finance/reports/reconciliation', 'active' => ['/admin/finance/reports/reconciliation*'], 'permissions' => ['reconciliation.view']],
                     ['key' => 'finance_reports', 'label' => 'Finance Reports', 'url' => '/admin/finance/reports/balance-sheet', 'active' => ['/admin/finance/reports*'], 'permissions' => ['finance.view']],
                 ],

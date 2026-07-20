@@ -18,8 +18,8 @@ class FinanceCardNavigationTest extends TestCase
         $response->assertSee('Funding Dashboard');
         $response->assertSee('Finance Accounts');
         $response->assertSee('Card Management');
-        $response->assertSee('Family Expenses');
-        $response->assertSee('Loan Management');
+        $response->assertDontSee('Family Expenses');
+        $response->assertDontSee('Loan Management');
         $response->assertDontSee('Card Loads');
         $response->assertDontSee('Card Transactions');
         $response->assertDontSee('Binance Purchases');
