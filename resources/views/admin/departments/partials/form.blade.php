@@ -16,6 +16,7 @@
                 <option value="active" {{ old('status', $department?->status ?? 'active') === 'active' ? 'selected' : '' }}>Active</option>
                 <option value="inactive" {{ old('status', $department?->status) === 'inactive' ? 'selected' : '' }}>Inactive</option>
             </select>
+            <br><small style="color:#94a3b8;">Inactive departments remain visible for existing employees and roles, but should not be used for new assignments.</small>
         </p>
         <p>Sort Order<br><input type="number" name="sort_order" min="0" value="{{ old('sort_order', $department?->sort_order ?? 0) }}" required></p>
 

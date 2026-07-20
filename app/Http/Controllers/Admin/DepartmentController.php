@@ -16,10 +16,18 @@ class DepartmentController extends Controller
     {
         $departments = Department::withCount([
             'employees',
+            'employeeRoles',
             'employees as active_employees_count' => fn ($query) => $query->where('status', 'active'),
         ])->ordered()->get();
+        $summary = [
+            'total' => $departments->count(),
+            'active' => $departments->where('status', 'active')->count(),
+            'inactive' => $departments->where('status', 'inactive')->count(),
+            'assigned_employees' => $departments->sum('employees_count'),
+            'assigned_roles' => $departments->sum('employee_roles_count'),
+        ];
 
-        return view('admin.departments.index', compact('departments'));
+        return view('admin.departments.index', compact('departments', 'summary'));
     }
 
     public function create()
@@ -59,9 +67,9 @@ class DepartmentController extends Controller
 
     public function destroy(Department $department)
     {
-        if ($department->employees()->exists()) {
+        if ($department->employees()->exists() || $department->employeeRoles()->exists()) {
             return redirect('/admin/departments')->withErrors([
-                'department' => 'This department has employees and cannot be deleted. Set inactive instead.',
+                'department' => 'This department has employees or roles and cannot be deleted. Set inactive instead.',
             ]);
         }
 
