@@ -9,6 +9,7 @@ use App\Models\Client;
 use App\Models\Payment;
 use App\Models\DailyReport;
 use App\Models\DailyPerformanceReport;
+use App\Models\Department;
 use App\Models\Employee;
 use App\Models\EmployeeAttendance;
 use App\Models\EmployeePayroll;
@@ -234,15 +235,16 @@ class DashboardController extends Controller
         $totalEmployees = Employee::count();
         $clientAssignedEmployees = Employee::where('employee_type', 'client_assigned')->count();
         $agencyInternalEmployees = Employee::where('employee_type', 'agency_internal')->count();
-        $departmentCounts = Employee::selectRaw('department, COUNT(*) as total')
-            ->groupBy('department')
-            ->pluck('total', 'department');
-        $activeEmployees = Employee::where('status', 'active')->count();
-        $probationEmployees = Employee::where('status', 'probation')->count();
+        $departmentCounts = Department::query()
+            ->withCount('employees')
+            ->having('employees_count', '>', 0)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->pluck('employees_count', 'name');
         $attendanceRecords = EmployeeAttendance::whereMonth('attendance_date', now()->month)
             ->whereYear('attendance_date', now()->year)
             ->count();
-        $recentEmployees = Employee::latest()->take(5)->get();
+        $recentEmployees = Employee::with(['departmentRecord', 'roleRecord'])->latest()->take(5)->get();
         $upcomingStages = $payrollCategoryService->upcomingCycles();
         $payrollStages = $payrollCategoryService->employeeStages();
         $unpaidStages = $payrollStages->filter(fn (array $row) => in_array(data_get($row, 'stage.category'), [
@@ -269,8 +271,6 @@ class DashboardController extends Controller
             'clientAssignedEmployees',
             'agencyInternalEmployees',
             'departmentCounts',
-            'activeEmployees',
-            'probationEmployees',
             'attendanceRecords',
             'recentEmployees',
             'employeeDashboardAlerts'
