@@ -30,17 +30,20 @@
                 <th>ID</th>
                 <th>Company</th>
                 <th>Phone</th>
-                <th>Total Payment</th>
-                <th>Spend USD</th>
-                <th>Spend BDT</th>
-                <th>Orders</th>
-                <th>Current Due</th>
-                <th>Available Balance</th>
-                <th>Profit</th>
+                <th>Salary Fund</th>
+                <th>Ads Fund</th>
+                <th>Combined Balance</th>
+                <th>Pending Payments</th>
                 <th>Status</th>
+                <th>Action</th>
             </tr>
 
             @foreach($clients as $client)
+                @php
+                    $fund = $fundRows->get($client->id);
+                    $combined = (float) ($fund['combined_balance'] ?? 0);
+                    $balanceTone = $combined < 0 ? 'badge-danger' : 'badge-success';
+                @endphp
                 <tr>
                     <td>{{ $client->id }}</td>
                     <td>
@@ -49,13 +52,13 @@
                         </a>
                     </td>
                     <td>{{ $client->phone }}</td>
-                    <td>BDT {{ number_format($client->total_payment, 2) }}</td>
-                    <td>${{ number_format($client->total_dollar_spend, 2) }}</td>
-                    <td>BDT {{ number_format($client->total_spend_bdt, 2) }}</td>
-                    <td>{{ $client->total_orders }}</td>
-                    <td>BDT {{ number_format($client->current_due, 2) }}</td>
-                    <td>BDT {{ number_format($client->available_balance, 2) }}</td>
-                    <td>BDT {{ number_format($client->total_profit, 2) }}</td>
+                    <td>BDT {{ number_format((float) ($fund['available_balance'] ?? 0), 2) }}</td>
+                    <td>BDT {{ number_format((float) ($fund['ads_balance'] ?? 0), 2) }}</td>
+                    <td><span class="badge {{ $balanceTone }}">BDT {{ number_format(abs($combined), 2) }} {{ $combined < 0 ? 'Due' : 'Available' }}</span></td>
+                    <td>
+                        BDT {{ number_format((float) ($fund['pending_payments'] ?? 0), 2) }}
+                        <br><span style="color:var(--muted);">{{ number_format((int) ($fund['pending_payment_count'] ?? 0)) }} pending</span>
+                    </td>
                     <td>
                         @if($client->status == 'active')
                             <span class="badge badge-success">Active</span>
@@ -65,6 +68,7 @@
                             <span class="badge badge-danger">Inactive</span>
                         @endif
                     </td>
+                    <td><a class="btn" href="/admin/clients/{{ $client->id }}">View</a></td>
                 </tr>
             @endforeach
         </table>

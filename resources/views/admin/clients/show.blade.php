@@ -5,7 +5,8 @@
 
     <a class="btn" href="/admin/clients">Back to Clients</a>
     <a class="btn" href="/admin/clients/{{ $client->id }}/edit">Edit Client</a>
-    <a class="btn" href="/admin/daily-reports/create">Add Report</a>
+    <a class="btn" href="/admin/daily-reports/create">Add Daily Performance</a>
+    <a class="btn" href="/admin/client-fund/{{ $client->id }}/details">Client Fund Ledger</a>
     <a class="btn" href="/admin/clients/{{ $client->id }}/export-statement">Export Statement CSV</a>
     <a class="btn" href="/admin/clients/{{ $client->id }}/statement-pdf">Download PDF Statement</a>
 
@@ -23,8 +24,8 @@
                 <span class="badge badge-danger">Inactive</span>
             @endif
         </p>
-        <p><strong>Client Rate:</strong> BDT {{ number_format($summary['client_rate'], 2) }}</p>
-        <p><strong>Buy Rate:</strong> BDT {{ number_format($summary['buy_rate'], 2) }}</p>
+        <p><strong>Client Rate:</strong> BDT {{ number_format((float) $client->client_rate, 2) }}</p>
+        <p><strong>Buy Rate:</strong> BDT {{ number_format((float) $client->buy_rate, 2) }}</p>
     </div>
 
     @include('admin.documents.partials.related-widget', [
@@ -34,30 +35,28 @@
     ])
 
     <div class="card">
-        <h2>Financial Summary</h2>
+        <h2>Client Fund Summary</h2>
 
         <table>
             <tr>
-                <th>Approved Payment</th>
-                <th>Pending Payment</th>
-                <th>Total Spend USD</th>
-                <th>Total Revenue</th>
-                <th>Total Cost</th>
-                <th>Total Orders</th>
-                <th>Current Due</th>
-                <th>Available Balance</th>
-                <th>Profit</th>
+                <th>Salary Received</th>
+                <th>Salary Used</th>
+                <th>Salary Balance</th>
+                <th>Ads Received</th>
+                <th>Ads Spent</th>
+                <th>Ads Balance</th>
+                <th>Combined Balance</th>
+                <th>Pending Payments</th>
             </tr>
             <tr>
-                <td>BDT {{ number_format($summary['total_credit'], 2) }}</td>
-                <td>BDT {{ number_format($summary['pending_payment'], 2) }}</td>
-                <td>${{ number_format($summary['total_spend_usd'], 2) }}</td>
-                <td>BDT {{ number_format($summary['total_revenue'], 2) }}</td>
-                <td>BDT {{ number_format($summary['total_cost'], 2) }}</td>
-                <td>{{ $summary['total_orders'] }}</td>
-                <td><span class="badge badge-danger">BDT {{ number_format($summary['current_due'], 2) }}</span></td>
-                <td><span class="badge badge-success">BDT {{ number_format($summary['available_balance'], 2) }}</span></td>
-                <td>BDT {{ number_format($summary['profit'], 2) }}</td>
+                <td>BDT {{ number_format($fundSummary['fund_received'], 2) }}</td>
+                <td>BDT {{ number_format($fundSummary['salary_used'], 2) }}</td>
+                <td>BDT {{ number_format($fundSummary['available_balance'], 2) }}</td>
+                <td>BDT {{ number_format($fundSummary['ads_received'], 2) }}</td>
+                <td>BDT {{ number_format($fundSummary['ads_spent'], 2) }}</td>
+                <td>BDT {{ number_format($fundSummary['ads_balance'], 2) }}</td>
+                <td><span class="badge {{ ($fundSummary['combined_balance'] ?? 0) < 0 ? 'badge-danger' : 'badge-success' }}">BDT {{ number_format(abs($fundSummary['combined_balance'] ?? 0), 2) }} {{ ($fundSummary['combined_balance'] ?? 0) < 0 ? 'Due' : 'Available' }}</span></td>
+                <td>BDT {{ number_format($fundSummary['pending_payments'], 2) }}</td>
             </tr>
         </table>
     </div>
@@ -122,25 +121,25 @@
     </div>
 
     <div class="card">
-        <h2>Ledger</h2>
+        <h2>Client Fund Ledger</h2>
 
         <table>
             <tr>
                 <th>Date</th>
-                <th>Transaction Type</th>
-                <th>Page</th>
-                <th>Invoice</th>
+                <th>Fund Movement</th>
+                <th>Reference</th>
+                <th>Description</th>
                 <th>Debit</th>
                 <th>Credit</th>
-                <th>Running Due Balance</th>
+                <th>Running Balance</th>
             </tr>
 
-            @forelse($ledger['rows'] as $row)
+            @forelse($fundLedger->take(15) as $row)
                 <tr>
                     <td>{{ $row['date'] }}</td>
-                    <td>{{ $row['transaction_type'] }}</td>
-                    <td>{{ $row['page'] }}</td>
-                    <td>{{ $row['invoice_number'] ?: '-' }}</td>
+                    <td>{{ $row['type'] }}</td>
+                    <td>{{ $row['reference'] ?: '-' }}</td>
+                    <td>{{ $row['description'] ?: '-' }}</td>
                     <td>BDT {{ number_format($row['debit'], 2) }}</td>
                     <td>BDT {{ number_format($row['credit'], 2) }}</td>
                     <td>
@@ -153,70 +152,67 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7">No ledger entries found.</td>
+                    <td colspan="6">No client fund ledger entries found.</td>
                 </tr>
             @endforelse
         </table>
+        <p><a class="btn" href="/admin/client-fund/{{ $client->id }}/details">View Full Ledger</a></p>
     </div>
 
     <div class="card">
-        <h2>Recent Daily Reports</h2>
+        <h2>Recent Daily Performance</h2>
 
         <table>
             <tr>
                 <th>ID</th>
                 <th>Date</th>
                 <th>Page</th>
-                <th>Dollar Spend</th>
+                <th>Campaign</th>
+                <th>Spend</th>
                 <th>Orders</th>
+                <th>Cost Per Order</th>
             </tr>
 
-            @forelse($reports->take(10) as $report)
+            @forelse($performanceReports->take(10) as $report)
                 <tr>
                     <td>{{ $report->id }}</td>
-                    <td>{{ $report->report_date }}</td>
-                    <td>{{ $report->page_name }}</td>
-                    <td>${{ number_format($report->dollar_spend, 2) }}</td>
+                    <td>{{ $report->report_date?->toDateString() }}</td>
+                    <td>{{ $report->campaign?->page?->page_name ?: '-' }}</td>
+                    <td>{{ $report->campaign?->campaign_name ?: '-' }}</td>
+                    <td>USD {{ number_format((float) $report->spend, 2) }}</td>
                     <td>{{ $report->orders }}</td>
+                    <td>USD {{ number_format((float) $report->cpp, 2) }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="5">No reports found.</td>
+                    <td colspan="7">No daily performance found.</td>
                 </tr>
             @endforelse
         </table>
     </div>
 
     <div class="card">
-        <h2>Recent Payments</h2>
+        <h2>Recent Client Payments</h2>
 
         <table>
             <tr>
-                <th>ID</th>
-                <th>Invoice</th>
+                <th>Receipt</th>
+                <th>Purpose</th>
                 <th>Amount</th>
                 <th>Method</th>
                 <th>Transaction ID</th>
-                <th>Proof</th>
                 <th>Status</th>
                 <th>Reject Reason</th>
-                <th>Date</th>
+                <th>Payment Date</th>
             </tr>
 
             @forelse($payments->take(10) as $payment)
                 <tr>
-                    <td>{{ $payment->id }}</td>
-                    <td>{{ $payment->invoice?->invoice_number ?? '-' }}</td>
+                    <td><a href="/admin/salary-payments/{{ $payment->id }}">{{ $payment->receiptNumber() }}</a></td>
+                    <td>{{ ($payment->fund_type ?? 'employee_salary') === 'facebook_ads' ? 'Ads Fund' : 'Salary Fund' }}</td>
                     <td>BDT {{ number_format($payment->amount, 2) }}</td>
                     <td>{{ $payment->payment_method }}</td>
                     <td>{{ $payment->transaction_id }}</td>
-                    <td>
-                        @if($payment->screenshot)
-                            <a href="{{ asset('storage/' . $payment->screenshot) }}" target="_blank">View Proof</a>
-                        @else
-                            No Proof
-                        @endif
-                    </td>
                     <td>
                         @if($payment->status == 'approved')
                             <span class="badge badge-success">Approved</span>
@@ -227,13 +223,14 @@
                         @endif
                     </td>
                     <td>{{ $payment->status === 'rejected' ? $payment->reject_reason : '-' }}</td>
-                    <td>{{ $payment->approved_at ?: $payment->created_at }}</td>
+                    <td>{{ $payment->salary_month?->toDateString() ?: '-' }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="9">No payments found.</td>
+                    <td colspan="8">No client payments found.</td>
                 </tr>
             @endforelse
         </table>
+        <p><a class="btn" href="/admin/salary-payments?client_id={{ $client->id }}">View Payment History</a></p>
     </div>
 @endsection

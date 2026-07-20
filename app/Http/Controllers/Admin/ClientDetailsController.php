@@ -5,19 +5,24 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\DailyPerformanceReport;
-use App\Models\Payment;
-use App\Services\ClientLedgerService;
+use App\Models\SalaryPayment;
+use App\Services\ClientFundDashboardService;
 
 class ClientDetailsController extends Controller
 {
-    public function show(ClientLedgerService $ledgerService, $id)
+    public function show(ClientFundDashboardService $clientFundDashboardService, $id)
     {
         $client = Client::findOrFail($id);
-        $ledger = $ledgerService->build($client);
-        $summary = $ledger['summary'];
+        $fundDetails = $clientFundDashboardService->clientDetails($client);
+        $fundSummary = $fundDetails['row'];
+        $fundLedger = $fundDetails['ledger'];
 
-        $reports = $ledger['reports']->sortByDesc('report_date');
-        $payments = Payment::with('invoice')
+        $performanceReports = $client->dailyPerformanceReports()
+            ->with(['campaign.page'])
+            ->latest('report_date')
+            ->latest()
+            ->get();
+        $payments = SalaryPayment::with(['financeAccount', 'clientFundLedgers'])
             ->where('client_id', $client->id)
             ->latest()
             ->get();
@@ -37,7 +42,6 @@ class ClientDetailsController extends Controller
             'inactive' => $assignedEmployees->where('status', 'inactive')->count(),
             'terminated' => $assignedEmployees->where('status', 'terminated')->count(),
         ];
-        $performanceReports = $client->dailyPerformanceReports()->with('campaign')->get();
         $boostingPerformanceSummary = [
             'total_spend' => (float) $performanceReports->sum('spend'),
             'total_messages' => (int) $performanceReports->sum('messages'),
@@ -51,9 +55,9 @@ class ClientDetailsController extends Controller
 
         return view('admin.clients.show', compact(
             'client',
-            'ledger',
-            'summary',
-            'reports',
+            'fundSummary',
+            'fundLedger',
+            'performanceReports',
             'payments',
             'employeeAssignments',
             'employeeSummary',

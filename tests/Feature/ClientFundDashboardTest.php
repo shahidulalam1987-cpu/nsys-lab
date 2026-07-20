@@ -4,6 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\Client;
 use App\Models\ClientFundLedger;
+use App\Models\ClientPage;
+use App\Models\AdAccount;
+use App\Models\BusinessManager;
+use App\Models\Campaign;
+use App\Models\DailyPerformanceReport;
 use App\Models\Employee;
 use App\Models\SalaryPayment;
 use App\Models\User;
@@ -261,6 +266,105 @@ class ClientFundDashboardTest extends TestCase
         $response->assertSee('Receive Client Payment');
         $response->assertSee('Pending Payments');
         $response->assertSee('Payment History');
+    }
+
+    public function test_client_list_uses_dual_fund_columns_instead_of_legacy_ledger_columns(): void
+    {
+        $admin = $this->admin();
+        $client = $this->client(['company_name' => 'Dual Fund List Client']);
+
+        $this->ledger($client, ClientFundLedger::FUND_EMPLOYEE_SALARY, ClientFundLedger::DIRECTION_CREDIT, 10000, 'SALARY-CREDIT');
+        $this->ledger($client, ClientFundLedger::FUND_FACEBOOK_ADS, ClientFundLedger::DIRECTION_CREDIT, 7000, 'ADS-CREDIT');
+        SalaryPayment::create([
+            'client_id' => $client->id,
+            'salary_month' => '2026-06-20',
+            'fund_type' => ClientFundLedger::FUND_EMPLOYEE_SALARY,
+            'amount' => 1500,
+            'payment_method' => 'Bank',
+            'transaction_id' => 'PENDING-LIST',
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/clients');
+
+        $response->assertOk();
+        $response->assertSee('Salary Fund');
+        $response->assertSee('Ads Fund');
+        $response->assertSee('Combined Balance');
+        $response->assertSee('Pending Payments');
+        $response->assertSee('Dual Fund List Client');
+        $response->assertSee('BDT 17,000.00');
+        $response->assertDontSee('Spend USD');
+        $response->assertDontSee('Profit');
+    }
+
+    public function test_client_details_uses_modern_funds_payments_and_daily_performance(): void
+    {
+        $admin = $this->admin();
+        $client = $this->client(['company_name' => 'Modern Client Details']);
+        $page = ClientPage::create([
+            'client_id' => $client->id,
+            'page_name' => 'Modern Client Page',
+            'platform' => 'Facebook',
+            'status' => 'active',
+        ]);
+        $bm = BusinessManager::create([
+            'bm_name' => 'Modern BM',
+            'bm_id' => 'bm-modern-client',
+            'owner_name' => 'Owner',
+            'owner_email' => 'owner@example.com',
+            'verification_status' => 'verified',
+            'status' => 'active',
+        ]);
+        $adAccount = AdAccount::create([
+            'ad_account_name' => 'Modern Ad Account',
+            'ad_account_id' => 'act_modern_client',
+            'business_manager_id' => $bm->id,
+            'client_id' => $client->id,
+            'status' => 'active',
+        ]);
+        $campaign = Campaign::create([
+            'campaign_name' => 'Modern Campaign',
+            'campaign_id' => 'cmp-modern-client',
+            'business_manager_id' => $bm->id,
+            'ad_account_id' => $adAccount->id,
+            'client_id' => $client->id,
+            'client_page_id' => $page->id,
+            'objective' => 'sales',
+            'status' => 'active',
+        ]);
+        DailyPerformanceReport::create([
+            'campaign_id' => $campaign->id,
+            'report_date' => '2026-06-20',
+            'spend' => 50,
+            'orders' => 10,
+            'status' => 'merged',
+        ]);
+        $payment = SalaryPayment::create([
+            'client_id' => $client->id,
+            'receipt_number' => 'NSYS-CP-2026-000123',
+            'salary_month' => '2026-06-20',
+            'fund_type' => ClientFundLedger::FUND_FACEBOOK_ADS,
+            'amount' => 7000,
+            'payment_method' => 'Bank',
+            'transaction_id' => 'MODERN-PAYMENT',
+            'status' => 'approved',
+            'approved_at' => now(),
+        ]);
+        $this->ledger($client, ClientFundLedger::FUND_FACEBOOK_ADS, ClientFundLedger::DIRECTION_CREDIT, 7000, $payment->transaction_id);
+
+        $response = $this->actingAs($admin)->get('/admin/clients/' . $client->id);
+
+        $response->assertOk();
+        $response->assertSee('Client Fund Summary');
+        $response->assertSee('Client Fund Ledger');
+        $response->assertSee('Recent Daily Performance');
+        $response->assertSee('Modern Campaign');
+        $response->assertSee('USD 50.00');
+        $response->assertSee('NSYS-CP-2026-000123');
+        $response->assertDontSee('Financial Summary');
+        $response->assertDontSee('Recent Daily Reports');
+        $response->assertDontSee('Recent Payments');
     }
 
     private function admin(): User

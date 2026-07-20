@@ -5,14 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\User;
-use App\Services\ClientLedgerService;
+use App\Services\ClientFundDashboardService;
 use Illuminate\Http\Request;
 
 class ClientController extends Controller
 {
-    public function index(Request $request, ClientLedgerService $ledgerService)
+    public function index(Request $request, ClientFundDashboardService $clientFundDashboardService)
     {
-        $query = Client::with(['payments', 'dailyReports']);
+        $query = Client::query();
 
         if ($request->company_name) {
             $query->where('company_name', 'like', '%' . $request->company_name . '%');
@@ -27,20 +27,10 @@ class ClientController extends Controller
         }
 
         $clients = $query->latest()->get();
+        $fundRows = $clientFundDashboardService->dashboard()['rows']
+            ->keyBy(fn (array $row) => $row['client']->id);
 
-        foreach ($clients as $client) {
-            $summary = $ledgerService->build($client)['summary'];
-
-            $client->total_payment = $summary['total_credit'];
-            $client->total_dollar_spend = $summary['total_spend_usd'];
-            $client->total_orders = $summary['total_orders'];
-            $client->total_spend_bdt = $summary['total_debit'];
-            $client->total_profit = $summary['profit'];
-            $client->current_due = $summary['current_due'];
-            $client->available_balance = $summary['available_balance'];
-        }
-
-        return view('admin.clients.index', compact('clients'));
+        return view('admin.clients.index', compact('clients', 'fundRows'));
     }
 
     public function create()
