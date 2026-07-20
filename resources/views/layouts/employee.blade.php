@@ -42,17 +42,28 @@
         .badge-success { background: var(--success); }
         .badge-warning { background: var(--warning); }
         .badge-danger { background: var(--danger); }
+        .nav-toggle-input, .nav-toggle { display: none; }
         @media (max-width: 900px) {
+            .topbar { align-items: center; flex-wrap: wrap; gap: 10px; height: auto; min-height: 64px; padding: 10px 14px; }
+            .nav-toggle { align-items: center; background: rgba(255,255,255,.08); border: 1px solid var(--line); border-radius: 10px; color: var(--text); cursor: pointer; display: inline-flex; font-size: 13px; font-weight: 800; padding: 9px 12px; }
             .layout { flex-direction: column; }
-            .sidebar { width: 100%; display: flex; overflow-x: auto; gap: 8px; }
-            .sidebar a { white-space: nowrap; margin-bottom: 0; }
+            .sidebar { border-bottom: 1px solid var(--line); border-right: 0; display: none; max-height: calc(100vh - 120px); overflow-y: auto; padding: 14px; width: 100%; }
+            .nav-toggle-input:checked ~ .layout .sidebar { display: block; }
+            .sidebar a { white-space: normal; margin-bottom: 8px; }
             .content { padding: 16px; }
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
             table { min-width: 800px; }
+            .table-wrap { position: relative; }
+            .table-wrap::before { color: var(--muted); content: "Scroll table horizontally"; display: block; font-size: 12px; font-weight: 700; margin-bottom: 8px; }
+        }
+        @media (max-width: 520px) {
+            .brand { font-size: 16px; }
+            .topbar form { display: flex; gap: 8px; }
         }
     </style>
 </head>
 <body>
+    <input class="nav-toggle-input" id="employee-nav-toggle" type="checkbox">
     @php
         $portalEmployee = auth()->user()->employee;
         $canDailyOrders = $portalEmployee && (auth()->user()->hasRole('moderator') || str_contains(mb_strtolower($portalEmployee->roleName()), 'moderator'));
@@ -62,6 +73,7 @@
         <div class="brand">NSYS Employee Portal</div>
         <form method="POST" action="/logout">
             @csrf
+            <label class="nav-toggle" for="employee-nav-toggle">Menu</label>
             <button class="logout-btn" type="submit">Logout</button>
         </form>
     </div>

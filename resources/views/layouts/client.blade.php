@@ -293,10 +293,116 @@
         padding: 16px;
     }
 }
+        .nav-toggle-input,
+        .nav-toggle {
+            display: none;
+        }
+
+        @media (max-width: 900px) {
+            .topbar {
+                align-items: center;
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 10px;
+                min-height: 64px;
+                padding: 10px 14px;
+            }
+
+            .topbar-left {
+                align-items: center;
+                flex: 1 1 100%;
+                flex-direction: row;
+                gap: 12px;
+                min-width: 0;
+                width: 100%;
+            }
+
+            .brand {
+                flex: 0 0 auto;
+                white-space: nowrap;
+            }
+
+            .department-tabs {
+                flex: 1 1 auto;
+                min-width: 0;
+                overflow-x: auto;
+                padding-bottom: 2px;
+                width: auto;
+            }
+
+            .department-tab {
+                flex: 0 0 auto;
+                white-space: nowrap;
+            }
+
+            .nav-toggle {
+                align-items: center;
+                background: rgba(255,255,255,.08);
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                color: var(--text);
+                cursor: pointer;
+                display: inline-flex;
+                font-size: 13px;
+                font-weight: 800;
+                padding: 9px 12px;
+            }
+
+            .layout {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                border-bottom: 1px solid var(--line);
+                border-right: 0;
+                display: none;
+                max-height: calc(100vh - 120px);
+                overflow-y: auto;
+                padding: 14px;
+                width: 100%;
+            }
+
+            .nav-toggle-input:checked ~ .layout .sidebar {
+                display: block;
+            }
+
+            .sidebar a {
+                margin-bottom: 8px;
+                white-space: normal;
+            }
+
+            .content {
+                padding: 16px;
+            }
+
+            .table-wrap {
+                position: relative;
+            }
+
+            .table-wrap::before {
+                color: var(--muted);
+                content: "Scroll table horizontally";
+                display: block;
+                font-size: 12px;
+                font-weight: 700;
+                margin-bottom: 8px;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .topbar {
+                padding: 10px 12px;
+            }
+
+            .brand {
+                font-size: 16px;
+            }
+        }
     </style>
 </head>
 
 <body>
+    <input class="nav-toggle-input" id="client-nav-toggle" type="checkbox">
     @php
         $isEmployeeDepartment = request()->is('client/employee-dashboard')
             || request()->is('client/employees')
@@ -316,6 +422,7 @@
 
         <form method="POST" action="/logout">
             @csrf
+            <label class="nav-toggle" for="client-nav-toggle">Menu</label>
             <button class="logout-btn" type="submit">Logout</button>
         </form>
     </div>
