@@ -229,10 +229,8 @@ class DashboardController extends Controller
         ));
     }
 
-    public function employeeDepartment(ClientFundDashboardService $clientFundDashboardService, PayrollCategoryService $payrollCategoryService)
+    public function employeeDepartment(PayrollCategoryService $payrollCategoryService)
     {
-        $clientFundDashboard = $clientFundDashboardService->dashboard();
-        $clientFundSummary = $clientFundDashboard['summary'];
         $totalEmployees = Employee::count();
         $clientAssignedEmployees = Employee::where('employee_type', 'client_assigned')->count();
         $agencyInternalEmployees = Employee::where('employee_type', 'agency_internal')->count();
@@ -244,9 +242,8 @@ class DashboardController extends Controller
         $attendanceRecords = EmployeeAttendance::whereMonth('attendance_date', now()->month)
             ->whereYear('attendance_date', now()->year)
             ->count();
-        $pendingSalaryPayments = SalaryPayment::where('status', 'pending')->sum('amount');
         $recentEmployees = Employee::latest()->take(5)->get();
-        $recentSalaryPayments = SalaryPayment::with('client')->latest()->take(5)->get();
+        $upcomingStages = $payrollCategoryService->upcomingCycles();
         $payrollStages = $payrollCategoryService->employeeStages();
         $unpaidStages = $payrollStages->filter(fn (array $row) => in_array(data_get($row, 'stage.category'), [
             PayrollCategoryService::PENDING_WORK_STATUS,
@@ -259,8 +256,10 @@ class DashboardController extends Controller
             PayrollCategoryService::FINAL_SETTLEMENT_UNPAID,
         ], true));
         $employeeDashboardAlerts = [
-            'upcoming_count' => $payrollCategoryService->upcomingCycles()->count(),
+            'upcoming_count' => $upcomingStages->count(),
+            'upcoming_amount' => (float) $upcomingStages->sum(fn (array $row) => (float) data_get($row, 'estimate.estimated_payable_salary', 0)),
             'unpaid_count' => $unpaidStages->count(),
+            'unpaid_amount' => (float) $unpaidStages->sum(fn (array $row) => $this->stageDueAmount($row['stage'])),
             'final_settlement_count' => $finalSettlementStages->count(),
             'final_settlement_amount' => (float) $finalSettlementStages->sum(fn (array $row) => $this->stageDueAmount($row['stage'])),
         ];
@@ -273,10 +272,7 @@ class DashboardController extends Controller
             'activeEmployees',
             'probationEmployees',
             'attendanceRecords',
-            'pendingSalaryPayments',
-            'clientFundSummary',
             'recentEmployees',
-            'recentSalaryPayments',
             'employeeDashboardAlerts'
         ));
     }

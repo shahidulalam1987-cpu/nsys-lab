@@ -23,12 +23,12 @@
         </div>
         <div class="stat-card">
             <p>Upcoming Salary</p>
-            <h2>BDT {{ number_format($clientFundSummary['upcoming_salary'], 2) }}</h2>
-            <p>{{ number_format($clientFundSummary['upcoming_employee_count']) }} Employees</p>
+            <h2>BDT {{ number_format($employeeDashboardAlerts['upcoming_amount'], 2) }}</h2>
+            <p>{{ number_format($employeeDashboardAlerts['upcoming_count']) }} Employees</p>
         </div>
         <div class="stat-card">
             <p>Unpaid Salary Due</p>
-            <h2>BDT {{ number_format($clientFundSummary['unpaid_salary_due'], 2) }}</h2>
+            <h2>BDT {{ number_format($employeeDashboardAlerts['unpaid_amount'], 2) }}</h2>
             <p>{{ number_format($employeeDashboardAlerts['unpaid_count']) }} Employees</p>
         </div>
         <div class="stat-card">
@@ -55,8 +55,6 @@
         <a class="btn" href="/admin/work-status">Work Status</a>
         <a class="btn" href="/admin/attendance">Attendance</a>
         <a class="btn" href="/admin/payroll">Payroll Dashboard</a>
-        <a class="btn" href="/admin/payroll?status=upcoming">Upcoming Salary</a>
-        <a class="btn" href="/admin/payroll?status=due">Unpaid Salary</a>
         <a class="btn" href="/admin/payroll?status=upcoming">Upcoming Salary</a>
         <a class="btn" href="/admin/payroll?status=due">Unpaid Salary</a>
         <a class="btn" href="/admin/payroll?status=due&employee_scope=terminated">Final Settlement Due</a>

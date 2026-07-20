@@ -402,11 +402,6 @@ class EmployeeController extends Controller
             'account_name' => ['nullable', 'string', 'max:255'],
             'account_number' => ['nullable', 'string', 'max:255'],
             'branch_name' => ['nullable', 'string', 'max:255'],
-            'bkash_number' => ['nullable', 'string', 'max:50'],
-            'nagad_number' => ['nullable', 'string', 'max:50'],
-            'rocket_number' => ['nullable', 'string', 'max:50'],
-            'preferred_payment_method' => ['nullable', 'in:bank,bkash,nagad,rocket,cash'],
-            'mobile_banking_info' => ['nullable', 'string'],
             'admin_note' => ['nullable', 'string'],
         ]);
 

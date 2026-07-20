@@ -231,7 +231,7 @@
                 <p><strong>Salary Source:</strong> {{ $employee->salarySourceLabel() }}</p>
                 <p><strong>Assigned Client:</strong> {{ $salarySummary['assigned_client']?->company_name ?: '-' }}</p>
                 <p>
-                    <strong>Client Fund Balance:</strong>
+                    <strong>Employee Salary Fund Balance:</strong>
                     {{ $salarySummary['client_fund_balance'] !== null ? 'BDT ' . number_format($salarySummary['client_fund_balance'], 2) : '-' }}
                 </p>
                 <p><strong>Upcoming Salary Date:</strong> {{ $salarySummary['upcoming_salary_date']?->toDateString() ?: '-' }}</p>
