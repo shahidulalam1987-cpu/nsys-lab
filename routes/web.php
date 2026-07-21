@@ -188,6 +188,7 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::get('/admin/assignments/{assignment}', [EmployeeAssignmentController::class, 'show']);
     Route::get('/admin/assignments/{assignment}/edit', [EmployeeAssignmentController::class, 'edit']);
     Route::post('/admin/assignments/{assignment}/update', [EmployeeAssignmentController::class, 'updateFromManagement']);
+    Route::post('/admin/assignments/{assignment}/end', [EmployeeAssignmentController::class, 'end']);
     Route::post('/admin/assignments/{assignment}/remove', [EmployeeAssignmentController::class, 'remove']);
 
     Route::get('/admin/attendance', [EmployeeAttendanceController::class, 'index']);

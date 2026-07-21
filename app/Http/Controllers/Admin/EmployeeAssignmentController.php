@@ -20,21 +20,28 @@ class EmployeeAssignmentController extends Controller
         $query = EmployeeAssignment::with(['employee', 'client', 'page', 'campaignRecord', 'shift'])
             ->when($request->employee_id, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
             ->when($request->client_id, fn ($query, $clientId) => $query->where('client_id', $clientId))
-            ->when($request->status, fn ($query, $status) => $query->where('status', $status));
+            ->when($request->client_page_id, fn ($query, $pageId) => $query->where('client_page_id', $pageId))
+            ->when($request->campaign_id, fn ($query, $campaignId) => $query->where('campaign_id', $campaignId))
+            ->when($request->shift_id, fn ($query, $shiftId) => $query->where('shift_id', $shiftId))
+            ->when($request->status, fn ($query, $status) => $query->where('status', $status))
+            ->when($request->date_from, fn ($query, $date) => $query->whereDate('assigned_from', '>=', $date))
+            ->when($request->date_to, fn ($query, $date) => $query->whereDate('assigned_from', '<=', $date));
 
-        $assignments = $query->latest('assigned_from')->latest()->get();
-        $allAssignments = EmployeeAssignment::with(['shift'])->get();
+        $assignments = $query->latest('assigned_from')->latest()->paginate(25)->withQueryString();
 
         return view('admin.assignments.index', [
             'assignments' => $assignments,
             'employees' => Employee::orderBy('name')->get(),
             'clients' => Client::orderBy('company_name')->get(),
+            'clientPages' => ClientPage::orderBy('page_name')->get(),
+            'campaigns' => Campaign::orderBy('campaign_name')->get(),
+            'shifts' => Shift::where('status', 'active')->orderBy('id')->get(),
             'summary' => [
-                'total' => $allAssignments->count(),
-                'active' => $allAssignments->where('status', 'active')->count(),
-                'morning' => $allAssignments->where('status', 'active')->filter(fn ($assignment) => $assignment->shift?->name === 'Morning Shift')->count(),
-                'night' => $allAssignments->where('status', 'active')->filter(fn ($assignment) => $assignment->shift?->name === 'Night Shift')->count(),
-                'full_day' => $allAssignments->where('status', 'active')->filter(fn ($assignment) => $assignment->shift?->name === 'Full Day Shift')->count(),
+                'total' => EmployeeAssignment::count(),
+                'active' => EmployeeAssignment::where('status', 'active')->count(),
+                'morning' => $this->activeShiftAssignmentCount('Morning Shift'),
+                'night' => $this->activeShiftAssignmentCount('Night Shift'),
+                'full_day' => $this->activeShiftAssignmentCount('Full Day Shift'),
             ],
         ]);
     }
@@ -178,6 +185,22 @@ class EmployeeAssignmentController extends Controller
         return redirect('/admin/assignments')->with('success', 'Assignment removed successfully.');
     }
 
+    public function end(EmployeeAssignment $assignment)
+    {
+        if ($assignment->status !== 'active') {
+            return redirect('/admin/assignments')->with('success', 'Assignment is already inactive.');
+        }
+
+        $assignment->update([
+            'status' => 'ended',
+            'assigned_to' => $assignment->assigned_to ?: now()->toDateString(),
+        ]);
+
+        app(ActivityLogger::class)->log('Assignment', 'Assignment Updated', 'Assignment #' . $assignment->id . ' ended from Assignment Management.', request());
+
+        return redirect('/admin/assignments')->with('success', 'Assignment ended successfully.');
+    }
+
     private function formData(): array
     {
         return [
@@ -187,6 +210,13 @@ class EmployeeAssignmentController extends Controller
             'campaigns' => Campaign::with(['client', 'page'])->orderBy('campaign_name')->get(),
             'shifts' => Shift::where('status', 'active')->orderBy('id')->get(),
         ];
+    }
+
+    private function activeShiftAssignmentCount(string $shiftName): int
+    {
+        return EmployeeAssignment::where('status', 'active')
+            ->whereHas('shift', fn ($query) => $query->where('name', $shiftName))
+            ->count();
     }
 
     private function validatedData(Request $request, bool $requirePage, ?EmployeeAssignment $assignment = null, ?Employee $employee = null): array
