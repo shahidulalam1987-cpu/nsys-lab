@@ -91,7 +91,7 @@ class EnterpriseNavigationArchitectureTest extends TestCase
         $this->actingAs($admin)->get('/admin/payroll?status=due')
             ->assertOk()
             ->assertSee('Employees')
-            ->assertSee('Unpaid Salary');
+            ->assertSee('Payroll Action Queue');
 
         $this->actingAs($admin)->get('/admin/business-managers')
             ->assertOk()

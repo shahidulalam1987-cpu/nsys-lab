@@ -48,7 +48,7 @@
     </style>
 
     <div class="payroll-actions">
-        <a class="btn" href="/admin/payroll?status=due">Back to Unpaid Salary</a>
+        <a class="btn" href="/admin/payroll?status=due">Back to Payroll Action Queue</a>
         <a class="btn" href="/admin/payroll/{{ $payroll->id }}/edit">Edit Salary</a>
         <a class="btn" href="/admin/payroll/{{ $payroll->id }}/salary-statement">Download Salary PDF</a>
 
