@@ -1120,7 +1120,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $due = $this->actingAs($admin)->get('/admin/payroll?status=due');
 
         $upcoming->assertOk()->assertSee('No upcoming salaries found.');
-        $due->assertOk()->assertSee('No unpaid salary work found.');
+        $due->assertOk()->assertSee('No payroll actions found.');
     }
 
     public function test_salary_day_before_confirmation_moves_first_cycle_to_next_month(): void
@@ -1580,7 +1580,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $this->actingAs($admin)
             ->get('/admin/payroll?status=due&queue_stage=salary_ready')
             ->assertOk()
-            ->assertSee('No unpaid salary work found.');
+            ->assertSee('No payroll actions found.');
     }
 
     public function test_salary_ready_quick_action_includes_cycle_context_and_prefills_salary_form(): void
@@ -1715,7 +1715,7 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response = $this->actingAs($admin)->get('/admin/payroll?status=due');
 
         $response->assertOk();
-        $response->assertSee('Unpaid Salary');
+        $response->assertSee('Payroll Action Queue');
         $response->assertSee('Generated Unpaid Employee');
         $response->assertDontSee('Salary Ready / Pending Generation');
         $response->assertDontSee('Work Status Required');

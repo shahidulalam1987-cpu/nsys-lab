@@ -4,7 +4,7 @@
     @php
         $isUpcoming = $mode === 'upcoming';
         $isFinalSettlementQueue = ! $isUpcoming && ($filters['employee_scope'] ?? '') === 'terminated';
-        $pageTitle = $isUpcoming ? 'Upcoming Salary' : ($isFinalSettlementQueue ? 'Final Settlement Queue' : 'Unpaid Salary');
+        $pageTitle = $isUpcoming ? 'Upcoming Salary' : ($isFinalSettlementQueue ? 'Final Settlement Queue' : 'Payroll Action Queue');
     @endphp
 
     <style>
@@ -45,6 +45,10 @@
         .upcoming-summary-item { background: rgba(15,23,42,.42); border: 1px solid rgba(148,163,184,.16); border-radius: 10px; padding: 12px; }
         .upcoming-summary-item span { color: #94a3b8; display: block; font-size: 12px; margin-bottom: 4px; }
         .upcoming-summary-item strong { color: #e5efff; font-size: 20px; }
+        .queue-summary { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+        .queue-summary-item { background: rgba(15,23,42,.42); border: 1px solid rgba(148,163,184,.16); border-radius: 10px; padding: 12px; }
+        .queue-summary-item span { color: #94a3b8; display: block; font-size: 12px; margin-bottom: 4px; }
+        .queue-summary-item strong { color: #e5efff; font-size: 20px; }
         .badge-neutral { background: #64748b; }
         .badge-info { background: #2563eb; }
         @media (max-width: 1180px) {
@@ -58,7 +62,7 @@
     </style>
 
     <h1>{{ $pageTitle }}</h1>
-    <p>{{ $isUpcoming ? 'Salary dates within the next five days. This is a notification-only stage.' : ($isFinalSettlementQueue ? 'Review final settlement status, work status readiness, salary schedule, and payment progress from one workspace.' : 'Complete work status, salary generation, approval, and payment from this queue.') }}</p>
+    <p>{{ $isUpcoming ? 'Salary dates within the next five days. This is a notification-only stage.' : ($isFinalSettlementQueue ? 'Review final settlement status, work status readiness, salary schedule, and payment progress from one workspace.' : 'Complete work status, salary generation, approval, and payment from one action queue.') }}</p>
 
     @if($isFinalSettlementQueue)
         <div class="card">
@@ -153,6 +157,23 @@
             </table>
         </div>
     @else
+        @php
+            $queueSummary = [
+                'Pending Work Status' => $stageRows->where('stage.category', \App\Services\PayrollCategoryService::PENDING_WORK_STATUS)->count(),
+                'Salary Ready' => $stageRows->where('stage.category', \App\Services\PayrollCategoryService::SALARY_READY)->count(),
+                'Pending Approval' => $stageRows->where('stage.category', \App\Services\PayrollCategoryService::GENERATED)->count(),
+                'Unpaid' => $stageRows->where('stage.category', \App\Services\PayrollCategoryService::UNPAID)->count(),
+                'Final Settlement Due' => $stageRows->filter(fn ($row) => in_array(data_get($row, 'stage.category'), [\App\Services\PayrollCategoryService::FINAL_SETTLEMENT_PENDING, \App\Services\PayrollCategoryService::FINAL_SETTLEMENT_UNPAID], true))->count(),
+            ];
+        @endphp
+        <div class="card queue-summary">
+            @foreach($queueSummary as $label => $count)
+                <div class="queue-summary-item">
+                    <span>{{ $label }}</span>
+                    <strong>{{ number_format($count) }}</strong>
+                </div>
+            @endforeach
+        </div>
         <div class="settlement-workspace">
             @forelse($stageRows as $row)
                 @php
@@ -186,7 +207,7 @@
                         </div>
 
                         <div>
-                            <div class="settlement-label">Termination Summary</div>
+                            <div class="settlement-label">{{ $isFinalRow ? 'Termination Summary' : 'Payroll Cycle' }}</div>
                             @if($isFinalRow)
                                 <div class="settlement-meta">Last Working Date: <strong>{{ $display['last_working_date'] }}</strong></div>
                                 <div class="settlement-period" title="Final settlement period is resolved by payroll cycle services.">
@@ -214,7 +235,7 @@
                             <div class="settlement-schedule">
                                 <div class="settlement-mini"><small>Salary Day</small><strong>{{ $display['salary_day'] }}</strong></div>
                                 <div class="settlement-mini" title="The official salary date for this final settlement cycle."><small>{{ $isFinalRow ? 'Settlement Salary Date' : 'Salary Date' }}</small><strong>{{ $display['settlement_salary_date'] }}</strong></div>
-                                <div class="settlement-mini" title="The last date allowed for settlement payment before it becomes overdue."><small>Payment Deadline</small><strong>{{ $display['payment_deadline'] }}</strong></div>
+                                <div class="settlement-mini" title="{{ $isFinalRow ? 'The last date allowed for settlement payment before it becomes overdue.' : 'Regular payroll is tracked from the salary date.' }}"><small>{{ $isFinalRow ? 'Payment Deadline' : 'Payment Due' }}</small><strong>{{ $isFinalRow ? $display['payment_deadline'] : $display['settlement_salary_date'] }}</strong></div>
                             </div>
                         </div>
 
@@ -243,7 +264,7 @@
                             <div class="settlement-actions">
                                 @if($display['add_work_status_url'])
                                     <a class="btn" href="{{ $display['add_work_status_url'] }}">Add Work Status</a>
-                                    <span class="settlement-helper">Generates Work Status only for the Final Settlement Period.</span>
+                                    <span class="settlement-helper">{{ $isFinalRow ? 'Add Work Status only for the final settlement period.' : 'Add Work Status for this salary cycle.' }}</span>
                                 @elseif($display['generate_salary_url'])
                                     <a class="btn" href="{{ $display['generate_salary_url'] }}">{{ $isFinalRow ? 'Generate Final Salary' : 'Generate Salary' }}</a>
                                 @elseif($payroll)
@@ -311,7 +332,7 @@
                     </div>
                 @endif
             @empty
-                <div class="card">{{ $isFinalSettlementQueue ? 'No final settlement work found.' : 'No unpaid salary work found.' }}</div>
+                <div class="card">{{ $isFinalSettlementQueue ? 'No final settlement work found.' : 'No payroll actions found.' }}</div>
             @endforelse
         </div>
     @endif
