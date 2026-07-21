@@ -113,7 +113,7 @@
             @endunless
             <div class="payroll-filter-actions">
                 <button class="btn" type="submit">Filter</button>
-                <a href="/admin/payroll?status={{ $isUpcoming ? 'upcoming' : 'due' }}">Reset</a>
+                <a href="/admin/payroll?status={{ $isUpcoming ? 'upcoming' : 'due' }}{{ $isFinalSettlementQueue ? '&employee_scope=terminated' : '' }}">Reset</a>
             </div>
         </form>
     </div>
@@ -158,13 +158,21 @@
         </div>
     @else
         @php
-            $queueSummary = [
-                'Pending Work Status' => $stageRows->where('stage.category', \App\Services\PayrollCategoryService::PENDING_WORK_STATUS)->count(),
-                'Salary Ready' => $stageRows->where('stage.category', \App\Services\PayrollCategoryService::SALARY_READY)->count(),
-                'Pending Approval' => $stageRows->where('stage.category', \App\Services\PayrollCategoryService::GENERATED)->count(),
-                'Unpaid' => $stageRows->where('stage.category', \App\Services\PayrollCategoryService::UNPAID)->count(),
-                'Final Settlement Due' => $stageRows->filter(fn ($row) => in_array(data_get($row, 'stage.category'), [\App\Services\PayrollCategoryService::FINAL_SETTLEMENT_PENDING, \App\Services\PayrollCategoryService::FINAL_SETTLEMENT_UNPAID], true))->count(),
-            ];
+            $queueSummary = $isFinalSettlementQueue
+                ? [
+                    'Final Settlement Pending' => $stageRows->where('stage.category', \App\Services\PayrollCategoryService::FINAL_SETTLEMENT_PENDING)->count(),
+                    'Final Settlement Unpaid' => $stageRows->where('stage.category', \App\Services\PayrollCategoryService::FINAL_SETTLEMENT_UNPAID)->count(),
+                    'Work Status Needed' => $stageRows->filter(fn ($row) => data_get($row, 'stage.category') === \App\Services\PayrollCategoryService::FINAL_SETTLEMENT_PENDING && ! data_get($row, 'display.has_work_status'))->count(),
+                    'Ready to Generate' => $stageRows->filter(fn ($row) => data_get($row, 'display.generate_salary_url'))->count(),
+                    'Payment Pending' => $stageRows->filter(fn ($row) => data_get($row, 'stage.category') === \App\Services\PayrollCategoryService::FINAL_SETTLEMENT_UNPAID)->count(),
+                ]
+                : [
+                    'Pending Work Status' => $stageRows->where('stage.category', \App\Services\PayrollCategoryService::PENDING_WORK_STATUS)->count(),
+                    'Salary Ready' => $stageRows->where('stage.category', \App\Services\PayrollCategoryService::SALARY_READY)->count(),
+                    'Pending Approval' => $stageRows->where('stage.category', \App\Services\PayrollCategoryService::GENERATED)->count(),
+                    'Unpaid' => $stageRows->where('stage.category', \App\Services\PayrollCategoryService::UNPAID)->count(),
+                    'Final Settlement Due' => $stageRows->filter(fn ($row) => in_array(data_get($row, 'stage.category'), [\App\Services\PayrollCategoryService::FINAL_SETTLEMENT_PENDING, \App\Services\PayrollCategoryService::FINAL_SETTLEMENT_UNPAID], true))->count(),
+                ];
         @endphp
         <div class="card queue-summary">
             @foreach($queueSummary as $label => $count)

@@ -74,9 +74,16 @@ class NavigationService
 
     private function prepareItem(array $item, Request $request): array
     {
-        $active = ($item['key'] ?? null) === 'payroll_dashboard'
-            ? $request->is('admin/payroll') && ! $request->filled('status') && ! $request->filled('employee_scope')
-            : $this->matches($request, $item['active'] ?? [$item['url']]);
+        $active = match ($item['key'] ?? null) {
+            'payroll_dashboard' => $request->is('admin/payroll') && ! $request->filled('status') && ! $request->filled('employee_scope'),
+            'unpaid_salary' => $request->is('admin/payroll')
+                && $request->query('status') === 'due'
+                && $request->query('employee_scope') !== 'terminated',
+            'final_settlement' => $request->is('admin/payroll')
+                && $request->query('status') === 'due'
+                && $request->query('employee_scope') === 'terminated',
+            default => $this->matches($request, $item['active'] ?? [$item['url']]),
+        };
         $badge = $this->badgeCount($item['badge'] ?? null);
 
         return [

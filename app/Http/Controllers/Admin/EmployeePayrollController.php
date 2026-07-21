@@ -1273,7 +1273,9 @@ class EmployeePayrollController extends Controller
             'salary_month' => $salaryDate?->format('Y-m'),
             'status' => 'working',
             'note' => 'Salary cycle work status entry',
-            'return_to' => '/admin/payroll?status=due',
+            'return_to' => $category === PayrollCategoryService::FINAL_SETTLEMENT_PENDING
+                ? '/admin/payroll?status=due&employee_scope=terminated'
+                : '/admin/payroll?status=due',
         ];
 
         if (! $employee->isAgencyInternal() && $client) {

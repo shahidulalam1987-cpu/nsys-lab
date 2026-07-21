@@ -426,6 +426,32 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertDontSee('Generate Final Salary');
     }
 
+    public function test_final_settlement_queue_keeps_navigation_and_summary_context_separate(): void
+    {
+        Carbon::setTestNow('2026-06-24');
+
+        $admin = $this->admin();
+        $this->employee([
+            'name' => 'Settlement Navigation Employee',
+            'status' => 'terminated',
+            'last_working_date' => '2026-06-20',
+            'salary_day' => 20,
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/payroll?status=due&employee_scope=terminated');
+        $html = $response->getContent();
+
+        $response->assertOk();
+        $response->assertSee('Final Settlement Queue');
+        $response->assertSee('Final Settlement Pending');
+        $response->assertSee('Work Status Needed');
+        $response->assertSee('Ready to Generate');
+        $response->assertSee('/admin/payroll?status=due&amp;employee_scope=terminated', false);
+        $response->assertSee('return_to=%2Fadmin%2Fpayroll%3Fstatus%3Ddue%26employee_scope%3Dterminated', false);
+        $this->assertMatchesRegularExpression('/class="[^"]*active-menu[^"]*" href="\/admin\/payroll\?status=due&amp;employee_scope=terminated"/', $html);
+        $this->assertDoesNotMatchRegularExpression('/class="[^"]*active-menu[^"]*" href="\/admin\/payroll\?status=due"/', $html);
+    }
+
     public function test_salary_generation_is_blocked_when_no_work_status_exists_for_zero_payable_salary(): void
     {
         Carbon::setTestNow('2026-06-15');
