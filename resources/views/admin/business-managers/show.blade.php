@@ -14,6 +14,12 @@
         <p><strong>Notes:</strong> {{ $businessManager->notes ?: '-' }}</p>
     </div>
 
+    <div class="stats-grid">
+        <div class="stat-card"><p>Ad Accounts</p><h2>{{ number_format($businessManager->adAccounts->count()) }}</h2></div>
+        <div class="stat-card"><p>Pages</p><h2>{{ number_format($businessManager->pages->count()) }}</h2></div>
+        <div class="stat-card"><p>Status</p><h2>{{ $businessManager->statusLabel() }}</h2></div>
+    </div>
+
     <div class="card">
         <h2>Linked Ad Accounts</h2>
         <div class="table-wrap">
@@ -28,6 +34,32 @@
                     </tr>
                 @empty
                     <tr><td colspan="4">No ad accounts linked.</td></tr>
+                @endforelse
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Linked Pages</h2>
+        <div class="table-wrap">
+            <table>
+                <tr><th>Page</th><th>Client</th><th>Platform</th><th>Status</th></tr>
+                @forelse($businessManager->pages as $page)
+                    <tr>
+                        <td>
+                            @if($page->page_url)
+                                <a href="{{ $page->page_url }}" target="_blank" rel="noopener">{{ $page->page_name }}</a>
+                            @else
+                                {{ $page->page_name }}
+                            @endif
+                            <br><span style="color:var(--muted);">{{ $page->page_id ?: '-' }}</span>
+                        </td>
+                        <td>{{ $page->client?->company_name ?: '-' }}</td>
+                        <td>{{ $page->platform ?: '-' }}</td>
+                        <td>{{ ucfirst((string) $page->status) }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="4">No pages linked.</td></tr>
                 @endforelse
             </table>
         </div>

@@ -76,7 +76,7 @@ class BusinessManagerController extends Controller
     public function destroy(BusinessManager $businessManager)
     {
         if ($businessManager->adAccounts()->exists() || $businessManager->pages()->exists()) {
-            return back()->with('success', 'This BM has ad accounts or pages. Remove those records first.');
+            return back()->with('error', 'This Business Manager has linked ad accounts or pages and cannot be deleted.');
         }
 
         $businessManager->delete();
