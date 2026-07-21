@@ -123,26 +123,39 @@ class AdAccountController extends Controller
         $filters = $request->validate([
             'ad_account_id' => ['nullable', 'exists:ad_accounts,id'],
             'transaction_type' => ['nullable', Rule::in(array_keys(AdAccountLedger::TRANSACTION_TYPES))],
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
         ]);
 
         $query = AdAccountLedger::with(['adAccount', 'creator'])
             ->when($filters['ad_account_id'] ?? null, fn ($query, $accountId) => $query->where('ad_account_id', $accountId))
             ->when($filters['transaction_type'] ?? null, fn ($query, $type) => $query->where('transaction_type', $type))
+            ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->whereDate('transaction_date', '>=', $date))
+            ->when($filters['date_to'] ?? null, fn ($query, $date) => $query->whereDate('transaction_date', '<=', $date))
             ->latest('transaction_date')
             ->latest();
+
+        $summary = (clone $query)->get();
 
         return view('admin.ad-accounts.ledger', [
             'ledgers' => $query->paginate(30)->withQueryString(),
             'adAccounts' => AdAccount::orderBy('ad_account_name')->get(),
             'transactionTypes' => AdAccountLedger::TRANSACTION_TYPES,
             'filters' => $filters,
+            'summary' => [
+                'total' => $summary->count(),
+                'credits' => (float) $summary->where('transaction_type', 'manual_credit')->sum('amount'),
+                'debits' => (float) $summary->where('transaction_type', 'manual_debit')->sum('amount'),
+                'billing_paid' => $summary->where('transaction_type', 'billing_paid')->count(),
+                'status_changes' => $summary->where('transaction_type', 'status_change')->count(),
+            ],
         ]);
     }
 
     public function ledgerShow(AdAccountLedger $ledger)
     {
         return view('admin.ad-accounts.ledger-show', [
-            'ledger' => $ledger->load(['adAccount', 'creator']),
+            'ledger' => $ledger->load(['adAccount.businessManager', 'adAccount.client', 'creator']),
         ]);
     }
 
