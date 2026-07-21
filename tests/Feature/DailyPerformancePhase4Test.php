@@ -158,11 +158,11 @@ class DailyPerformancePhase4Test extends TestCase
 
         $this->actingAs($admin)->get('/admin/profit-history')
             ->assertOk()
-            ->assertSee('Analytics Dashboard')
+            ->assertSee('Performance Reports')
             ->assertSee('Client-wise Performance')
             ->assertSee('Page-wise Performance')
             ->assertSee('Campaign-wise Performance')
-            ->assertSee('BM-wise Performance')
+            ->assertSee('Business Manager-wise Performance')
             ->assertSee('Ad Account-wise Performance')
             ->assertSee('Cost Per Order');
     }

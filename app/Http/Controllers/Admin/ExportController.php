@@ -128,8 +128,8 @@ class ExportController extends Controller
 {
     $fileName = 'profit-history-export-' . date('Y-m-d') . '.csv';
 
-    $reports = \App\Models\DailyReport::with('client')
-        ->latest()
+    $reports = \App\Models\DailyPerformanceReport::with(['campaign.businessManager', 'campaign.adAccount', 'campaign.client', 'campaign.page'])
+        ->latest('report_date')
         ->get();
 
     $headers = [
@@ -142,34 +142,29 @@ class ExportController extends Controller
 
         fputcsv($file, [
             'ID',
-            'Client',
             'Report Date',
-            'Dollar Spend',
-            'Client Rate',
-            'Buy Rate',
-            'Revenue',
-            'Cost',
-            'Profit',
+            'Business Manager',
+            'Ad Account',
+            'Client',
+            'Page',
+            'Campaign',
+            'Spend USD',
+            'Orders',
+            'Cost Per Order',
         ]);
 
         foreach ($reports as $report) {
-            $clientRate = $report->client->client_rate ?? 0;
-            $buyRate = $report->client->buy_rate ?? 0;
-
-            $revenue = $report->dollar_spend * $clientRate;
-            $cost = $report->dollar_spend * $buyRate;
-            $profit = $revenue - $cost;
-
             fputcsv($file, [
                 $report->id,
-                $report->client->company_name ?? 'N/A',
-                $report->report_date,
-                $report->dollar_spend,
-                $clientRate,
-                $buyRate,
-                $revenue,
-                $cost,
-                $profit,
+                $report->report_date?->toDateString(),
+                $report->campaign?->businessManager?->bm_name,
+                $report->campaign?->adAccount?->ad_account_name,
+                $report->campaign?->client?->company_name,
+                $report->campaign?->page?->page_name,
+                $report->campaign?->campaign_name,
+                $report->spend,
+                $report->orders,
+                \App\Models\DailyPerformanceReport::costPer((float) $report->spend, (int) $report->orders),
             ]);
         }
 

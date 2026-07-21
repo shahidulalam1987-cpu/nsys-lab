@@ -1,8 +1,104 @@
 @extends('layouts.admin')
 
 @section('content')
-    <h1>Analytics Dashboard</h1>
-    <p>Focused boosting performance view for spend, orders, and cost per order.</p>
+    <style>
+        .performance-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 22px;
+        }
+
+        .performance-header p {
+            max-width: 760px;
+        }
+
+        .performance-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .performance-source-note {
+            border: 1px solid rgba(56, 189, 248, .35);
+            background: rgba(14, 165, 233, .09);
+            color: #bae6fd;
+            padding: 14px 16px;
+            border-radius: 14px;
+            margin-bottom: 18px;
+        }
+
+        .performance-filter-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            align-items: end;
+        }
+
+        .performance-filter-grid label {
+            display: grid;
+            gap: 8px;
+            font-weight: 800;
+        }
+
+        .performance-filter-grid input,
+        .performance-filter-grid select {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .performance-table-name {
+            color: #e5f2ff;
+            font-weight: 800;
+        }
+
+        .performance-empty-action {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+            color: #aebbd2;
+        }
+
+        @media (max-width: 1180px) {
+            .performance-filter-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 760px) {
+            .performance-header {
+                display: block;
+            }
+
+            .performance-actions {
+                justify-content: flex-start;
+                margin-top: 12px;
+            }
+
+            .performance-filter-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+    <div class="performance-header">
+        <div>
+            <h1>Performance Reports</h1>
+            <p>Focused business performance view for spend, orders, and cost per order.</p>
+        </div>
+        <div class="performance-actions">
+            <a class="btn" href="/admin/export/profit-history">Export CSV</a>
+            <a class="btn" href="/admin/daily-reports">Daily Performance</a>
+        </div>
+    </div>
+
+    <div class="performance-source-note">
+        Performance Reports use approved merged Daily Performance records. Legacy daily reports remain available in their original workflow and are not mixed into these totals.
+    </div>
 
     <div class="stats-grid">
         <div class="stat-card"><p>Total Spend</p><h2>USD {{ number_format($summary['spend'], 2) }}</h2></div>
@@ -11,18 +107,27 @@
     </div>
 
     <div class="card">
-        <form method="GET" action="/admin/profit-history" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;">
-            <label>From<br><input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}"></label>
-            <label>To<br><input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}"></label>
-            <label>BM<br>
+        <h2>Filters</h2>
+        <form method="GET" action="/admin/profit-history" class="performance-filter-grid">
+            <label>
+                From Date
+                <input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}">
+            </label>
+            <label>
+                To Date
+                <input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}">
+            </label>
+            <label>
+                Business Manager
                 <select name="business_manager_id">
-                    <option value="">All BM</option>
+                    <option value="">All Business Managers</option>
                     @foreach($businessManagers as $bm)
                         <option value="{{ $bm->id }}" @selected(($filters['business_manager_id'] ?? '') == $bm->id)>{{ $bm->bm_name }}</option>
                     @endforeach
                 </select>
             </label>
-            <label>Ad Account<br>
+            <label>
+                Ad Account
                 <select name="ad_account_id">
                     <option value="">All Ad Accounts</option>
                     @foreach($adAccounts as $account)
@@ -30,7 +135,8 @@
                     @endforeach
                 </select>
             </label>
-            <label>Client<br>
+            <label>
+                Client
                 <select name="client_id">
                     <option value="">All Clients</option>
                     @foreach($clients as $client)
@@ -38,7 +144,8 @@
                     @endforeach
                 </select>
             </label>
-            <label>Page<br>
+            <label>
+                Page
                 <select name="client_page_id">
                     <option value="">All Pages</option>
                     @foreach($clientPages as $page)
@@ -46,7 +153,8 @@
                     @endforeach
                 </select>
             </label>
-            <label>Campaign<br>
+            <label>
+                Campaign
                 <select name="campaign_id">
                     <option value="">All Campaigns</option>
                     @foreach($campaigns as $campaign)
@@ -54,8 +162,10 @@
                     @endforeach
                 </select>
             </label>
-            <button class="btn" type="submit">Filter</button>
-            <a href="/admin/profit-history">Reset</a>
+            <div>
+                <button class="btn" type="submit">Filter</button>
+                <a href="/admin/profit-history" style="margin-left:12px;">Reset</a>
+            </div>
         </form>
     </div>
 
@@ -63,7 +173,7 @@
         'Client-wise Performance' => $clientRows,
         'Page-wise Performance' => $pageRows,
         'Campaign-wise Performance' => $campaignRows,
-        'BM-wise Performance' => $bmRows,
+        'Business Manager-wise Performance' => $bmRows,
         'Ad Account-wise Performance' => $adAccountRows,
     ] as $title => $rows)
         <div class="card">
@@ -78,13 +188,20 @@
                     </tr>
                     @forelse($rows as $row)
                         <tr>
-                            <td>{{ $row['label'] }}</td>
+                            <td><span class="performance-table-name">{{ $row['label'] }}</span></td>
                             <td>USD {{ number_format($row['spend'], 2) }}</td>
                             <td>{{ number_format($row['orders']) }}</td>
                             <td>USD {{ number_format($row['cost_per_order'], 2) }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="4">No performance data found.</td></tr>
+                        <tr>
+                            <td colspan="4">
+                                <div class="performance-empty-action">
+                                    <span>No performance data found for this view.</span>
+                                    <a class="btn" href="/admin/daily-reports">Open Daily Performance</a>
+                                </div>
+                            </td>
+                        </tr>
                     @endforelse
                 </table>
             </div>
