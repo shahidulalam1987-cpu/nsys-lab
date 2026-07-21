@@ -74,7 +74,7 @@ class ClientFundDashboardTest extends TestCase
         $response = $this->actingAs($admin)->get('/admin/client-fund');
 
         $response->assertOk();
-        $response->assertSee('Client Dual Fund Dashboard');
+        $response->assertSee('Client Funds');
         $response->assertSee('Salary Fund Received');
         $response->assertSee('BDT 28,000.00');
         $response->assertSee('Salary Fund Used');
@@ -248,7 +248,7 @@ class ClientFundDashboardTest extends TestCase
         $response->assertOk();
         $response->assertSee('Assigned Client');
         $response->assertSee('Profile Fund Client');
-        $response->assertSee('Client Fund Balance');
+        $response->assertSee('Employee Salary Fund Balance');
         $response->assertSee('BDT 8,000.00');
         $response->assertSee('Upcoming Salary Date');
         $response->assertSee('Salary Status');
