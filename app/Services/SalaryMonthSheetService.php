@@ -17,7 +17,7 @@ class SalaryMonthSheetService
             ->when($historyScope === 'historical', fn ($query) => $query->where(function ($query) {
                 $query->where('is_current', false)->orWhereNotNull('superseded_by_id');
             }))
-            ->with(['employee', 'client', 'financeAccount', 'financeLedgers'])
+            ->with(['employee', 'client', 'financeAccount', 'financeLedgers', 'clientFundLedgers'])
             ->when($month, fn ($query) => $query->whereDate('salary_month', $month->toDateString()))
             ->when($paymentMonth, fn ($query) => $query->where(function ($query) use ($paymentMonth) {
                 $start = $paymentMonth->copy()->startOfMonth();

@@ -72,7 +72,7 @@ class EmployeeSalaryMonthSheetTest extends TestCase
         $response = $this->actingAs($admin)->get('/admin/salary-month-sheet?month=2026-06');
 
         $response->assertOk();
-        $response->assertSee('No generated salary records found for the selected month.');
+        $response->assertSee('No salary records found for the selected filters.');
         $response->assertDontSee('<br>Only Salary Day Employee', false);
     }
 
@@ -126,8 +126,9 @@ class EmployeeSalaryMonthSheetTest extends TestCase
         $response->assertDownload('employee-salary-report-2026-06.csv');
 
         $csv = $response->streamedContent();
-        $this->assertStringContainsString('Employee,Client,"Salary Month","Salary Period","Working Days","Payable Salary","Paid Salary","Remaining Due",Status,"Payment Source Status","Payment Date"', $csv);
-        $this->assertStringContainsString('"NSYS-EM-011 CSV Employee","Sheet Client",2026-06,"2026-06-01 to 2026-06-10",10.00,10000.00,10000.00,0.00,Paid,"Legacy Manual Paid",2026-06-15', $csv);
+        $this->assertStringContainsString('Employee,"Receipt Number",Client,"Salary Month","Payment Month","Salary Period","Working Days","Payable Salary","Paid Salary","Remaining Due",Status,"Payment Source Status","Payment Date","Finance Ledger ID","Client Fund Ledger ID"', $csv);
+        $this->assertStringContainsString('"NSYS-EM-011 CSV Employee"', $csv);
+        $this->assertStringContainsString('"Sheet Client",2026-06,2026-06,"2026-06-01 to 2026-06-10",10.00,10000.00,10000.00,0.00,Paid,"Legacy Manual Paid",2026-06-15', $csv);
     }
 
     public function test_salary_report_classifies_payment_sources_and_exposes_superseded_history(): void
@@ -244,7 +245,30 @@ class EmployeeSalaryMonthSheetTest extends TestCase
         $reset->assertOk();
         $reset->assertSee('<br>May Salary Paid June', false);
         $reset->assertSee('<br>June Salary Paid July', false);
-        $reset->assertSee('Salary Month = the month salary belongs to. Payment Month = the month salary was actually paid.');
+        $reset->assertSee('Salary Month = the month salary belongs to. Payment Month = the month salary was actually paid. Current Payrolls excludes regenerated/superseded history by default.');
+    }
+
+    public function test_salary_report_uses_payment_timestamp_when_payment_date_is_missing(): void
+    {
+        $admin = $this->admin();
+        $client = $this->client();
+        $employee = $this->employee(['name' => 'Timestamp Paid Employee']);
+
+        $this->payroll($employee, $client, [
+            'salary_month' => '2026-06-01',
+            'payable_salary' => 7000,
+            'paid_amount' => 7000,
+            'payment_status' => 'paid',
+            'payment_date' => null,
+            'payment_confirmed_at' => '2026-07-05 10:00:00',
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/salary-month-sheet?payment_month=2026-07');
+
+        $response->assertOk();
+        $response->assertSee('Timestamp Paid Employee');
+        $response->assertSee('2026-07-05');
+        $response->assertSee('Salary Payment Report');
     }
 
     private function payroll(Employee $employee, Client $client, array $overrides = [])

@@ -60,8 +60,10 @@ class SalaryMonthSheetController extends Controller
 
             fputcsv($handle, [
                 'Employee',
+                'Receipt Number',
                 'Client',
                 'Salary Month',
+                'Payment Month',
                 'Salary Period',
                 'Working Days',
                 'Payable Salary',
@@ -70,13 +72,19 @@ class SalaryMonthSheetController extends Controller
                 'Status',
                 'Payment Source Status',
                 'Payment Date',
+                'Finance Ledger ID',
+                'Client Fund Ledger ID',
             ]);
 
             foreach ($sheet['rows'] as $payroll) {
+                $paymentDate = $payroll->payment_date ?: $payroll->payment_confirmed_at ?: $payroll->paid_at;
+
                 fputcsv($handle, [
                     trim(($payroll->employee?->employee_id ?: '-') . ' ' . ($payroll->employee?->name ?: '')),
+                    $payroll->salaryReceiptNumber(),
                     $payroll->client?->company_name ?: '-',
                     $payroll->salary_month?->format('Y-m') ?: '-',
+                    $paymentDate ? $paymentDate->format('Y-m') : '-',
                     $payroll->salary_period,
                     $payroll->working_days ?? 0,
                     number_format($payroll->payable_salary, 2, '.', ''),
@@ -84,7 +92,9 @@ class SalaryMonthSheetController extends Controller
                     number_format(max((float) $payroll->payable_salary - (float) $payroll->paid_amount, 0), 2, '.', ''),
                     $payroll->reportStatusLabel(),
                     $payroll->paymentSourceStatusLabel(),
-                    $payroll->payment_date?->toDateString() ?: '-',
+                    $paymentDate ? $paymentDate->toDateString() : '-',
+                    $payroll->financeLedgers->firstWhere('transaction_type', 'salary_payment')?->id ?: '-',
+                    $payroll->clientFundLedgers->firstWhere('direction', \App\Models\ClientFundLedger::DIRECTION_DEBIT)?->id ?: '-',
                 ]);
             }
 

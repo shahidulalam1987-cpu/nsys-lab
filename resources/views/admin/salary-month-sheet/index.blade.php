@@ -1,61 +1,87 @@
 @extends('layouts.admin')
 
 @section('content')
+    <style>
+        .salary-report-filters { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-items: end; }
+        .salary-report-filters label { color: var(--muted); font-size: 12px; font-weight: 700; }
+        .salary-report-filters input, .salary-report-filters select { margin-top: 6px; width: 100%; }
+        .salary-report-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        .salary-report-help { color: var(--muted); font-size: 13px; line-height: 1.6; margin: 10px 0 0; }
+        .payment-details summary { color: #bfdbfe; cursor: pointer; font-weight: 700; }
+        .payment-details p { color: #cbd5e1; font-size: 12px; line-height: 1.55; margin: 8px 0 0; min-width: 220px; }
+    </style>
+
     <h1>Salary Report</h1>
+    <p>Generated payroll history with salary month, payment month, payment source, and accounting references.</p>
 
     <div class="card">
-        <form method="GET" action="/admin/salary-month-sheet">
+        <form method="GET" action="/admin/salary-month-sheet" class="salary-report-filters">
             <label>Salary Month<br><input type="month" name="month" value="{{ request('month') }}"></label>
             <label>Payment Month<br><input type="month" name="payment_month" value="{{ request('payment_month') }}"></label>
 
-            <select name="employee_id">
-                <option value="">All Employees</option>
-                @foreach($employees as $employee)
-                    <option value="{{ $employee->id }}" {{ request('employee_id') == $employee->id ? 'selected' : '' }}>
-                        {{ $employee->name }} ({{ $employee->employee_id }})
-                    </option>
-                @endforeach
-            </select>
+            <label>Employee<br>
+                <select name="employee_id">
+                    <option value="">All Employees</option>
+                    @foreach($employees as $employee)
+                        <option value="{{ $employee->id }}" {{ request('employee_id') == $employee->id ? 'selected' : '' }}>
+                            {{ $employee->name }} ({{ $employee->employee_id }})
+                        </option>
+                    @endforeach
+                </select>
+            </label>
 
-            <select name="client_id">
-                <option value="">All Clients</option>
-                @foreach($clients as $client)
-                    <option value="{{ $client->id }}" @selected((string)request('client_id') === (string)$client->id)>{{ $client->company_name }}</option>
-                @endforeach
-            </select>
+            <label>Client<br>
+                <select name="client_id">
+                    <option value="">All Clients</option>
+                    @foreach($clients as $client)
+                        <option value="{{ $client->id }}" @selected((string)request('client_id') === (string)$client->id)>{{ $client->company_name }}</option>
+                    @endforeach
+                </select>
+            </label>
 
-            <select name="status">
-                <option value="">All Status</option>
-                @foreach(['generated' => 'Generated', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid', 'final_settlement' => 'Final Settlement', 'reversed' => 'Reversed'] as $value => $label)
-                    <option value="{{ $value }}" {{ request('status') == $value ? 'selected' : '' }}>{{ $label }}</option>
-                @endforeach
-            </select>
+            <label>Status<br>
+                <select name="status">
+                    <option value="">All Status</option>
+                    @foreach(['generated' => 'Generated', 'unpaid' => 'Unpaid', 'partial' => 'Partially Paid', 'paid' => 'Paid', 'final_settlement' => 'Final Settlement', 'reversed' => 'Reversed'] as $value => $label)
+                        <option value="{{ $value }}" {{ request('status') == $value ? 'selected' : '' }}>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </label>
 
-            <select name="salary_source">
-                <option value="">All Salary Sources</option>
-                @foreach(\App\Models\Employee::SALARY_SOURCES as $value => $label)
-                    <option value="{{ $value }}" @selected(request('salary_source') === $value)>{{ $label }}</option>
-                @endforeach
-            </select>
+            <label>Salary Source<br>
+                <select name="salary_source">
+                    <option value="">All Salary Sources</option>
+                    @foreach(\App\Models\Employee::SALARY_SOURCES as $value => $label)
+                        <option value="{{ $value }}" @selected(request('salary_source') === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </label>
 
-            <select name="payment_source">
-                <option value="">All Payment Sources</option>
-                @foreach(['finance_ledger_linked' => 'Finance Ledger Linked', 'legacy_manual_paid' => 'Legacy Manual Paid', 'reversed' => 'Reversed', 'superseded' => 'Superseded'] as $value => $label)
-                    <option value="{{ $value }}" @selected(request('payment_source') === $value)>{{ $label }}</option>
-                @endforeach
-            </select>
+            <label>Payment Source<br>
+                <select name="payment_source">
+                    <option value="">All Payment Sources</option>
+                    @foreach(['finance_ledger_linked' => 'Finance Ledger Linked', 'legacy_manual_paid' => 'Legacy Manual Paid', 'reversed' => 'Reversed', 'superseded' => 'Superseded'] as $value => $label)
+                        <option value="{{ $value }}" @selected(request('payment_source') === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </label>
 
-            <select name="history_scope">
-                @foreach(['current' => 'Current Payrolls', 'historical' => 'Historical/Superseded Payrolls', 'all' => 'All Payrolls'] as $value => $label)
-                    <option value="{{ $value }}" @selected(request('history_scope', 'current') === $value)>{{ $label }}</option>
-                @endforeach
-            </select>
+            <label>History<br>
+                <select name="history_scope">
+                    @foreach(['current' => 'Current Payrolls', 'historical' => 'Historical/Superseded Payrolls', 'all' => 'All Payrolls'] as $value => $label)
+                        <option value="{{ $value }}" @selected(request('history_scope', 'current') === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </label>
 
-            <button class="btn" type="submit">Filter</button>
-            <a href="/admin/salary-month-sheet">Reset</a>
-            <a class="btn" href="/admin/salary-month-sheet/export?{{ http_build_query(request()->only(['month', 'payment_month', 'employee_id', 'client_id', 'status', 'salary_source', 'payment_source', 'history_scope'])) }}">Export CSV</a>
-            <a class="btn" href="/admin/salary-month-sheet/export/excel?{{ http_build_query(request()->only(['month', 'payment_month', 'employee_id', 'client_id', 'status', 'salary_source', 'payment_source', 'history_scope'])) }}">Export Excel</a>
-            <p style="margin:10px 5px 0;flex-basis:100%;">Salary Month = the month salary belongs to. Payment Month = the month salary was actually paid.</p>
+            <div class="salary-report-actions">
+                <button class="btn" type="submit">Filter</button>
+                <a href="/admin/salary-month-sheet">Reset</a>
+                <a class="btn" href="/admin/salary-month-sheet/export?{{ http_build_query(request()->only(['month', 'payment_month', 'employee_id', 'client_id', 'status', 'salary_source', 'payment_source', 'history_scope'])) }}">Export CSV</a>
+                <a class="btn" href="/admin/salary-month-sheet/export/excel?{{ http_build_query(request()->only(['month', 'payment_month', 'employee_id', 'client_id', 'status', 'salary_source', 'payment_source', 'history_scope'])) }}">Export Excel</a>
+                <a class="btn" href="/admin/payroll/payment-report">Salary Payment Report</a>
+            </div>
+            <p class="salary-report-help">Salary Month = the month salary belongs to. Payment Month = the month salary was actually paid. Current Payrolls excludes regenerated/superseded history by default.</p>
         </form>
     </div>
 
@@ -112,6 +138,9 @@
                 </tr>
 
                 @forelse($rows as $payroll)
+                    @php
+                        $paymentDate = $payroll->payment_date ?: $payroll->payment_confirmed_at ?: $payroll->paid_at;
+                    @endphp
                     <tr>
                         <td>
                             @if($payroll->employee)
@@ -140,23 +169,26 @@
                         @endphp
                         <td><span class="badge {{ $paymentSourceClass }}" title="{{ $payroll->paymentSourceStatusHelp() }}">{{ $payroll->paymentSourceStatusLabel() }}</span></td>
                         <td>
-                            <details>
+                            <details class="payment-details">
                                 <summary>Payment Information</summary>
-                                <p style="margin:8px 0 0;">
+                                <p>
+                                    <strong>Receipt:</strong> {{ $payroll->salaryReceiptNumber() }}<br>
                                     <strong>Bank:</strong> {{ $payroll->snapshotBankName() }}<br>
                                     <strong>Account Name:</strong> {{ $payroll->snapshotAccountName() }}<br>
                                     <strong>Account Number:</strong> {{ $payroll->snapshotAccountNumber() }}<br>
                                     <strong>Branch:</strong> {{ $payroll->snapshotBranchName() }}<br>
                                     <strong>Finance Account:</strong> {{ $payroll->finance_account_name ?: ($payroll->financeAccount?->account_name ?: '-') }}<br>
-                                    <strong>Reference:</strong> {{ $payroll->transaction_id ?: '-' }}
+                                    <strong>Reference:</strong> {{ $payroll->transaction_id ?: '-' }}<br>
+                                    <strong>Finance Ledger:</strong> {{ $payroll->financeLedgers->firstWhere('transaction_type', 'salary_payment')?->id ?: '-' }}<br>
+                                    <strong>Client Fund Ledger:</strong> {{ $payroll->clientFundLedgers->firstWhere('direction', \App\Models\ClientFundLedger::DIRECTION_DEBIT)?->id ?: '-' }}
                                 </p>
                             </details>
                         </td>
-                        <td>{{ $payroll->payment_date?->toDateString() ?: '-' }}</td>
+                        <td>{{ $paymentDate?->toDateString() ?: '-' }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="12">{{ $month || request('payment_month') ? 'No generated salary records found for the selected month.' : 'No salary history found.' }}</td>
+                        <td colspan="12">No salary records found for the selected filters.</td>
                     </tr>
                 @endforelse
             </table>
