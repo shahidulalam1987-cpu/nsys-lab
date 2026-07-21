@@ -233,6 +233,9 @@
                             <div class="settlement-status">
                                 <span class="badge {{ $display['stage_badge_class'] }}">{{ $display['stage_label'] }}</span>
                                 <span class="badge {{ $display['deadline_badge_class'] }}">{{ $display['deadline_label'] }}</span>
+                                @if($isFinalRow && ! $display['has_work_status'])
+                                    <span class="badge badge-neutral">Waiting for Work Status</span>
+                                @endif
                             </div>
                         </div>
                     </div>

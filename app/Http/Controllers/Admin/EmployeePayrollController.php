@@ -1205,10 +1205,6 @@ class EmployeePayrollController extends Controller
 
     private function deadlineState(Employee $employee, ?Carbon $deadlineDate, string $category, bool $hasWorkStatus): array
     {
-        if ($employee->status === 'terminated' && ! $hasWorkStatus) {
-            return ['label' => 'Waiting for Work Status', 'badge_class' => 'badge-neutral'];
-        }
-
         if (! $deadlineDate) {
             return ['label' => '-', 'badge_class' => 'badge-neutral'];
         }
