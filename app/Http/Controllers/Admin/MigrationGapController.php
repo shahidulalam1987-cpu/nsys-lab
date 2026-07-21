@@ -186,11 +186,30 @@ class MigrationGapController extends Controller
         return back()->with('success', 'Provider fee sample saved successfully.');
     }
 
-    public function billingHistory()
+    public function billingHistory(Request $request)
     {
+        $filters = $request->only(['ad_account_id', 'payment_status', 'date_from', 'date_to']);
+
+        $query = AdAccountBillingHistory::with('adAccount')
+            ->when($filters['ad_account_id'] ?? null, fn ($query, $accountId) => $query->where('ad_account_id', $accountId))
+            ->when($filters['payment_status'] ?? null, fn ($query, $status) => $query->where('payment_status', $status))
+            ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->whereDate('billing_date', '>=', $date))
+            ->when($filters['date_to'] ?? null, fn ($query, $date) => $query->whereDate('billing_date', '<=', $date))
+            ->latest('billing_date');
+
+        $history = $query->get();
+
         return view('admin.migration-gaps.billing-history', [
-            'history' => AdAccountBillingHistory::with('adAccount')->latest('billing_date')->get(),
+            'history' => $history,
             'adAccounts' => AdAccount::orderBy('ad_account_name')->get(),
+            'filters' => $filters,
+            'summary' => [
+                'total_records' => $history->count(),
+                'total_amount' => $history->sum(fn ($row) => (float) $row->billing_amount_usd),
+                'paid_amount' => $history->where('payment_status', 'paid')->sum(fn ($row) => (float) $row->billing_amount_usd),
+                'pending_count' => $history->where('payment_status', 'pending')->count(),
+                'overdue_count' => $history->where('payment_status', 'overdue')->count(),
+            ],
         ]);
     }
 
