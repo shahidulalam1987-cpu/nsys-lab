@@ -16,10 +16,34 @@ use Illuminate\Validation\ValidationException;
 
 class BonusController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $filters = $request->validate([
+            'rule_status' => ['nullable', Rule::in(['active', 'inactive'])],
+            'earning_status' => ['nullable', Rule::in(['pending', 'approved', 'rejected'])],
+            'employee_id' => ['nullable', 'exists:employees,id'],
+            'period_type' => ['nullable', Rule::in(['daily', 'weekly', 'monthly'])],
+        ]);
+        $summary = [
+            'active_rules' => BonusRule::where('status', 'active')->count(),
+            'pending_earnings' => EmployeeBonusEarning::where('status', 'pending')->count(),
+            'approved_earnings' => EmployeeBonusEarning::where('status', 'approved')->count(),
+            'pending_bonus' => (float) EmployeeBonusEarning::where('status', 'pending')->sum('bonus_amount'),
+        ];
+        $rules = BonusRule::query()
+            ->when($filters['rule_status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['period_type'] ?? null, fn ($query, $period) => $query->where('period_type', $period))
+            ->latest()
+            ->get();
+        $earnings = EmployeeBonusEarning::with(['employee', 'rule'])
+            ->when($filters['earning_status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
+            ->when($filters['period_type'] ?? null, fn ($query, $period) => $query->whereHas('rule', fn ($ruleQuery) => $ruleQuery->where('period_type', $period)))
+            ->latest()
+            ->get();
+
         return view('admin.bonuses.index', [
-            'rules' => BonusRule::latest()->get(), 'earnings' => EmployeeBonusEarning::with(['employee', 'rule'])->latest()->get(),
+            'filters' => $filters, 'summary' => $summary, 'rules' => $rules, 'earnings' => $earnings,
             'employees' => Employee::orderBy('name')->get(), 'departments' => Department::ordered()->get(), 'roles' => EmployeeRole::ordered()->get(),
         ]);
     }
@@ -88,7 +112,11 @@ class BonusController extends Controller
 
     public function reject(Request $request, EmployeeBonusEarning $earning)
     {
-        $earning->update(['status' => 'rejected', 'note' => $request->input('note')]);
+        DB::transaction(function () use ($earning, $request) {
+            $locked = EmployeeBonusEarning::whereKey($earning->id)->lockForUpdate()->firstOrFail();
+            abort_unless($locked->status === 'pending', 422, 'Only pending bonus earnings can be rejected.');
+            $locked->update(['status' => 'rejected', 'note' => $request->input('note')]);
+        });
 
         return back()->with('success', 'Bonus earning rejected.');
     }
