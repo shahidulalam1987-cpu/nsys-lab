@@ -111,30 +111,32 @@
 
     <div class="card">
         <h2>Recent Employees</h2>
-        <table>
-            <tr>
-                <th>Employee ID</th>
-                <th>Name</th>
-                <th>Department</th>
-                <th>Role</th>
-                <th>Type</th>
-                <th>Status</th>
-                <th>Joining Date</th>
-            </tr>
-            @forelse($recentEmployees as $employee)
+        <div class="table-wrap">
+            <table>
                 <tr>
-                    <td><a href="/admin/employees/{{ $employee->id }}">{{ $employee->employee_id }}</a></td>
-                    <td>{{ $employee->name }}</td>
-                    <td>{{ $employee->departmentName() }}</td>
-                    <td>{{ $employee->roleName() }}</td>
-                    <td>{{ $employee->employeeTypeLabel() }}</td>
-                    <td>{{ $employee->statusLabel() }}</td>
-                    <td>{{ $employee->joining_date?->toDateString() }}</td>
+                    <th>Employee ID</th>
+                    <th>Name</th>
+                    <th>Department</th>
+                    <th>Role</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Joining Date</th>
                 </tr>
-            @empty
-                <tr><td colspan="7">No employees found.</td></tr>
-            @endforelse
-        </table>
+                @forelse($recentEmployees as $employee)
+                    <tr>
+                        <td><a href="/admin/employees/{{ $employee->id }}">{{ $employee->employee_id }}</a></td>
+                        <td>{{ $employee->name }}</td>
+                        <td>{{ $employee->departmentName() }}</td>
+                        <td>{{ $employee->roleName() }}</td>
+                        <td>{{ $employee->employeeTypeLabel() }}</td>
+                        <td>{{ $employee->statusLabel() }}</td>
+                        <td>{{ $employee->joining_date?->toDateString() }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="7">No employees found.</td></tr>
+                @endforelse
+            </table>
+        </div>
     </div>
 
 @endsection
