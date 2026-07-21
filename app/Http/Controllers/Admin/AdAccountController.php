@@ -82,7 +82,7 @@ class AdAccountController extends Controller
 
     public function show(AdAccount $adAccount)
     {
-        $adAccount->load(['businessManager', 'client', 'pages.client', 'ledgers.creator', 'campaigns.dailyPerformanceReports']);
+        $adAccount->load(['businessManager', 'client', 'pages.client', 'ledgers.creator', 'campaigns.page', 'campaigns.dailyPerformanceReports']);
         $today = now()->toDateString();
         $performanceReports = $adAccount->campaigns->flatMap->dailyPerformanceReports;
 
@@ -148,8 +148,15 @@ class AdAccountController extends Controller
 
     public function destroy(AdAccount $adAccount)
     {
-        if ($adAccount->pages()->exists()) {
-            return back()->with('success', 'This ad account has pages. Remove or reassign pages first.');
+        if (
+            $adAccount->pages()->exists()
+            || $adAccount->campaigns()->exists()
+            || $adAccount->ledgers()->exists()
+            || $adAccount->cardMappings()->exists()
+            || $adAccount->billingHistory()->exists()
+            || $adAccount->cardTransactions()->exists()
+        ) {
+            return back()->with('error', 'This ad account has linked pages, campaigns, ledger, or billing history and cannot be deleted.');
         }
 
         $adAccount->delete();

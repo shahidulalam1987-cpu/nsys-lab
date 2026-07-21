@@ -45,6 +45,9 @@
                 </select>
             </label>
         </div>
+        <p style="color:var(--muted);">
+            Changes to threshold, usage, balance, billing date, or status are recorded in the Ad Account Ledger.
+        </p>
         <p>Notes<br><textarea name="notes">{{ old('notes', $adAccount?->notes) }}</textarea></p>
         <button class="btn" type="submit">{{ $button }}</button>
     </form>

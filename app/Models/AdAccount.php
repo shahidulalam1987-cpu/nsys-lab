@@ -80,6 +80,21 @@ class AdAccount extends Model
         return $this->hasMany(AdAccountLedger::class);
     }
 
+    public function cardMappings()
+    {
+        return $this->hasMany(AdAccountCard::class);
+    }
+
+    public function billingHistory()
+    {
+        return $this->hasMany(AdAccountBillingHistory::class);
+    }
+
+    public function cardTransactions()
+    {
+        return $this->hasMany(CardTransaction::class);
+    }
+
     public function getRemainingThresholdAttribute(): float
     {
         return max((float) $this->threshold_amount - (float) $this->current_threshold_usage, 0);

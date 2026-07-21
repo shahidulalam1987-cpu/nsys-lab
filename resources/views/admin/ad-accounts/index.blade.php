@@ -14,16 +14,20 @@
         <div class="stat-card"><p>Total Ad Accounts</p><h2>{{ number_format($summary['total']) }}</h2></div>
         <div class="stat-card"><p>Active Accounts</p><h2>{{ number_format($summary['active']) }}</h2></div>
         <div class="stat-card"><p>Payment Issue</p><h2>{{ number_format($summary['payment_issue']) }}</h2></div>
-        <div class="stat-card"><p>Total Threshold</p><h2>USD {{ number_format($summary['total_threshold'], 2) }}</h2></div>
         <div class="stat-card"><p>Remaining Threshold</p><h2>USD {{ number_format($summary['remaining_threshold'], 2) }}</h2></div>
         <div class="stat-card"><p>Total Balance</p><h2>USD {{ number_format($summary['total_balance'], 2) }}</h2></div>
-        <div class="stat-card"><p>Near Threshold</p><h2>{{ number_format($summary['near_threshold']) }}</h2></div>
-        <div class="stat-card"><p>At Risk</p><h2>{{ number_format($summary['at_risk']) }}</h2></div>
-        <div class="stat-card"><p>Reached Limit</p><h2>{{ number_format($summary['limit_reached']) }}</h2></div>
-        <div class="stat-card"><p>Upcoming Billing</p><h2>{{ number_format($summary['upcoming_billing']) }}</h2></div>
-        <div class="stat-card"><p>Overdue Billing</p><h2>{{ number_format($summary['overdue_billing']) }}</h2></div>
-        <div class="stat-card"><p>Low Balance</p><h2>{{ number_format($summary['low_balance']) }}</h2></div>
-        <div class="stat-card"><p>Negative Balance</p><h2>{{ number_format($summary['negative_balance']) }}</h2></div>
+        <div class="stat-card"><p>Billing Alerts</p><h2>{{ number_format($summary['upcoming_billing'] + $summary['overdue_billing']) }}</h2></div>
+    </div>
+
+    <div class="card" style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span class="badge">Total Threshold: USD {{ number_format($summary['total_threshold'], 2) }}</span>
+        <span class="badge">Near Threshold: {{ number_format($summary['near_threshold']) }}</span>
+        <span class="badge">At Risk: {{ number_format($summary['at_risk']) }}</span>
+        <span class="badge">Reached Limit: {{ number_format($summary['limit_reached']) }}</span>
+        <span class="badge">Upcoming Billing: {{ number_format($summary['upcoming_billing']) }}</span>
+        <span class="badge">Overdue Billing: {{ number_format($summary['overdue_billing']) }}</span>
+        <span class="badge">Low Balance: {{ number_format($summary['low_balance']) }}</span>
+        <span class="badge">Negative Balance: {{ number_format($summary['negative_balance']) }}</span>
     </div>
 
     <div class="card">
@@ -85,28 +89,29 @@
         <div class="table-wrap">
             <table>
                 <tr>
-                    <th>Ad Account Name</th>
-                    <th>Ad Account ID</th>
+                    <th>Ad Account</th>
                     <th>BM</th>
                     <th>Client</th>
                     <th>Threshold</th>
-                    <th>Used</th>
-                    <th>Remaining</th>
                     <th>Current Balance</th>
-                    <th>Billing Date</th>
+                    <th>Billing</th>
                     <th>Status</th>
                     <th>Alerts</th>
                     <th>Actions</th>
                 </tr>
                 @forelse($adAccounts as $account)
                     <tr>
-                        <td><a href="/admin/ad-accounts/{{ $account->id }}">{{ $account->ad_account_name }}</a></td>
-                        <td>{{ $account->ad_account_id }}</td>
+                        <td>
+                            <a href="/admin/ad-accounts/{{ $account->id }}" style="font-weight:700;">{{ $account->ad_account_name }}</a>
+                            <br><span style="color:var(--muted);">ID: {{ $account->ad_account_id }}</span>
+                        </td>
                         <td>{{ $account->businessManager?->bm_name ?: '-' }}</td>
                         <td>{{ $account->client?->company_name ?: '-' }}</td>
-                        <td>{{ $account->currency }} {{ number_format((float) $account->threshold_amount, 2) }}</td>
-                        <td>{{ $account->currency }} {{ number_format((float) $account->current_threshold_usage, 2) }}</td>
-                        <td>{{ $account->currency }} {{ number_format($account->remaining_threshold, 2) }}</td>
+                        <td>
+                            <strong>{{ $account->currency }} {{ number_format((float) $account->threshold_amount, 2) }}</strong>
+                            <br><span style="color:var(--muted);">Used: {{ $account->currency }} {{ number_format((float) $account->current_threshold_usage, 2) }}</span>
+                            <br><span style="color:var(--muted);">Remaining: {{ $account->currency }} {{ number_format($account->remaining_threshold, 2) }}</span>
+                        </td>
                         <td>{{ $account->currency }} {{ number_format((float) $account->current_balance, 2) }}</td>
                         <td>{{ $account->monthly_billing_date ?: '-' }}</td>
                         <td>
@@ -142,7 +147,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="12">No ad accounts found.</td></tr>
+                    <tr><td colspan="9">No ad accounts found.</td></tr>
                 @endforelse
             </table>
         </div>

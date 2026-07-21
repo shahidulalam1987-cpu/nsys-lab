@@ -41,6 +41,55 @@
     </div>
 
     <div class="card">
+        <h2>Linked Pages</h2>
+        <div class="table-wrap">
+            <table>
+                <tr><th>Page</th><th>Client</th><th>Platform</th><th>Status</th></tr>
+                @forelse($adAccount->pages as $page)
+                    <tr>
+                        <td>
+                            @if($page->page_url)
+                                <a href="{{ $page->page_url }}" target="_blank" rel="noopener">{{ $page->page_name }}</a>
+                            @else
+                                {{ $page->page_name }}
+                            @endif
+                            <br><span style="color:var(--muted);">{{ $page->page_id ?: '-' }}</span>
+                        </td>
+                        <td>{{ $page->client?->company_name ?: '-' }}</td>
+                        <td>{{ $page->platform ?: '-' }}</td>
+                        <td>{{ ucfirst((string) $page->status) }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="4">No pages linked.</td></tr>
+                @endforelse
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Linked Campaigns</h2>
+        <div class="table-wrap">
+            <table>
+                <tr><th>Campaign</th><th>Page</th><th>Objective</th><th>Status</th><th>Daily Budget</th></tr>
+                @forelse($adAccount->campaigns as $campaign)
+                    <tr>
+                        <td>
+                            <a href="/admin/campaigns/{{ $campaign->id }}">{{ $campaign->campaign_name }}</a>
+                            <br><span style="color:var(--muted);">ID: {{ $campaign->campaign_id }}</span>
+                        </td>
+                        <td>{{ $campaign->page?->page_name ?: '-' }}</td>
+                        <td>{{ $campaign->objectiveLabel() }}</td>
+                        <td>{{ $campaign->statusLabel() }}</td>
+                        <td>USD {{ number_format((float) $campaign->daily_budget, 2) }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="5">No campaigns linked.</td></tr>
+                @endforelse
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
         <h2>Recent Financial Ledger</h2>
         <div class="table-wrap">
             <table>
