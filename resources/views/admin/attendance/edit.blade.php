@@ -40,6 +40,13 @@
                     <option value="0" {{ old('is_working_day', $attendance->is_working_day ? '1' : '0') === '0' ? 'selected' : '' }}>Non Working Day</option>
                 </select>
             </p>
+            <p>
+                Late Tracking<br>
+                <select name="is_late">
+                    <option value="0" {{ old('is_late', $attendance->is_late ? '1' : '0') === '0' ? 'selected' : '' }}>On Time</option>
+                    <option value="1" {{ old('is_late', $attendance->is_late ? '1' : '0') === '1' ? 'selected' : '' }}>Late</option>
+                </select>
+            </p>
             <p>Check In<br><input type="datetime-local" name="check_in_at" value="{{ old('check_in_at', $attendance->check_in_at?->format('Y-m-d\\TH:i')) }}"></p>
             <p>Check Out<br><input type="datetime-local" name="check_out_at" value="{{ old('check_out_at', $attendance->check_out_at?->format('Y-m-d\\TH:i')) }}"></p>
             <p>Note<br><textarea name="note">{{ old('note', $attendance->note) }}</textarea></p>

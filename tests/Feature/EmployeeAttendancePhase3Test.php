@@ -65,25 +65,36 @@ class EmployeeAttendancePhase3Test extends TestCase
     {
         $admin = $this->user('admin');
         $client = $this->client(['company_name' => 'Attendance Client']);
+        $shift = Shift::create([
+            'name' => 'Morning Shift',
+            'start_time' => '09:00:00',
+            'end_time' => '17:00:00',
+            'status' => 'active',
+        ]);
         $employee = $this->employee(['name' => 'Attendance Employee']);
         $attendance = $employee->attendances()->create([
             'client_id' => $client->id,
+            'shift_id' => $shift->id,
             'attendance_date' => '2026-06-08',
             'check_in_at' => '2026-06-08 09:30:00',
+            'is_late' => true,
             'status' => 'present',
         ]);
 
         $this->actingAs($admin)
-            ->get('/admin/attendance?employee_id=' . $employee->id)
+            ->get('/admin/attendance?employee_id=' . $employee->id . '&shift_id=' . $shift->id . '&late_status=late')
             ->assertOk()
             ->assertSee('Attendance Employee')
-            ->assertSee('Total Present');
+            ->assertSee('Total Present')
+            ->assertSee('Late Records')
+            ->assertSee('Morning Shift');
 
         $this->actingAs($admin)
             ->post('/admin/attendance/' . $attendance->id . '/update', [
                 'client_id' => $client->id,
                 'status' => 'boosting_off',
                 'is_working_day' => 0,
+                'is_late' => 1,
                 'check_in_at' => '2026-06-08 09:30:00',
                 'note' => 'Boosting paused',
             ])
@@ -92,8 +103,13 @@ class EmployeeAttendancePhase3Test extends TestCase
         $attendance->refresh();
         $this->assertSame('boosting_off', $attendance->status);
         $this->assertFalse($attendance->is_working_day);
+        $this->assertTrue($attendance->is_late);
+        $this->assertDatabaseHas('activity_logs', [
+            'module' => 'Attendance',
+            'action' => 'Attendance Updated',
+        ]);
 
-        $csv = $this->actingAs($admin)->get('/admin/attendance/export?status=boosting_off');
+        $csv = $this->actingAs($admin)->get('/admin/attendance/export?status=boosting_off&shift_id=' . $shift->id . '&late_status=late');
         $csv->assertOk();
         $csv->assertDownload('employee-attendance-report.csv');
         $this->assertStringContainsString('Boosting OFF', $csv->streamedContent());
@@ -102,6 +118,10 @@ class EmployeeAttendancePhase3Test extends TestCase
             ->post('/admin/attendance/' . $attendance->id . '/delete')
             ->assertRedirect('/admin/attendance');
         $this->assertDatabaseMissing('employee_attendances', ['id' => $attendance->id]);
+        $this->assertDatabaseHas('activity_logs', [
+            'module' => 'Attendance',
+            'action' => 'Attendance Deleted',
+        ]);
     }
 
     public function test_admin_can_manage_and_export_work_status_records(): void
