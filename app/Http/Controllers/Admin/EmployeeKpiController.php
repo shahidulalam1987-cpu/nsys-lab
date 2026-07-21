@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\ClientPage;
+use App\Models\DailyPerformanceReport;
 use App\Models\Department;
 use App\Models\Employee;
 use App\Models\EmployeeRole;
@@ -54,6 +55,16 @@ class EmployeeKpiController extends Controller
     private function data($rows, array $filters, Carbon $from, Carbon $to): array
     {
         return compact('rows', 'filters', 'from', 'to') + [
+            'summary' => [
+                'employees' => $rows->count(),
+                'orders' => (int) $rows->sum('total_orders'),
+                'confirmed_orders' => (int) $rows->sum('confirmed_orders'),
+                'approved_spend' => (float) $rows->sum('approved_spend'),
+                'average_cpo' => DailyPerformanceReport::costPer((float) $rows->sum('approved_spend'), (int) $rows->sum('confirmed_orders')),
+                'approval_rate' => round((float) $rows->avg('approval_rate'), 2),
+                'active_days' => (int) $rows->sum('active_days'),
+                'top_employee' => $rows->sortByDesc('confirmed_orders')->first(),
+            ],
             'employees' => Employee::orderBy('name')->get(), 'departments' => Department::ordered()->get(),
             'roles' => EmployeeRole::ordered()->get(), 'clients' => Client::orderBy('company_name')->get(),
             'pages' => ClientPage::orderBy('page_name')->get(),
