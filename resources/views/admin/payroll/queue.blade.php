@@ -37,6 +37,10 @@
         .settlement-step.current .settlement-dot { background: #f59e0b; border-color: #f59e0b; color: #111827; }
         .settlement-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
         .settlement-helper { color: #94a3b8; font-size: 12px; line-height: 1.5; }
+        .payroll-filter-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-items: end; }
+        .payroll-filter-grid label { color: var(--muted); font-size: 12px; font-weight: 700; }
+        .payroll-filter-grid input, .payroll-filter-grid select { margin: 6px 0 0; width: 100%; }
+        .payroll-filter-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
         .badge-neutral { background: #64748b; }
         .badge-info { background: #2563eb; }
         @media (max-width: 1180px) {
@@ -60,7 +64,7 @@
     @endif
 
     <div class="card">
-        <form method="GET" action="/admin/payroll" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;">
+        <form method="GET" action="/admin/payroll" class="payroll-filter-grid">
             <input type="hidden" name="status" value="{{ $isUpcoming ? 'upcoming' : 'due' }}">
             <label>Month<br><input type="month" name="month" value="{{ $filters['month'] ?? '' }}"></label>
             <label>Employee<br>
@@ -87,9 +91,22 @@
                         <option value="terminated" @selected(($filters['employee_scope'] ?? '') === 'terminated')>Terminated Final Settlement</option>
                     </select>
                 </label>
+                <label>Queue Stage<br>
+                    <select name="queue_stage">
+                        <option value="">All Action Stages</option>
+                        <option value="pending_work_status" @selected(($filters['queue_stage'] ?? '') === 'pending_work_status')>Pending Work Status</option>
+                        <option value="salary_ready" @selected(($filters['queue_stage'] ?? '') === 'salary_ready')>Salary Ready</option>
+                        <option value="generated" @selected(($filters['queue_stage'] ?? '') === 'generated')>Pending Approval</option>
+                        <option value="unpaid" @selected(($filters['queue_stage'] ?? '') === 'unpaid')>Unpaid</option>
+                        <option value="final_settlement_pending" @selected(($filters['queue_stage'] ?? '') === 'final_settlement_pending')>Final Settlement Pending</option>
+                        <option value="final_settlement_unpaid" @selected(($filters['queue_stage'] ?? '') === 'final_settlement_unpaid')>Final Settlement Unpaid</option>
+                    </select>
+                </label>
             @endunless
-            <button class="btn" type="submit">Filter</button>
-            <a href="/admin/payroll?status={{ $isUpcoming ? 'upcoming' : 'due' }}">Reset</a>
+            <div class="payroll-filter-actions">
+                <button class="btn" type="submit">Filter</button>
+                <a href="/admin/payroll?status={{ $isUpcoming ? 'upcoming' : 'due' }}">Reset</a>
+            </div>
         </form>
     </div>
 
@@ -135,8 +152,8 @@
                             <a class="settlement-code" href="{{ $display['employee_url'] }}">{{ $display['employee_code'] }}</a><br>
                             <strong>{{ $display['employee_name'] }}</strong>
                             <div class="settlement-meta">
-                                {{ $display['department'] }} · {{ $display['role'] }}<br>
-                                {{ $display['employment_type'] }} · <span class="badge badge-neutral">{{ $display['current_status'] }}</span>
+                                {{ $display['department'] }} | {{ $display['role'] }}<br>
+                                {{ $display['employment_type'] }} | <span class="badge badge-neutral">{{ $display['current_status'] }}</span>
                             </div>
                         </div>
 
@@ -156,7 +173,7 @@
                                 <div class="settlement-meta">Last Working Date: <strong>{{ $display['last_working_date'] }}</strong></div>
                                 <div class="settlement-period" title="Final settlement period is resolved by payroll cycle services.">
                                     <span>{{ $display['settlement_period_start'] }}</span>
-                                    <b class="settlement-arrow">→</b>
+                                    <b class="settlement-arrow">-&gt;</b>
                                     <span>{{ $display['settlement_period_end'] }}</span>
                                 </div>
                             @else
@@ -230,7 +247,7 @@
                             <div class="settlement-progress">
                                 @foreach($display['progress_steps'] as $step)
                                     <div class="settlement-step {{ $step['state'] }}">
-                                        <span class="settlement-dot">{{ $step['state'] === 'done' ? '✓' : ($step['state'] === 'current' ? '•' : '') }}</span>
+                                        <span class="settlement-dot">{{ $step['state'] === 'done' ? 'OK' : ($step['state'] === 'current' ? '*' : '') }}</span>
                                         <span>{{ $step['label'] }}</span>
                                     </div>
                                 @endforeach

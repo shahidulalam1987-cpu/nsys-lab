@@ -1119,9 +1119,8 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $upcoming = $this->actingAs($admin)->get('/admin/payroll?status=upcoming');
         $due = $this->actingAs($admin)->get('/admin/payroll?status=due');
 
-        $upcoming->assertOk()->assertDontSee('Upcoming Salary This Week');
-        $due->assertOk()->assertDontSee('Pending Work Status');
-        $due->assertDontSee('Salary Ready / Pending Generation');
+        $upcoming->assertOk()->assertSee('No upcoming salaries found.');
+        $due->assertOk()->assertSee('No unpaid salary work found.');
     }
 
     public function test_salary_day_before_confirmation_moves_first_cycle_to_next_month(): void
@@ -1536,12 +1535,16 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertOk();
         $response->assertSee('Payroll Dashboard');
         $response->assertSee('Upcoming Salaries');
-        $response->assertSee('Unpaid Salaries');
+        $response->assertSee('Payroll Action Queue');
         $response->assertSee('Pending Work Status');
         $response->assertSee('Salary Ready');
+        $response->assertSee('Pending Approval');
         $response->assertSee('Final Settlement Due');
         $response->assertSee('Total Generated This Month');
         $response->assertSee('Total Paid This Month');
+        $response->assertSee('/admin/payroll?status=due&queue_stage=pending_work_status', false);
+        $response->assertSee('/admin/payroll?status=due&queue_stage=salary_ready', false);
+        $response->assertSee('/admin/payroll?status=due&queue_stage=generated', false);
         $response->assertDontSee('href="/admin/payroll/create"', false);
         $response->assertDontSee('href="/admin/payroll?status=paid"', false);
     }
@@ -1563,6 +1566,17 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertSee('Pending Work Status');
         $response->assertSee('Confirmed Pending Work Status Employee');
         $response->assertDontSee('Unpaid Salary Due');
+
+        $this->actingAs($admin)
+            ->get('/admin/payroll?status=due&queue_stage=pending_work_status')
+            ->assertOk()
+            ->assertSee('Confirmed Pending Work Status Employee')
+            ->assertSee('Queue Stage');
+
+        $this->actingAs($admin)
+            ->get('/admin/payroll?status=due&queue_stage=salary_ready')
+            ->assertOk()
+            ->assertSee('No unpaid salary work found.');
     }
 
     public function test_salary_ready_quick_action_includes_cycle_context_and_prefills_salary_form(): void

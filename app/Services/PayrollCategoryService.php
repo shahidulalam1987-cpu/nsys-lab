@@ -288,6 +288,7 @@ class PayrollCategoryService
             'unpaid' => $stages->filter(fn (array $row) => in_array($row['stage']['category'], $unpaidCategories, true))->count(),
             'pending_work_status' => $stages->where('stage.category', self::PENDING_WORK_STATUS)->count(),
             'salary_ready' => $stages->where('stage.category', self::SALARY_READY)->count(),
+            'pending_approval' => $stages->where('stage.category', self::GENERATED)->count(),
             'final_settlement_due' => $stages->filter(fn (array $row) => in_array($row['stage']['category'], [self::FINAL_SETTLEMENT_PENDING, self::FINAL_SETTLEMENT_UNPAID], true))->count(),
         ];
     }

@@ -949,6 +949,14 @@ class EmployeePayrollController extends Controller
             'status' => ['nullable', 'in:upcoming,unpaid,partial,paid,due'],
             'salary_source' => ['nullable', 'in:' . implode(',', array_keys(Employee::SALARY_SOURCES))],
             'employee_scope' => ['nullable', 'in:all,active,terminated'],
+            'queue_stage' => ['nullable', Rule::in([
+                PayrollCategoryService::PENDING_WORK_STATUS,
+                PayrollCategoryService::SALARY_READY,
+                PayrollCategoryService::GENERATED,
+                PayrollCategoryService::UNPAID,
+                PayrollCategoryService::FINAL_SETTLEMENT_PENDING,
+                PayrollCategoryService::FINAL_SETTLEMENT_UNPAID,
+            ])],
         ]);
     }
 
@@ -983,6 +991,13 @@ class EmployeePayrollController extends Controller
                 };
             })
             ->filter(fn (array $row) => $this->stageMatchesStatus($row['stage'], $filters['status'] ?? null))
+            ->filter(function (array $row) use ($filters) {
+                if (empty($filters['queue_stage'])) {
+                    return true;
+                }
+
+                return ($row['stage']['category'] ?? null) === $filters['queue_stage'];
+            })
             ->filter(function (array $row) use ($filters) {
                 if (empty($filters['month'])) {
                     return true;
