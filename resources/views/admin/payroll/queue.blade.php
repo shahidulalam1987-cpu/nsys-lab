@@ -41,6 +41,10 @@
         .payroll-filter-grid label { color: var(--muted); font-size: 12px; font-weight: 700; }
         .payroll-filter-grid input, .payroll-filter-grid select { margin: 6px 0 0; width: 100%; }
         .payroll-filter-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        .upcoming-summary { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+        .upcoming-summary-item { background: rgba(15,23,42,.42); border: 1px solid rgba(148,163,184,.16); border-radius: 10px; padding: 12px; }
+        .upcoming-summary-item span { color: #94a3b8; display: block; font-size: 12px; margin-bottom: 4px; }
+        .upcoming-summary-item strong { color: #e5efff; font-size: 20px; }
         .badge-neutral { background: #64748b; }
         .badge-info { background: #2563eb; }
         @media (max-width: 1180px) {
@@ -111,9 +115,23 @@
     </div>
 
     @if($isUpcoming)
+        <div class="card upcoming-summary">
+            <div class="upcoming-summary-item">
+                <span>Upcoming Employees</span>
+                <strong>{{ number_format($stageRows->count()) }}</strong>
+            </div>
+            <div class="upcoming-summary-item">
+                <span>Total Estimated Amount</span>
+                <strong>BDT {{ number_format($stageRows->sum(fn ($row) => (float) data_get($row, 'stage.estimate.estimated_payable_salary', 0)), 2) }}</strong>
+            </div>
+            <div class="upcoming-summary-item">
+                <span>Reminder Window</span>
+                <strong>Next 5 Days</strong>
+            </div>
+        </div>
         <div class="card table-wrap">
             <table>
-                <tr><th>Employee</th><th>Client</th><th>Salary Date</th><th>Days Remaining</th><th>Expected Salary</th><th>Work Status Count</th><th>Status</th></tr>
+                <tr><th>Employee</th><th>Client</th><th>Salary Date</th><th>Days Remaining</th><th>Estimated Salary</th><th>Work Status Count</th><th>Status</th></tr>
                 @forelse($stageRows as $row)
                     @php
                         $display = $row['display'];
@@ -124,7 +142,7 @@
                         <td><a href="{{ $display['employee_url'] }}">{{ $display['employee_code'] }}</a><br><strong>{{ $display['employee_name'] }}</strong></td>
                         <td>{{ $display['client_name'] }}</td>
                         <td>{{ $display['settlement_salary_date'] }}</td>
-                        <td>{{ data_get($stage, 'salary_date') ? today()->diffInDays(data_get($stage, 'salary_date')) : '-' }}</td>
+                        <td>{{ $display['days_remaining_label'] }}</td>
                         <td>{{ $display['estimated_salary_label'] }}</td>
                         <td>{{ number_format((float)data_get($estimate, 'actual_work_status_count', data_get($estimate, 'working_salary_count', 0)), 2) }}</td>
                         <td><span class="badge badge-info">Upcoming Salary</span></td>

@@ -136,7 +136,7 @@ class PayrollCategoryService
         $client = $employee->isAgencyInternal() ? null : $this->assignmentResolver->current($employee, $today)?->client;
         $currentSalaryDate = $employee->currentSalaryDueDate($today);
         $currentPayroll = $this->payrollForCycle($payrolls, $currentSalaryDate);
-        $upcomingSalaryDate = $employee->nextSalaryDate();
+        $upcomingSalaryDate = $employee->nextSalaryDate($today);
         $upcomingPayroll = $this->payrollForCycle($payrolls, $upcomingSalaryDate);
         $isUpcomingWindow = $upcomingSalaryDate
             && $upcomingSalaryDate->betweenIncluded($today, $today->copy()->addDays(5));

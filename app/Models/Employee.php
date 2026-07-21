@@ -237,13 +237,14 @@ class Employee extends Model
         return self::STATUS_FILTERS[$this->status] ?? ucwords(str_replace('_', ' ', $this->status));
     }
 
-    public function nextSalaryDate(): ?Carbon
+    public function nextSalaryDate(?Carbon $today = null): ?Carbon
     {
-        if (! $this->isSalaryEligible() || ! $this->salaryCycleDay()) {
+        $today = ($today ?: now())->copy()->startOfDay();
+
+        if (! $this->isSalaryEligible($today) || ! $this->salaryCycleDay()) {
             return null;
         }
 
-        $today = now()->startOfDay();
         $date = $this->salaryDateForMonth($today->copy());
 
         if ($date->lt($today)) {

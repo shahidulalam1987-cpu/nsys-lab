@@ -1136,6 +1136,7 @@ class EmployeePayrollController extends Controller
         $salaryDate = data_get($stage, 'settlement_salary_date')
             ?: data_get($stage, 'salary_date')
             ?: $payroll?->salaryDueDate();
+        $daysRemaining = $salaryDate ? (int) today()->diffInDays($salaryDate, false) : null;
         $paymentDeadline = data_get($stage, 'payment_deadline')
             ?: ($employee->status === 'terminated' ? $employee->finalSettlementPaymentDeadline() : null);
         $periodStart = data_get($estimate, 'salary_period_start')
@@ -1173,6 +1174,8 @@ class EmployeePayrollController extends Controller
             'settlement_period_end' => $this->formatQueueDate($periodEnd),
             'salary_day' => $employee->salaryCycleDay() ?: '-',
             'settlement_salary_date' => $this->formatQueueDate($salaryDate),
+            'days_remaining' => $daysRemaining,
+            'days_remaining_label' => $daysRemaining === null ? '-' : ($daysRemaining === 0 ? 'Due Today' : $daysRemaining . ' Days'),
             'payment_deadline' => $this->formatQueueDate($paymentDeadline),
             'stage_label' => $stageLabel,
             'stage_badge_class' => $this->stageBadgeClass($category),

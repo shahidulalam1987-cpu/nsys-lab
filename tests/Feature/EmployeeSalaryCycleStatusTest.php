@@ -1521,6 +1521,10 @@ class EmployeeSalaryCycleStatusTest extends TestCase
         $response->assertOk();
         $response->assertSee('Upcoming Salary');
         $response->assertSee('Confirmed Upcoming Employee');
+        $response->assertSee('Upcoming Employees');
+        $response->assertSee('Total Estimated Amount');
+        $response->assertSee('Estimated Salary');
+        $response->assertSee('4 Days');
         $response->assertDontSee('Generate Salary');
     }
 
