@@ -9,8 +9,12 @@
         <a class="btn" href="/admin/work-status/export?{{ http_build_query($filters) }}">Export CSV</a>
     </p>
 
+    @if($errors->any())
+        <div class="card" style="color:#ef4444; margin-top:20px;">{{ $errors->first() }}</div>
+    @endif
+
     <div class="stats-grid">
-        <div class="stat-card"><p>Working Days</p><h2>{{ number_format($summary['working_days'], 2) }}</h2></div>
+        <div class="stat-card"><p>Salary Count</p><h2>{{ number_format($summary['salary_count'], 2) }}</h2></div>
         <div class="stat-card"><p>Half Days</p><h2>{{ number_format($summary['half_days']) }}</h2></div>
         <div class="stat-card"><p>Leave</p><h2>{{ number_format($summary['leave']) }}</h2></div>
         <div class="stat-card"><p>Client Issue</p><h2>{{ number_format($summary['client_issue']) }}</h2></div>
@@ -18,7 +22,7 @@
     </div>
 
     <div class="card">
-        <form method="GET" action="/admin/work-status">
+        <form method="GET" action="/admin/work-status" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;align-items:end;">
             <select name="employee_id">
                 <option value="">All Employees</option>
                 @foreach($employees as $employee)
@@ -33,10 +37,22 @@
                     <option value="{{ $client->id }}" {{ ($filters['client_id'] ?? '') == $client->id ? 'selected' : '' }}>{{ $client->company_name }}</option>
                 @endforeach
             </select>
+            <select name="client_page_id">
+                <option value="">All Pages</option>
+                @foreach($clientPages as $page)
+                    <option value="{{ $page->id }}" {{ ($filters['client_page_id'] ?? '') == $page->id ? 'selected' : '' }}>{{ $page->page_name }}</option>
+                @endforeach
+            </select>
             <select name="campaign_id">
                 <option value="">All Campaigns</option>
                 @foreach($campaigns as $campaign)
                     <option value="{{ $campaign->id }}" {{ ($filters['campaign_id'] ?? '') == $campaign->id ? 'selected' : '' }}>{{ $campaign->campaign_name }}</option>
+                @endforeach
+            </select>
+            <select name="shift_id">
+                <option value="">All Shifts</option>
+                @foreach($shifts as $shift)
+                    <option value="{{ $shift->id }}" {{ ($filters['shift_id'] ?? '') == $shift->id ? 'selected' : '' }}>{{ $shift->name }}</option>
                 @endforeach
             </select>
             <input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}">
@@ -50,6 +66,7 @@
             <button class="btn" type="submit">Filter</button>
             <a href="/admin/work-status">Reset</a>
         </form>
+        <p style="color:#94a3b8;margin-bottom:0;">Showing {{ number_format($workStatuses->total()) }} matching work status records.</p>
     </div>
 
     <div class="card">

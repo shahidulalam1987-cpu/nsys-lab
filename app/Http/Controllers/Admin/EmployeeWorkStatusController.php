@@ -7,6 +7,7 @@ use App\Models\Campaign;
 use App\Models\Client;
 use App\Models\ClientPage;
 use App\Models\Employee;
+use App\Models\EmployeePayroll;
 use App\Models\EmployeeWorkStatus;
 use App\Models\Shift;
 use App\Services\ActivityLogger;
@@ -24,7 +25,7 @@ class EmployeeWorkStatusController extends Controller
     {
         $filters = $this->filters($request);
         $rows = $this->filteredQuery($filters)->latest('work_date')->paginate(25)->withQueryString();
-        $summaryRows = $this->filteredQuery($filters)->get();
+        $summaryQuery = $this->filteredQuery($filters);
 
         return view('admin.work-status.index', [
             'workStatuses' => $rows,
@@ -36,11 +37,11 @@ class EmployeeWorkStatusController extends Controller
             'statuses' => EmployeeWorkStatus::STATUSES,
             'filters' => $filters,
             'summary' => [
-                'working_days' => (float) $summaryRows->sum('salary_count_value'),
-                'half_days' => $summaryRows->where('status', 'half_day')->count(),
-                'leave' => $summaryRows->where('status', 'on_leave')->count(),
-                'client_issue' => $summaryRows->where('status', 'client_issue')->count(),
-                'boosting_off' => $summaryRows->where('status', 'boosting_off')->count(),
+                'salary_count' => (float) (clone $summaryQuery)->sum('salary_count_value'),
+                'half_days' => (clone $summaryQuery)->where('status', 'half_day')->count(),
+                'leave' => (clone $summaryQuery)->where('status', 'on_leave')->count(),
+                'client_issue' => (clone $summaryQuery)->where('status', 'client_issue')->count(),
+                'boosting_off' => (clone $summaryQuery)->where('status', 'boosting_off')->count(),
             ],
         ]);
     }
@@ -316,6 +317,12 @@ class EmployeeWorkStatusController extends Controller
     public function destroy(EmployeeWorkStatus $workStatus)
     {
         $this->authorizeModeratorRecord($workStatus);
+        if ($this->hasCurrentPayrollForWorkStatus($workStatus)) {
+            return redirect('/admin/work-status')->withErrors([
+                'work_status' => 'This work status belongs to a generated payroll period and cannot be deleted.',
+            ]);
+        }
+
         $description = 'Work status #' . $workStatus->id . ' for ' . $workStatus->work_date?->toDateString() . ' deleted.';
         $workStatus->delete();
 
@@ -357,7 +364,9 @@ class EmployeeWorkStatusController extends Controller
         return $request->validate([
             'employee_id' => ['nullable', 'exists:employees,id'],
             'client_id' => ['nullable', 'exists:clients,id'],
+            'client_page_id' => ['nullable', 'exists:client_pages,id'],
             'campaign_id' => ['nullable', 'exists:campaigns,id'],
+            'shift_id' => ['nullable', 'exists:shifts,id'],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
             'status' => ['nullable', Rule::in(array_keys(EmployeeWorkStatus::STATUSES))],
@@ -370,7 +379,9 @@ class EmployeeWorkStatusController extends Controller
             ->when($this->moderatorEmployeeId(), fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
             ->when($filters['employee_id'] ?? null, fn ($query, $employeeId) => $query->where('employee_id', $employeeId))
             ->when($filters['client_id'] ?? null, fn ($query, $clientId) => $query->where('client_id', $clientId))
+            ->when($filters['client_page_id'] ?? null, fn ($query, $pageId) => $query->where('client_page_id', $pageId))
             ->when($filters['campaign_id'] ?? null, fn ($query, $campaignId) => $query->where('campaign_id', $campaignId))
+            ->when($filters['shift_id'] ?? null, fn ($query, $shiftId) => $query->where('shift_id', $shiftId))
             ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->whereDate('work_date', '>=', $date))
             ->when($filters['date_to'] ?? null, fn ($query, $date) => $query->whereDate('work_date', '<=', $date))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status));
@@ -498,5 +509,20 @@ class EmployeeWorkStatusController extends Controller
         if ($employeeId = $this->moderatorEmployeeId()) {
             abort_unless((int) $workStatus->employee_id === $employeeId, 403);
         }
+    }
+
+    private function hasCurrentPayrollForWorkStatus(EmployeeWorkStatus $workStatus): bool
+    {
+        return EmployeePayroll::current()
+            ->where('employee_id', $workStatus->employee_id)
+            ->whereNull('reversed_at')
+            ->whereDate('salary_period_from', '<=', $workStatus->work_date->toDateString())
+            ->whereDate('salary_period_to', '>=', $workStatus->work_date->toDateString())
+            ->when(
+                $workStatus->client_id,
+                fn ($query, $clientId) => $query->where('client_id', $clientId),
+                fn ($query) => $query->whereNull('client_id')
+            )
+            ->exists();
     }
 }

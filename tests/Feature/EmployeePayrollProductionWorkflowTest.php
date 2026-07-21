@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Client;
 use App\Models\ClientFundLedger;
 use App\Models\Employee;
+use App\Models\EmployeeWorkStatus;
 use App\Models\FinanceAccount;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -294,6 +295,28 @@ class EmployeePayrollProductionWorkflowTest extends TestCase
 
         $this->assertSame(50000.0, (float) $financeAccount->fresh()->current_balance);
         $this->assertSame(1, $payroll->financeLedgers()->where('transaction_type', 'salary_payment_reversal')->count());
+    }
+
+    public function test_work_status_inside_current_payroll_period_cannot_be_deleted(): void
+    {
+        $admin = $this->user('admin');
+        $client = $this->client();
+        $employee = $this->employee();
+        $workStatus = EmployeeWorkStatus::create([
+            'employee_id' => $employee->id,
+            'client_id' => $client->id,
+            'work_date' => '2026-06-05',
+            'status' => 'working',
+            'salary_count_value' => 1,
+        ]);
+
+        $this->actingAs($admin)->post('/admin/payroll', $this->salaryPayload($employee, $client));
+
+        $this->actingAs($admin)->post('/admin/work-status/' . $workStatus->id . '/delete')
+            ->assertRedirect('/admin/work-status')
+            ->assertSessionHasErrors('work_status');
+
+        $this->assertDatabaseHas('employee_work_statuses', ['id' => $workStatus->id]);
     }
 
     public function test_employee_profile_salary_ledger_and_exports_are_available(): void
