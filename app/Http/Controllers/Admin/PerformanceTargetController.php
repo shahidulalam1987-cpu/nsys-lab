@@ -13,11 +13,38 @@ use Illuminate\Validation\ValidationException;
 
 class PerformanceTargetController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $targets = EmployeeTarget::with(['employee', 'department', 'role'])->latest()->get();
+        $filters = $request->validate([
+            'scope' => ['nullable', Rule::in(['employee', 'role', 'department'])],
+            'target_type' => ['nullable', Rule::in(['orders', 'spend', 'max_cpo', 'approval_rate'])],
+            'period_type' => ['nullable', Rule::in(['daily', 'weekly', 'monthly'])],
+            'status' => ['nullable', Rule::in(['active', 'inactive'])],
+        ]);
+        $baseQuery = EmployeeTarget::query();
+        $summary = [
+            'active' => (clone $baseQuery)->where('status', 'active')->count(),
+            'employee' => (clone $baseQuery)->whereNotNull('employee_id')->count(),
+            'role' => (clone $baseQuery)->whereNotNull('role_id')->count(),
+            'department' => (clone $baseQuery)->whereNotNull('department_id')->count(),
+        ];
+        $targets = EmployeeTarget::with(['employee', 'department', 'role'])
+            ->when($filters['scope'] ?? null, function ($query, string $scope) {
+                return match ($scope) {
+                    'employee' => $query->whereNotNull('employee_id'),
+                    'role' => $query->whereNotNull('role_id')->whereNull('employee_id'),
+                    'department' => $query->whereNotNull('department_id')->whereNull('employee_id')->whereNull('role_id'),
+                };
+            })
+            ->when($filters['target_type'] ?? null, fn ($query, $type) => $query->where('target_type', $type))
+            ->when($filters['period_type'] ?? null, fn ($query, $period) => $query->where('period_type', $period))
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->latest()
+            ->get();
 
         return view('admin.performance-targets.index', [
+            'filters' => $filters,
+            'summary' => $summary,
             'targets' => $targets, 'employees' => Employee::orderBy('name')->get(),
             'departments' => Department::ordered()->get(), 'roles' => EmployeeRole::ordered()->get(),
         ]);
