@@ -67,10 +67,10 @@ class PermissionRouteRegistry
                     ['key' => 'client_dashboard', 'label' => 'Client Dashboard', 'url' => '/admin/client-dashboard', 'active' => ['/admin/client-dashboard'], 'permissions' => ['clients.view']],
                     ['key' => 'client_list', 'label' => 'Client List', 'url' => '/admin/clients', 'active' => ['/admin/clients', '/admin/clients/create', '/admin/clients/*'], 'permissions' => ['clients.view']],
                     ['key' => 'client_users', 'label' => 'Client Users', 'url' => '/admin/client-users', 'active' => ['/admin/client-users*'], 'permissions' => ['clients.view']],
+                    ['key' => 'client_funds', 'label' => 'Client Funds', 'url' => '/admin/client-fund', 'active' => ['/admin/client-fund*'], 'permissions' => ['client_funds.view']],
                     ['key' => 'receive_client_payment', 'label' => 'Receive Client Payment', 'url' => '/admin/salary-payments/create', 'active' => ['/admin/salary-payments/create'], 'permissions' => ['client_payments.view']],
                     ['key' => 'pending_payments', 'label' => 'Pending Payments', 'url' => '/admin/salary-payments/pending', 'active' => ['/admin/salary-payments/pending'], 'permissions' => ['client_payments.view'], 'badge' => 'pending_client_payments', 'badge_danger' => true],
                     ['key' => 'payment_history', 'label' => 'Payment History', 'url' => '/admin/salary-payments', 'active' => ['/admin/salary-payments'], 'permissions' => ['client_payments.view']],
-                    ['key' => 'client_funds', 'label' => 'Client Funds', 'url' => '/admin/client-fund', 'active' => ['/admin/client-fund*'], 'permissions' => ['client_funds.view']],
                 ],
             ],
             [
