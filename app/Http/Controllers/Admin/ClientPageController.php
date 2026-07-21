@@ -9,6 +9,7 @@ use App\Models\Client;
 use App\Models\ClientPage;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ClientPageController extends Controller
 {
@@ -68,6 +69,10 @@ class ClientPageController extends Controller
 
     public function destroy(ClientPage $page)
     {
+        if ($this->pageHasOperationalHistory($page)) {
+            return back()->with('error', 'This page has campaigns, assignments, submissions, reports, or mapping history and cannot be deleted.');
+        }
+
         $page->delete();
 
         return redirect('/admin/client-pages')->with('success', 'Client page deleted successfully.');
@@ -75,7 +80,7 @@ class ClientPageController extends Controller
 
     private function validatedData(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'client_id' => ['required', 'exists:clients,id'],
             'business_manager_id' => ['nullable', 'exists:business_managers,id'],
             'ad_account_id' => ['nullable', 'exists:ad_accounts,id'],
@@ -86,5 +91,42 @@ class ClientPageController extends Controller
             'status' => ['required', 'in:active,inactive'],
             'note' => ['nullable', 'string'],
         ]);
+
+        if (! empty($data['ad_account_id'])) {
+            $adAccount = AdAccount::findOrFail($data['ad_account_id']);
+
+            if (! empty($data['business_manager_id']) && (int) $adAccount->business_manager_id !== (int) $data['business_manager_id']) {
+                throw ValidationException::withMessages([
+                    'ad_account_id' => 'Selected ad account does not belong to the selected Business Manager.',
+                ]);
+            }
+
+            if ($adAccount->client_id && (int) $adAccount->client_id !== (int) $data['client_id']) {
+                throw ValidationException::withMessages([
+                    'ad_account_id' => 'Selected ad account is assigned to a different client.',
+                ]);
+            }
+        }
+
+        return $data;
+    }
+
+    private function pageHasOperationalHistory(ClientPage $page): bool
+    {
+        return $page->campaigns()->exists()
+            || $page->assignments()->exists()
+            || $page->workStatuses()->exists()
+            || $page->employeeSubmissions()->exists()
+            || $page->marketingOperationsReports()->exists()
+            || $page->moderatorReports()->exists()
+            || $page->adManagerReports()->exists()
+            || $page->auditorReports()->exists()
+            || $page->monitorReports()->exists()
+            || $page->operationSummaries()->exists()
+            || $page->performanceVerifications()->exists()
+            || $page->adAccountMappings()->exists()
+            || $page->cardTransactions()->exists()
+            || $page->datasets()->exists()
+            || $page->metaSpendSnapshots()->exists();
     }
 }

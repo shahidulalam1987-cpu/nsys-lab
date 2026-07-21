@@ -40,6 +40,76 @@ class ClientPage extends Model
         return $this->hasMany(Campaign::class);
     }
 
+    public function assignments()
+    {
+        return $this->hasMany(EmployeeAssignment::class);
+    }
+
+    public function workStatuses()
+    {
+        return $this->hasMany(EmployeeWorkStatus::class);
+    }
+
+    public function employeeSubmissions()
+    {
+        return $this->hasMany(EmployeeDailySubmission::class, 'page_id');
+    }
+
+    public function marketingOperationsReports()
+    {
+        return $this->hasMany(MarketingOperationsReport::class, 'page_id');
+    }
+
+    public function moderatorReports()
+    {
+        return $this->hasMany(ModeratorReport::class, 'page_id');
+    }
+
+    public function adManagerReports()
+    {
+        return $this->hasMany(AdManagerReport::class, 'page_id');
+    }
+
+    public function auditorReports()
+    {
+        return $this->hasMany(AuditorReport::class, 'page_id');
+    }
+
+    public function monitorReports()
+    {
+        return $this->hasMany(MonitorReport::class, 'page_id');
+    }
+
+    public function operationSummaries()
+    {
+        return $this->hasMany(PageDailyOperationSummary::class, 'page_id');
+    }
+
+    public function performanceVerifications()
+    {
+        return $this->hasMany(PerformanceVerification::class, 'page_id');
+    }
+
+    public function adAccountMappings()
+    {
+        return $this->hasMany(AdAccountPage::class);
+    }
+
+    public function cardTransactions()
+    {
+        return $this->hasMany(CardTransaction::class);
+    }
+
+    public function datasets()
+    {
+        return $this->hasMany(Dataset::class);
+    }
+
+    public function metaSpendSnapshots()
+    {
+        return $this->hasMany(MetaSpendSnapshot::class);
+    }
+
     public function dailyPerformanceReports()
     {
         return $this->hasManyThrough(DailyPerformanceReport::class, Campaign::class);

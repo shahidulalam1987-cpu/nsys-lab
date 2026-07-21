@@ -60,6 +60,9 @@
                 @endforeach
             </select>
         </p>
+        <p style="color:var(--muted);">
+            Page relationships are used by campaigns, assignments, work status, and performance reporting.
+        </p>
         <p>Note<br><textarea name="note">{{ old('note', $page?->note) }}</textarea></p>
 
         <button class="btn" type="submit">{{ $button }}</button>
