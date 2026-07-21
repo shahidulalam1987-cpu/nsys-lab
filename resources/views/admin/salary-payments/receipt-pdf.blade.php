@@ -21,7 +21,7 @@
     <div class="header">
         <div class="logo">NSYS Agency</div>
         <h2>Client Payment Receipt</h2>
-        <p class="muted">QR Code placeholder</p>
+        <p class="muted">Official client payment receipt</p>
     </div>
 
     <table>

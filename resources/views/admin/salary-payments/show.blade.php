@@ -67,7 +67,6 @@
         <p><strong>Receipt Number:</strong> {{ $payment->receiptNumber() }}</p>
         <p><strong>Finance Ledger ID:</strong> {{ $financeLedger?->id ?: '-' }}</p>
         <p><strong>Client Fund Ledger ID:</strong> {{ $clientFundLedger?->id ?: '-' }}</p>
-        <p><strong>QR Code:</strong> QR Code placeholder</p>
     </div>
 
     <div class="card">

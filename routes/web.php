@@ -126,6 +126,7 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::get('/admin/marketing-operations/{type}/create', [MarketingOperationsController::class, 'create']);
     Route::post('/admin/marketing-operations/{type}', [MarketingOperationsController::class, 'store']);
     Route::post('/admin/marketing-operations/reports/{report}/status', [MarketingOperationsController::class, 'updateStatus']);
+    // Inactive platform guard: keep legacy TikTok URLs from showing dead placeholder screens.
     Route::any('/admin/tiktok/{path?}', fn () => abort(404, 'This platform module is not active.'))->where('path', '.*');
     Route::get('/admin/client-dashboard', [AdminDashboardController::class, 'clientDepartment']);
     Route::get('/admin/employee-dashboard', [AdminDashboardController::class, 'employeeDepartment']);
@@ -320,6 +321,7 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::get('/admin/finance/accounts/{account}/edit', [FinanceManagementController::class, 'editAccount']);
     Route::post('/admin/finance/accounts/{account}/update', [FinanceManagementController::class, 'updateAccount']);
     Route::post('/admin/finance/accounts/{account}/delete', [FinanceManagementController::class, 'destroyAccount']);
+    // Archived finance modules: hidden from navigation but guarded for old bookmarks.
     Route::any('/admin/finance/family-expenses/{path?}', fn () => abort(404, 'This finance module is archived.'))->where('path', '.*');
     Route::any('/admin/finance/loans/{path?}', fn () => abort(404, 'This finance module is archived.'))->where('path', '.*');
     Route::get('/admin/finance/reports/balance-sheet', [FinanceManagementController::class, 'balanceSheet']);

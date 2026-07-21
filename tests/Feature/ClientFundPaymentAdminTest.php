@@ -173,7 +173,7 @@ class ClientFundPaymentAdminTest extends TestCase
             ->assertSee('Client Fund Ledger ID')
             ->assertSee((string) $clientFundLedger->id)
             ->assertSee('10.10.10.10')
-            ->assertSee('QR Code placeholder');
+            ->assertDontSee('QR Code placeholder');
 
         $search = $this->actingAs($admin)->get('/admin/salary-payments?search=' . urlencode($payment->receipt_number));
         $search->assertOk()->assertSee($payment->receipt_number);
