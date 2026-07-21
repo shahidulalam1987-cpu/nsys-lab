@@ -37,6 +37,18 @@
             align-items: end;
         }
 
+        .billing-form-grid label {
+            display: grid;
+            gap: 8px;
+            font-weight: 800;
+        }
+
+        .billing-form-grid input,
+        .billing-form-grid select {
+            width: 100%;
+            min-width: 0;
+        }
+
         .billing-form-grid .wide {
             grid-column: span 2;
         }
@@ -82,7 +94,6 @@
 
     <div class="billing-header">
         <div>
-            <p><a href="/admin/business-managers">Business Management</a> / Billing History</p>
             <h1>Billing History</h1>
             <p>Track ad account billing events for audit and reconciliation.</p>
         </div>
