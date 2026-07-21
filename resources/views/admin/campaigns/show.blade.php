@@ -117,7 +117,7 @@
             <div class="stat-card"><p>Total Spend</p><h2>USD {{ number_format($performanceSummary['spend'], 2) }}</h2></div>
             <div class="stat-card"><p>Orders</p><h2>{{ number_format($performanceSummary['orders']) }}</h2></div>
             <div class="stat-card"><p>Cost Per Order</p><h2>USD {{ number_format(\App\Models\DailyPerformanceReport::costPer($performanceSummary['spend'], $performanceSummary['orders']), 2) }}</h2></div>
-            <div class="stat-card"><p>Profit</p><h2>Future Ready</h2></div>
+            <div class="stat-card"><p>Performance Records</p><h2>{{ number_format($performanceReports->count()) }}</h2></div>
         </div>
     </div>
 
@@ -149,6 +149,7 @@
 
     <div class="card">
         <h2>Future Reports</h2>
-        <p>Daily performance, orders, spend, cost per order, profit, Meta API data, pixel tracking, and conversion tracking will connect here in future phases.</p>
+        <p>Meta API data, pixel tracking, conversion tracking, and advanced campaign profit reporting can connect here in future phases.</p>
     </div>
+
 @endsection

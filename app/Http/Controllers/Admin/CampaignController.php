@@ -114,8 +114,8 @@ class CampaignController extends Controller
 
     public function destroy(Campaign $campaign)
     {
-        if ($campaign->assignments()->exists() || $campaign->workStatuses()->exists()) {
-            return back()->with('success', 'This campaign has assignments or work status records. Archive it instead.');
+        if ($this->campaignHasOperationalHistory($campaign)) {
+            return back()->with('error', 'This campaign has assignments, work status, submissions, performance, or finance history. Archive it instead.');
         }
 
         $campaign->delete();
@@ -189,5 +189,20 @@ class CampaignController extends Controller
         $data['lifetime_budget'] = $data['lifetime_budget'] ?? 0;
 
         return $data;
+    }
+
+    private function campaignHasOperationalHistory(Campaign $campaign): bool
+    {
+        return $campaign->assignments()->exists()
+            || $campaign->workStatuses()->exists()
+            || $campaign->dailyPerformanceReports()->exists()
+            || $campaign->employeeSubmissions()->exists()
+            || $campaign->marketingOperationsReports()->exists()
+            || $campaign->moderatorReports()->exists()
+            || $campaign->adManagerReports()->exists()
+            || $campaign->operationSummaries()->exists()
+            || $campaign->performanceVerifications()->exists()
+            || $campaign->cardTransactions()->exists()
+            || $campaign->metaSpendSnapshots()->exists();
     }
 }

@@ -68,6 +68,9 @@
             <label>Daily Budget (USD)<br><input type="number" step="0.01" min="0" name="daily_budget" value="{{ old('daily_budget', $campaign?->daily_budget ?? 0) }}"></label>
             <label>Lifetime Budget (USD)<br><input type="number" step="0.01" min="0" name="lifetime_budget" value="{{ old('lifetime_budget', $campaign?->lifetime_budget ?? 0) }}"></label>
         </div>
+        <p style="color:var(--muted);">
+            Campaign relationships power daily performance, employee submissions, finance card transactions, and client reporting.
+        </p>
         <p>Notes<br><textarea name="notes">{{ old('notes', $campaign?->notes) }}</textarea></p>
         <button class="btn" type="submit">{{ $button }}</button>
     </form>

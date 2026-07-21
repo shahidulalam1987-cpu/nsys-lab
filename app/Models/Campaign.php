@@ -88,6 +88,46 @@ class Campaign extends Model
         return $this->hasMany(DailyPerformanceReport::class);
     }
 
+    public function employeeSubmissions()
+    {
+        return $this->hasMany(EmployeeDailySubmission::class);
+    }
+
+    public function marketingOperationsReports()
+    {
+        return $this->hasMany(MarketingOperationsReport::class);
+    }
+
+    public function moderatorReports()
+    {
+        return $this->hasMany(ModeratorReport::class);
+    }
+
+    public function adManagerReports()
+    {
+        return $this->hasMany(AdManagerReport::class);
+    }
+
+    public function operationSummaries()
+    {
+        return $this->hasMany(PageDailyOperationSummary::class);
+    }
+
+    public function performanceVerifications()
+    {
+        return $this->hasMany(PerformanceVerification::class);
+    }
+
+    public function cardTransactions()
+    {
+        return $this->hasMany(CardTransaction::class);
+    }
+
+    public function metaSpendSnapshots()
+    {
+        return $this->hasMany(MetaSpendSnapshot::class);
+    }
+
     public function performanceSummary()
     {
         $reports = $this->dailyPerformanceReports;
@@ -125,7 +165,11 @@ class Campaign extends Model
 
     public function totalSpend(): float
     {
-        return 0.0;
+        if ($this->relationLoaded('dailyPerformanceReports')) {
+            return (float) $this->dailyPerformanceReports->sum('spend');
+        }
+
+        return (float) $this->dailyPerformanceReports()->sum('spend');
     }
 
     public function remainingBudget(): float
