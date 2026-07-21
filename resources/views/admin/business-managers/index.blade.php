@@ -1,6 +1,33 @@
 @extends('layouts.admin')
 
 @section('content')
+    <style>
+        .bm-actions {
+            align-items: center;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .bm-actions .btn {
+            border-radius: 9px;
+            font-size: 12px;
+            min-height: 34px;
+            padding: 8px 11px;
+        }
+
+        .btn-outline {
+            background: rgba(255,255,255,.04);
+            border: 1px solid var(--line);
+            color: var(--text);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+    </style>
+
     <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;">
         <div>
             <h1>Business Managers</h1>
@@ -57,17 +84,37 @@
                         <td><a href="/admin/business-managers/{{ $bm->id }}" style="font-weight:700;">{{ $bm->bm_name }}</a></td>
                         <td>{{ $bm->bm_id }}</td>
                         <td>{{ $bm->owner_name }}<br><span style="color:var(--muted);">{{ $bm->owner_email }}</span></td>
-                        <td><span class="badge">{{ $bm->verificationStatusLabel() }}</span></td>
-                        <td><span class="badge">{{ $bm->statusLabel() }}</span></td>
+                        <td>
+                            @php
+                                $verificationClass = [
+                                    'verified' => 'badge-success',
+                                    'pending_review' => 'badge-warning',
+                                    'unverified' => 'badge-neutral',
+                                ][$bm->verification_status] ?? 'badge-neutral';
+                            @endphp
+                            <span class="badge {{ $verificationClass }}">{{ $bm->verificationStatusLabel() }}</span>
+                        </td>
+                        <td>
+                            @php
+                                $statusClass = [
+                                    'active' => 'badge-success',
+                                    'restricted' => 'badge-warning',
+                                    'disabled' => 'badge-danger',
+                                ][$bm->status] ?? 'badge-neutral';
+                            @endphp
+                            <span class="badge {{ $statusClass }}">{{ $bm->statusLabel() }}</span>
+                        </td>
                         <td>{{ number_format($bm->ad_accounts_count) }}</td>
                         <td>{{ number_format($bm->pages_count) }}</td>
-                        <td style="white-space:nowrap;">
-                            <a href="/admin/business-managers/{{ $bm->id }}">View</a> |
-                            <a href="/admin/business-managers/{{ $bm->id }}/edit">Edit</a> |
+                        <td>
+                            <div class="bm-actions">
+                            <a class="btn btn-outline" href="/admin/business-managers/{{ $bm->id }}">View</a>
+                            <a class="btn btn-outline" href="/admin/business-managers/{{ $bm->id }}/edit">Edit</a>
                             <form method="POST" action="/admin/business-managers/{{ $bm->id }}/delete" style="display:inline;">
                                 @csrf
                                 <button class="btn btn-danger" type="submit" onclick="return confirm('Delete this BM?');">Delete</button>
                             </form>
+                            </div>
                         </td>
                     </tr>
                 @empty

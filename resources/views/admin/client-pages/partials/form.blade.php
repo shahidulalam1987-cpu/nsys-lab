@@ -12,7 +12,8 @@
     <form method="POST" action="{{ $action }}">
         @csrf
 
-        <p>Client<br>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+        <label>Client<br>
             <select name="client_id" required>
                 <option value="">Select Client</option>
                 @foreach($clients as $client)
@@ -21,8 +22,8 @@
                     </option>
                 @endforeach
             </select>
-        </p>
-        <p>BM<br>
+        </label>
+        <label>BM<br>
             <select name="business_manager_id">
                 <option value="">No BM</option>
                 @foreach($businessManagers as $bm)
@@ -31,8 +32,8 @@
                     </option>
                 @endforeach
             </select>
-        </p>
-        <p>Ad Account<br>
+        </label>
+        <label>Ad Account<br>
             <select name="ad_account_id">
                 <option value="">No Ad Account</option>
                 @foreach($adAccounts as $account)
@@ -41,25 +42,26 @@
                     </option>
                 @endforeach
             </select>
-        </p>
+        </label>
 
-        <p>Page Name<br><input type="text" name="page_name" value="{{ old('page_name', $page?->page_name) }}" required></p>
-        <p>Page ID<br><input type="text" name="page_id" value="{{ old('page_id', $page?->page_id) }}"></p>
-        <p>Page URL<br><input type="url" name="page_url" value="{{ old('page_url', $page?->page_url) }}" placeholder="https://"></p>
-        <p>Platform<br>
+        <label>Page Name<br><input type="text" name="page_name" value="{{ old('page_name', $page?->page_name) }}" required></label>
+        <label>Page ID<br><input type="text" name="page_id" value="{{ old('page_id', $page?->page_id) }}"></label>
+        <label>Page URL<br><input type="url" name="page_url" value="{{ old('page_url', $page?->page_url) }}" placeholder="https://"></label>
+        <label>Platform<br>
             <select name="platform" required>
                 @foreach($platforms as $platform)
                     <option value="{{ $platform }}" {{ old('platform', $page?->platform ?? 'Facebook') === $platform ? 'selected' : '' }}>{{ $platform }}</option>
                 @endforeach
             </select>
-        </p>
-        <p>Status<br>
+        </label>
+        <label>Status<br>
             <select name="status" required>
                 @foreach(['active' => 'Active', 'inactive' => 'Inactive'] as $value => $label)
                     <option value="{{ $value }}" {{ old('status', $page?->status ?? 'active') === $value ? 'selected' : '' }}>{{ $label }}</option>
                 @endforeach
             </select>
-        </p>
+        </label>
+        </div>
         <p style="color:var(--muted);">
             Page relationships are used by campaigns, assignments, work status, and performance reporting.
         </p>

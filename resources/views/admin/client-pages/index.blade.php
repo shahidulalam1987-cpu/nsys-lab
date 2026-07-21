@@ -219,7 +219,7 @@
         }
     </style>
 
-    <h1>Pages</h1>
+    <h1>Page Management</h1>
     <div class="page-management-header">
         <p>Manage client pages for campaigns, ad accounts, and employee assignments.</p>
         <a class="btn" href="/admin/client-pages/create">Add Page</a>

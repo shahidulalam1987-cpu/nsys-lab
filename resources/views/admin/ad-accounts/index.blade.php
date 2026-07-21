@@ -1,6 +1,39 @@
 @extends('layouts.admin')
 
 @section('content')
+    <style>
+        .account-actions {
+            align-items: center;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .account-actions .btn {
+            border-radius: 9px;
+            font-size: 12px;
+            min-height: 34px;
+            padding: 8px 11px;
+        }
+
+        .btn-outline {
+            background: rgba(255,255,255,.04);
+            border: 1px solid var(--line);
+            color: var(--text);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+
+        .alert-chip-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+    </style>
+
     <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;">
         <div>
             <h1>Ad Accounts</h1>
@@ -19,15 +52,18 @@
         <div class="stat-card"><p>Billing Alerts</p><h2>{{ number_format($summary['upcoming_billing'] + $summary['overdue_billing']) }}</h2></div>
     </div>
 
-    <div class="card" style="display:flex;gap:8px;flex-wrap:wrap;">
-        <span class="badge">Total Threshold: USD {{ number_format($summary['total_threshold'], 2) }}</span>
-        <span class="badge">Near Threshold: {{ number_format($summary['near_threshold']) }}</span>
-        <span class="badge">At Risk: {{ number_format($summary['at_risk']) }}</span>
-        <span class="badge">Reached Limit: {{ number_format($summary['limit_reached']) }}</span>
-        <span class="badge">Upcoming Billing: {{ number_format($summary['upcoming_billing']) }}</span>
-        <span class="badge">Overdue Billing: {{ number_format($summary['overdue_billing']) }}</span>
-        <span class="badge">Low Balance: {{ number_format($summary['low_balance']) }}</span>
-        <span class="badge">Negative Balance: {{ number_format($summary['negative_balance']) }}</span>
+    <div class="card">
+        <h2>Alert Summary</h2>
+        <div class="alert-chip-row">
+            <span class="badge">Total Threshold: USD {{ number_format($summary['total_threshold'], 2) }}</span>
+            <span class="badge badge-warning">Near Threshold: {{ number_format($summary['near_threshold']) }}</span>
+            <span class="badge badge-danger">At Risk: {{ number_format($summary['at_risk']) }}</span>
+            <span class="badge badge-danger">Reached Limit: {{ number_format($summary['limit_reached']) }}</span>
+            <span class="badge badge-warning">Upcoming Billing: {{ number_format($summary['upcoming_billing']) }}</span>
+            <span class="badge badge-danger">Overdue Billing: {{ number_format($summary['overdue_billing']) }}</span>
+            <span class="badge badge-warning">Low Balance: {{ number_format($summary['low_balance']) }}</span>
+            <span class="badge badge-danger">Negative Balance: {{ number_format($summary['negative_balance']) }}</span>
+        </div>
     </div>
 
     <div class="card">
@@ -137,13 +173,15 @@
                                 <span class="badge {{ $account->balanceStatus() === 'negative' ? 'badge-danger' : 'badge-warning' }}">{{ $account->balanceStatusLabel() }}</span>
                             @endif
                         </td>
-                        <td style="white-space:nowrap;">
-                            <a href="/admin/ad-accounts/{{ $account->id }}">View</a> |
-                            <a href="/admin/ad-accounts/{{ $account->id }}/edit">Edit</a> |
+                        <td>
+                            <div class="account-actions">
+                            <a class="btn btn-outline" href="/admin/ad-accounts/{{ $account->id }}">View</a>
+                            <a class="btn btn-outline" href="/admin/ad-accounts/{{ $account->id }}/edit">Edit</a>
                             <form method="POST" action="/admin/ad-accounts/{{ $account->id }}/delete" style="display:inline;">
                                 @csrf
                                 <button class="btn btn-danger" type="submit" onclick="return confirm('Delete this ad account?');">Delete</button>
                             </form>
+                            </div>
                         </td>
                     </tr>
                 @empty
