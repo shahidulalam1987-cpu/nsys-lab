@@ -1,8 +1,42 @@
 <div class="card">
+    <style>
+        .bug-form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+        }
+
+        .bug-form-grid label,
+        .bug-form-wide {
+            display: grid;
+            gap: 8px;
+            font-weight: 800;
+        }
+
+        .bug-form-grid input,
+        .bug-form-grid select,
+        .bug-form-wide textarea {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .bug-form-wide {
+            margin-top: 14px;
+        }
+
+        .bug-form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+    </style>
+
     <form method="POST" action="{{ $action }}">
         @csrf
 
-        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;">
+        <div class="bug-form-grid">
             <label>
                 Module
                 <input type="text" name="module" value="{{ old('module', $bug->module) }}" placeholder="Employee Portal" required>
@@ -42,17 +76,17 @@
             </label>
         </div>
 
-        <label style="display:block;margin-top:14px;">
+        <label class="bug-form-wide">
             Description
-            <textarea name="description" rows="5" style="width:100%;" placeholder="What happened? Steps, expected result, actual result.">{{ old('description', $bug->description) }}</textarea>
+            <textarea name="description" rows="5" placeholder="What happened? Steps, expected result, actual result.">{{ old('description', $bug->description) }}</textarea>
         </label>
 
-        <label style="display:block;margin-top:14px;">
+        <label class="bug-form-wide">
             Fixed Note
-            <textarea name="fixed_note" rows="4" style="width:100%;" placeholder="What was fixed or verified?">{{ old('fixed_note', $bug->fixed_note) }}</textarea>
+            <textarea name="fixed_note" rows="4" placeholder="What was fixed or verified?">{{ old('fixed_note', $bug->fixed_note) }}</textarea>
         </label>
 
-        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px;">
+        <div class="bug-form-actions">
             <a href="/admin/bug-tracker">Cancel</a>
             <button class="btn" type="submit">{{ $buttonText }}</button>
         </div>
