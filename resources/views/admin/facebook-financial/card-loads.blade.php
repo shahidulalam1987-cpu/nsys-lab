@@ -15,7 +15,7 @@
                 <select name="facebook_card_id" required>
                     <option value="">Select Card</option>
                     @foreach($cards as $card)
-                        <option value="{{ $card->id }}">{{ $card->provider ?: 'Other' }} - {{ $card->card_name }} ({{ $card->card_last_four ?: 'No Last 4' }})</option>
+                        <option value="{{ $card->id }}">{{ $card->providerLabel() }} - {{ $card->card_name }} ({{ $card->card_last_four ?: 'No Last 4' }})</option>
                     @endforeach
                 </select>
             </label>
@@ -51,7 +51,7 @@
                 @forelse($loads as $load)
                     <tr>
                         <td>{{ $load->load_date?->toDateString() }}</td>
-                        <td>{{ $load->card?->provider ?: '-' }}</td>
+                        <td>{{ $load->card?->providerLabel() ?: '-' }}</td>
                         <td>{{ $load->card?->card_name ?: '-' }}</td>
                         <td>{{ $load->binancePurchase?->purchase_date?->toDateString() }}</td>
                         <td>BDT {{ number_format((float) $load->binancePurchase?->buy_rate, 4) }}</td>

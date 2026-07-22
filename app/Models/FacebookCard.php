@@ -59,6 +59,17 @@ class FacebookCard extends Model
         return self::STATUSES[$this->effectiveStatus()] ?? ucwords(str_replace('_', ' ', (string) $this->status));
     }
 
+    public function providerLabel(): string
+    {
+        $provider = trim((string) $this->provider);
+
+        if (strcasecmp($provider, 'Tavao') === 0) {
+            return 'Tevau';
+        }
+
+        return $provider !== '' ? $provider : 'Other';
+    }
+
     public function effectiveStatus(): string
     {
         if ($this->status === 'active' && (float) $this->current_balance < 100) {

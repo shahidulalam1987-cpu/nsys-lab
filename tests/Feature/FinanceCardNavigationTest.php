@@ -28,7 +28,6 @@ class FinanceCardNavigationTest extends TestCase
         $response->assertDontSee('Provider Transactions');
         $response->assertDontSee('Provider Fee Tracking');
         $response->assertDontSee('Profit Dashboard');
-        $response->assertDontSee('Balance Sheet');
     }
 
     public function test_card_management_tabs_render(): void
@@ -41,10 +40,9 @@ class FinanceCardNavigationTest extends TestCase
         $response->assertSee('Loads');
         $response->assertSee('Transactions');
         $response->assertSee('Binance Purchases');
-        $response->assertSee('Providers');
-        $response->assertSee('Provider Transactions');
-        $response->assertSee('Provider Fees');
         $response->assertSee('Statement');
+        $response->assertDontSee('Provider Transactions');
+        $response->assertDontSee('Provider Fees');
     }
 
     public function test_old_card_loads_and_transactions_routes_still_work(): void

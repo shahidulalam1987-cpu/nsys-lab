@@ -12,12 +12,24 @@ use Illuminate\Validation\Rule;
 
 class FacebookCardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $cards = FacebookCard::with('adAccount')->latest()->get();
+        $filters = $request->only(['provider', 'status']);
+        $cards = FacebookCard::with('adAccount')
+            ->withCount(['loads', 'transactions'])
+            ->when($filters['provider'] ?? null, function ($query, $provider) {
+                $provider === 'Tevau'
+                    ? $query->whereIn('provider', ['Tevau', 'Tavao'])
+                    : $query->where('provider', $provider);
+            })
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->latest()
+            ->get();
 
         return view('admin.facebook-cards.index', [
             'cards' => $cards,
+            'filters' => $filters,
+            'providers' => ['RedotPay' => 'RedotPay', 'Tevau' => 'Tevau', 'Other' => 'Other'],
             'summary' => [
                 'total_balance' => (float) $cards->sum('current_balance'),
                 'redotpay_balance' => (float) $cards->filter(fn (FacebookCard $card) => strcasecmp((string) $card->provider, 'RedotPay') === 0)->sum('current_balance'),
@@ -58,6 +70,8 @@ class FacebookCardController extends Controller
     {
         return view('admin.facebook-cards.show', [
             'card' => $card->load('adAccount'),
+            'recentLoads' => $card->loads()->with('binancePurchase')->latest('load_date')->latest()->take(5)->get(),
+            'recentTransactions' => $card->transactions()->with(['client', 'adAccount', 'campaign'])->latest('transaction_date')->latest()->take(5)->get(),
         ]);
     }
 

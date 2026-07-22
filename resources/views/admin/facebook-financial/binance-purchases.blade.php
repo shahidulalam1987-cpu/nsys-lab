@@ -46,7 +46,7 @@
                     <th>Buy Rate</th>
                     <th>Total Cost</th>
                     <th>Seller</th>
-                    <th>Actions</th>
+                    <th>Reference</th>
                 </tr>
                 @forelse($purchases as $purchase)
                     <tr>

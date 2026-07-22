@@ -15,7 +15,7 @@
                 <select name="facebook_card_id" required>
                     <option value="">Select Card</option>
                     @foreach($cards as $card)
-                        <option value="{{ $card->id }}">{{ $card->provider ?: 'Other' }} - {{ $card->card_name }} | Balance USD {{ number_format((float) $card->current_balance, 2) }}</option>
+                        <option value="{{ $card->id }}">{{ $card->providerLabel() }} - {{ $card->card_name }} | Balance USD {{ number_format((float) $card->current_balance, 2) }}</option>
                     @endforeach
                 </select>
             </label>
@@ -100,7 +100,7 @@
                 @forelse($transactions as $transaction)
                     <tr>
                         <td>{{ $transaction->transaction_date?->toDateString() }}</td>
-                        <td>{{ $transaction->card?->provider ?: '-' }}</td>
+                        <td>{{ $transaction->card?->providerLabel() ?: '-' }}</td>
                         <td>{{ $transaction->card?->card_name ?: '-' }}</td>
                         <td>{{ $transaction->adAccount?->ad_account_name ?: '-' }}</td>
                         <td>{{ $transaction->client?->company_name ?: '-' }}</td>
