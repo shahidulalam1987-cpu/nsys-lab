@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Client;
 use App\Models\Employee;
 use App\Models\ManagedDocument;
+use App\Models\Permission;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -305,6 +307,29 @@ class DocumentManagementTest extends TestCase
         $this->assertStringContainsString('Widget Document', $html);
     }
 
+    public function test_document_manage_actions_hidden_for_view_only_admin_user(): void
+    {
+        Storage::fake('local');
+        $admin = $this->admin();
+        $document = $this->documentFor($admin);
+        $viewer = $this->documentViewer();
+
+        $this->actingAs($viewer)
+            ->get('/admin/documents')
+            ->assertOk()
+            ->assertSee('Visible Documents')
+            ->assertDontSee('/admin/documents/create', false);
+
+        $this->actingAs($viewer)
+            ->get('/admin/documents/' . $document->id)
+            ->assertOk()
+            ->assertSee('Download')
+            ->assertDontSee('/admin/documents/' . $document->id . '/edit', false)
+            ->assertDontSee('/admin/documents/' . $document->id . '/archive', false)
+            ->assertDontSee('Upload New Version')
+            ->assertDontSee('action="/admin/documents/' . $document->id . '/version"', false);
+    }
+
     private function documentFor(User $admin): ManagedDocument
     {
         $this->actingAs($admin)->post('/admin/documents', [
@@ -319,5 +344,23 @@ class DocumentManagementTest extends TestCase
     private function admin(): User
     {
         return User::factory()->create(['role' => 'admin', 'status' => 'active']);
+    }
+
+    private function documentViewer(): User
+    {
+        $role = Role::firstOrCreate(
+            ['slug' => 'hr_manager'],
+            ['name' => 'HR Manager', 'description' => 'Document view only test role']
+        );
+        $permission = Permission::firstOrCreate(
+            ['key' => 'documents.view'],
+            ['name' => 'Documents View', 'module' => 'documents', 'description' => 'View documents']
+        );
+        $role->permissions()->syncWithoutDetaching([$permission->id]);
+
+        $user = User::factory()->create(['role' => 'employee', 'status' => 'active']);
+        $user->roles()->attach($role->id);
+
+        return $user;
     }
 }

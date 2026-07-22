@@ -5,6 +5,7 @@
 @section('page_description', 'Central repository for operational documents, attachments, and version history.')
 
 @section('content')
+@php($canManageDocuments = app(\App\Services\DocumentManagementService::class)->canManage(auth()->user()))
 <style>
     .dms-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:16px; }
     .dms-card { background:#111827; border:1px solid #263244; border-radius:8px; padding:14px; }
@@ -16,10 +17,10 @@
 </style>
 
 <div class="dms-grid">
-    <div class="dms-card"><div class="dms-muted">Active Documents</div><strong>{{ number_format($documents->total()) }}</strong></div>
+    <div class="dms-card"><div class="dms-muted">Visible Documents</div><strong>{{ number_format($documents->total()) }}</strong></div>
     <div class="dms-card"><div class="dms-muted">Categories</div><strong>{{ count($categories) }}</strong></div>
     <div class="dms-card"><div class="dms-muted">Owner Modules</div><strong>{{ count($ownerModules) }}</strong></div>
-    <div class="dms-card"><div class="dms-muted">Upload Formats</div><strong>PDF DOCX XLSX ZIP</strong></div>
+    <div class="dms-card"><div class="dms-muted">Upload Formats</div><strong>PDF, DOCX, XLSX, PNG, JPG, ZIP</strong></div>
 </div>
 
 <div class="content-card">
@@ -28,7 +29,9 @@
             <h3 style="margin:0;">Documents</h3>
             <p class="dms-muted" style="margin:4px 0 0;">Search, filter, preview, download, archive, and restore central documents.</p>
         </div>
-        <a class="btn btn-primary" href="/admin/documents/create">Upload Document</a>
+        @if($canManageDocuments)
+            <a class="btn btn-primary" href="/admin/documents/create">Upload Document</a>
+        @endif
     </div>
 
     <form method="GET" class="dms-filter">

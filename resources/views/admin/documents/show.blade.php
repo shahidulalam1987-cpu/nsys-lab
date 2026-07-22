@@ -5,6 +5,7 @@
 @section('page_description', 'Document metadata, version history, and audit trail.')
 
 @section('content')
+@php($canManageDocuments = app(\App\Services\DocumentManagementService::class)->canManage(auth()->user()))
 <style>
     .dms-detail-grid { display:grid; grid-template-columns:2fr 1fr; gap:16px; }
     .dms-meta { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
@@ -20,11 +21,13 @@
         @if(in_array(strtolower((string) $document->file_type), ['pdf','png','jpg','jpeg'], true))
             <a class="btn" href="/admin/documents/{{ $document->id }}/preview" target="_blank">Preview</a>
         @endif
-        <a class="btn" href="/admin/documents/{{ $document->id }}/edit">Edit</a>
-        @if($document->status === 'active')
-            <form method="POST" action="/admin/documents/{{ $document->id }}/archive" onsubmit="return confirm('Archive this document?')">@csrf<button class="btn btn-warning" type="submit">Archive</button></form>
-        @else
-            <form method="POST" action="/admin/documents/{{ $document->id }}/restore">@csrf<button class="btn btn-primary" type="submit">Restore</button></form>
+        @if($canManageDocuments)
+            <a class="btn" href="/admin/documents/{{ $document->id }}/edit">Edit</a>
+            @if($document->status === 'active')
+                <form method="POST" action="/admin/documents/{{ $document->id }}/archive" onsubmit="return confirm('Archive this document?')">@csrf<button class="btn btn-warning" type="submit">Archive</button></form>
+            @else
+                <form method="POST" action="/admin/documents/{{ $document->id }}/restore">@csrf<button class="btn btn-primary" type="submit">Restore</button></form>
+            @endif
         @endif
     </div>
 </div>
@@ -45,17 +48,19 @@
         </div>
     </div>
 
-    <div class="content-card">
-        <h3 style="margin-top:0;">Upload New Version</h3>
-        <form method="POST" action="/admin/documents/{{ $document->id }}/version" enctype="multipart/form-data">
-            @csrf
-            <label>File</label>
-            <input type="file" name="document" accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,.zip" required>
-            <label style="margin-top:10px;">Change Note</label>
-            <textarea name="change_note" rows="3"></textarea>
-            <button class="btn btn-primary" type="submit" style="margin-top:10px;">Upload Version</button>
-        </form>
-    </div>
+    @if($canManageDocuments)
+        <div class="content-card">
+            <h3 style="margin-top:0;">Upload New Version</h3>
+            <form method="POST" action="/admin/documents/{{ $document->id }}/version" enctype="multipart/form-data">
+                @csrf
+                <label>File</label>
+                <input type="file" name="document" accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,.zip" required>
+                <label style="margin-top:10px;">Change Note</label>
+                <textarea name="change_note" rows="3"></textarea>
+                <button class="btn btn-primary" type="submit" style="margin-top:10px;">Upload Version</button>
+            </form>
+        </div>
+    @endif
 </div>
 
 <div class="content-card">
