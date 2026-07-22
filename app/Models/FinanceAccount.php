@@ -13,7 +13,7 @@ class FinanceAccount extends Model
         'cash' => 'Cash',
         'binance' => 'Binance',
         'redotpay' => 'RedotPay',
-        'tavao' => 'Tavao',
+        'tavao' => 'Tevau',
     ];
 
     public const CURRENCIES = [

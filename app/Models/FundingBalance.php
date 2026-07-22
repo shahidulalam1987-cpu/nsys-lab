@@ -11,7 +11,7 @@ class FundingBalance extends Model
     public const SOURCES = [
         'binance' => 'Binance',
         'redotpay' => 'RedotPay',
-        'tavao' => 'Tavao',
+        'tavao' => 'Tevau',
     ];
 
     public const LOW_BALANCE_LIMITS = [

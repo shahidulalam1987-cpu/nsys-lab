@@ -43,7 +43,7 @@
     </style>
 
     <h1>Update Funding Balance</h1>
-    <p>Manually update Binance, RedotPay, or Tavao available USD balance.</p>
+    <p>Manually update Binance, RedotPay, or Tevau available USD balance.</p>
 
     <div class="funding-note">
         This creates a funding history record and ledger-backed adjustment for the selected funding source. It does not directly update card balances or Facebook spend records.

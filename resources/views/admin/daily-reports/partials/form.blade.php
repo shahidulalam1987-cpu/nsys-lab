@@ -74,7 +74,7 @@
                 <label>Card Provider<br>
                     <select name="card_provider">
                         <option value="">Select Provider</option>
-                        @foreach(['RedotPay', 'Tavao', 'Other'] as $provider)
+                        @foreach(['RedotPay', 'Tevau', 'Other'] as $provider)
                             <option value="{{ $provider }}" @selected(old('card_provider', $dailyReport?->card_provider) === $provider)>{{ $provider }}</option>
                         @endforeach
                     </select>

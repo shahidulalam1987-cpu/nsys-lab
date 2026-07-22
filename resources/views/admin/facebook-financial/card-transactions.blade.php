@@ -1,6 +1,32 @@
 @extends('layouts.admin')
 
 @section('content')
+    <style>
+        .finance-flow-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+            align-items: end;
+        }
+
+        .finance-flow-form label {
+            display: grid;
+            gap: 8px;
+            font-weight: 800;
+        }
+
+        .finance-flow-form input,
+        .finance-flow-form select,
+        .finance-flow-form textarea {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .finance-flow-form .wide {
+            grid-column: 1 / -1;
+        }
+    </style>
+
     <h1>Card Transactions</h1>
     <p>Track exact Facebook spend profit using Binance purchase rate, card fees, extra charges, and client sell rate.</p>
 
@@ -8,7 +34,7 @@
 
     <div class="card">
         <h2>Add Card Transaction</h2>
-        <form method="POST" action="/admin/facebook-financial/card-transactions" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+        <form method="POST" action="/admin/facebook-financial/card-transactions" class="finance-flow-form">
             @csrf
             <label>Date<br><input type="date" name="transaction_date" value="{{ old('transaction_date', now()->toDateString()) }}" required></label>
             <label>Card<br>
@@ -63,7 +89,7 @@
             <label>Fee USD<br><input type="number" step="0.01" min="0" name="fee_usd" value="0" required></label>
             <label>Extra Charge USD<br><input type="number" step="0.01" min="0" name="extra_charge_usd" value="0"></label>
             <label>Transaction Reference<br><input type="text" name="transaction_reference" value="{{ old('transaction_reference') }}"></label>
-            <label style="grid-column:1/-1;">Notes<br><textarea name="notes" rows="2" style="width:100%;"></textarea></label>
+            <label class="wide">Notes<textarea name="notes" rows="2"></textarea></label>
             <button class="btn" type="submit">Save Transaction</button>
         </form>
     </div>
@@ -78,6 +104,7 @@
     </div>
 
     <div class="card">
+        <h2>Transaction History</h2>
         <div class="table-wrap">
             <table>
                 <tr>

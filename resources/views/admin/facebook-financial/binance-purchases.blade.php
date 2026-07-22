@@ -1,6 +1,32 @@
 @extends('layouts.admin')
 
 @section('content')
+    <style>
+        .finance-flow-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+            align-items: end;
+        }
+
+        .finance-flow-form label {
+            display: grid;
+            gap: 8px;
+            font-weight: 800;
+        }
+
+        .finance-flow-form input,
+        .finance-flow-form select,
+        .finance-flow-form textarea {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .finance-flow-form .wide {
+            grid-column: 1 / -1;
+        }
+    </style>
+
     <h1>Binance Purchases</h1>
     <p>Track every USD purchase with its actual BDT buy rate. No fixed buy rate is used.</p>
 
@@ -15,7 +41,7 @@
 
     <div class="card">
         <h2>Add Binance Purchase</h2>
-        <form method="POST" action="/admin/facebook-financial/binance-purchases" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;">
+        <form method="POST" action="/admin/facebook-financial/binance-purchases" class="finance-flow-form">
             @csrf
             <label>Purchase Date<br><input type="date" name="purchase_date" value="{{ old('purchase_date', now()->toDateString()) }}" required></label>
             <label>Pay From BDT Account<br>
@@ -31,12 +57,13 @@
             <label>Source<br><input type="text" name="source" value="{{ old('source') }}"></label>
             <label>Seller Name<br><input type="text" name="seller_name" value="{{ old('seller_name') }}"></label>
             <label>Reference<br><input type="text" name="reference" value="{{ old('reference') }}"></label>
-            <label style="grid-column:1/-1;">Notes<br><textarea name="notes" rows="2" style="width:100%;">{{ old('notes') }}</textarea></label>
+            <label class="wide">Notes<textarea name="notes" rows="2">{{ old('notes') }}</textarea></label>
             <button class="btn" type="submit">Save Purchase</button>
         </form>
     </div>
 
     <div class="card">
+        <h2>Purchase History</h2>
         <div class="table-wrap">
             <table>
                 <tr>

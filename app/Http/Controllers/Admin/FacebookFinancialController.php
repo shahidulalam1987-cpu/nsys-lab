@@ -45,7 +45,7 @@ class FacebookFinancialController extends Controller
             ->get();
         $cards = FacebookCard::all();
         $redotPayBalance = (float) $cards->filter(fn (FacebookCard $card) => strcasecmp((string) $card->provider, 'RedotPay') === 0)->sum('current_balance');
-        $tavaoBalance = (float) $cards->filter(fn (FacebookCard $card) => strcasecmp((string) $card->provider, 'Tavao') === 0)->sum('current_balance');
+        $tavaoBalance = (float) $cards->filter(fn (FacebookCard $card) => in_array(strtolower((string) $card->provider), ['tevau', 'tavao'], true))->sum('current_balance');
 
         return view('admin.facebook-financial.funding-dashboard', [
             'balanceRows' => $balanceRows,

@@ -106,7 +106,7 @@
         <div class="stats-grid">
             <div class="stat-card"><p>Binance Balance</p><h2>USD {{ number_format($summary['binance_balance'], 2) }}</h2></div>
             <div class="stat-card"><p>RedotPay Balance</p><h2>USD {{ number_format($summary['redotpay_balance'], 2) }}</h2></div>
-            <div class="stat-card"><p>Tavao Balance</p><h2>USD {{ number_format($summary['tavao_balance'], 2) }}</h2></div>
+            <div class="stat-card"><p>Tevau Balance</p><h2>USD {{ number_format($summary['tavao_balance'], 2) }}</h2></div>
             <div class="stat-card"><p>Total Available USD</p><h2>USD {{ number_format($summary['total_available_usd'], 2) }}</h2></div>
         </div>
     </div>
@@ -115,7 +115,7 @@
         <h2>Card Balances</h2>
         <div class="stats-grid">
             <div class="stat-card"><p>RedotPay Card Balance</p><h2>USD {{ number_format($summary['redotpay_card_balance'], 2) }}</h2></div>
-            <div class="stat-card"><p>Tavao Card Balance</p><h2>USD {{ number_format($summary['tavao_card_balance'], 2) }}</h2></div>
+            <div class="stat-card"><p>Tevau Card Balance</p><h2>USD {{ number_format($summary['tavao_card_balance'], 2) }}</h2></div>
             <div class="stat-card"><p>Total Card Balance</p><h2>USD {{ number_format($summary['total_card_balance'], 2) }}</h2></div>
         </div>
     </div>

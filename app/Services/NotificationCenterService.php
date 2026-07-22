@@ -289,7 +289,7 @@ class NotificationCenterService
         return array_values(array_filter([
             $this->fundingAlert($balances->get('binance'), 'finance.low_binance', 'Binance Balance Below 200 USD'),
             $this->fundingAlert($balances->get('redotpay'), 'finance.low_redotpay', 'RedotPay Balance Below 100 USD'),
-            $this->fundingAlert($balances->get('tavao'), 'finance.low_tavao', 'Tavao Balance Below 100 USD'),
+            $this->fundingAlert($balances->get('tavao'), 'finance.low_tavao', 'Tevau Balance Below 100 USD'),
             $this->alertIf($negativeAccounts->count(), 'finance.negative_account_balance', 'Finance', 'critical', $negativeAccounts->count() . ' Finance Accounts Negative Balance', '/admin/finance/accounts', 'Finance Team'),
             $this->alertIf($highFees, 'finance.high_card_fees', 'Finance', 'warning', $highFees . ' High Card Fee Transactions This Month', '/admin/facebook-financial/card-transactions', 'Finance Team'),
             $this->alertIf($pendingBonuses, 'employee.bonus_pending', 'Employee', 'warning', $pendingBonuses . ' Bonus Earnings Pending Approval', '/admin/bonuses', 'HR Team'),

@@ -1,7 +1,77 @@
 @extends('layouts.admin')
 
 @section('content')
-    <h1>Edit Finance Account</h1>
+    <style>
+        .finance-edit-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 22px;
+        }
+
+        .finance-edit-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .finance-edit-note {
+            border: 1px solid rgba(56, 189, 248, .35);
+            background: rgba(14, 165, 233, .09);
+            color: #bae6fd;
+            padding: 14px 16px;
+            border-radius: 14px;
+            margin-bottom: 18px;
+        }
+
+        .finance-edit-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+            align-items: end;
+        }
+
+        .finance-edit-grid label {
+            display: grid;
+            gap: 8px;
+            font-weight: 800;
+        }
+
+        .finance-edit-grid input,
+        .finance-edit-grid select,
+        .finance-edit-grid textarea {
+            width: 100%;
+            min-width: 0;
+        }
+
+        @media (max-width: 760px) {
+            .finance-edit-header {
+                display: block;
+            }
+
+            .finance-edit-actions {
+                justify-content: flex-start;
+                margin-top: 12px;
+            }
+        }
+    </style>
+
+    <div class="finance-edit-header">
+        <div>
+            <h1>Edit Finance Account</h1>
+            <p>Update account details and record balance changes through manual adjustment ledger.</p>
+        </div>
+        <div class="finance-edit-actions">
+            <a class="btn" href="/admin/finance/accounts">Back to Accounts</a>
+            <a class="btn" href="/admin/finance/reports/reconciliation">Reconciliation</a>
+        </div>
+    </div>
+
+    <div class="finance-edit-note">
+        Current balance cannot be silently overwritten. Any balance change requires an adjustment reason and creates an immutable finance ledger entry.
+    </div>
 
     @if($errors->any())
         <div class="card" style="border-color:#ef4444; color:#fecaca;">
@@ -11,12 +81,11 @@
     @endif
 
     <div class="card">
-        <form id="finance-account-form" method="POST" action="/admin/finance/accounts/{{ $account->id }}/update" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;align-items:end;">
+        <form id="finance-account-form" class="finance-edit-grid" method="POST" action="/admin/finance/accounts/{{ $account->id }}/update">
             @csrf
             @include('admin.finance.partials.account-fields')
             <div>
                 <button class="btn" type="submit">Update Account</button>
-                <a class="btn" href="/admin/finance/accounts">Back</a>
             </div>
         </form>
     </div>

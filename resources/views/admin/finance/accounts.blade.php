@@ -95,7 +95,7 @@
     <div class="finance-accounts-header">
         <div>
             <h1>Finance Accounts</h1>
-            <p>Track NSYS bank, cash, mobile wallet, Binance, RedotPay, and Tavao balances.</p>
+            <p>Track NSYS bank, cash, mobile wallet, Binance, RedotPay, and Tevau balances.</p>
         </div>
         <div class="finance-actions">
             <a class="btn" href="/admin/finance/reports/balance-sheet">Balance Sheet</a>

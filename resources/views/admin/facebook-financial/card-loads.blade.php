@@ -1,6 +1,32 @@
 @extends('layouts.admin')
 
 @section('content')
+    <style>
+        .finance-flow-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+            align-items: end;
+        }
+
+        .finance-flow-form label {
+            display: grid;
+            gap: 8px;
+            font-weight: 800;
+        }
+
+        .finance-flow-form input,
+        .finance-flow-form select,
+        .finance-flow-form textarea {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .finance-flow-form .wide {
+            grid-column: 1 / -1;
+        }
+    </style>
+
     <h1>Card Load History</h1>
     <p>Track USD moved from Binance purchases into Facebook payment cards.</p>
 
@@ -8,7 +34,7 @@
 
     <div class="card">
         <h2>Load Card</h2>
-        <form method="POST" action="/admin/facebook-financial/card-loads" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+        <form method="POST" action="/admin/facebook-financial/card-loads" class="finance-flow-form">
             @csrf
             <label>Date<br><input type="date" name="load_date" value="{{ old('load_date', now()->toDateString()) }}" required></label>
             <label>Card<br>
@@ -30,12 +56,13 @@
             <label>USD Loaded<br><input type="number" step="0.01" min="0.01" name="usd_loaded" required></label>
             <label>Fee USD<br><input type="number" step="0.01" min="0" name="fee_usd" value="{{ old('fee_usd', 0) }}"></label>
             <label>Reference<br><input type="text" name="transaction_reference" value="{{ old('transaction_reference') }}"></label>
-            <label style="grid-column:1/-1;">Notes<br><textarea name="notes" rows="2" style="width:100%;"></textarea></label>
+            <label class="wide">Notes<textarea name="notes" rows="2"></textarea></label>
             <button class="btn" type="submit">Save Load</button>
         </form>
     </div>
 
     <div class="card">
+        <h2>Load History</h2>
         <div class="table-wrap">
             <table>
                 <tr>
