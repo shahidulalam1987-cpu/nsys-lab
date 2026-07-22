@@ -44,6 +44,15 @@ class SystemToolsController extends Controller
             'modules' => ActivityLog::select('module')->distinct()->orderBy('module')->pluck('module'),
             'actions' => ActivityLog::select('action')->distinct()->orderBy('action')->pluck('action'),
             'users' => User::orderBy('name')->get(),
+            'summary' => [
+                'total' => ActivityLog::count(),
+                'today' => ActivityLog::whereDate('created_at', today())->count(),
+                'modules' => ActivityLog::distinct('module')->count('module'),
+                'users' => ActivityLog::whereNotNull('user_id')->distinct('user_id')->count('user_id'),
+            ],
+            'quickModules' => collect(['Payroll', 'Finance', 'Employee', 'Client Fund', 'Bug Tracker'])
+                ->filter(fn ($module) => ActivityLog::where('module', $module)->exists())
+                ->values(),
         ]);
     }
 
