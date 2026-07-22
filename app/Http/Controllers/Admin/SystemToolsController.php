@@ -98,6 +98,9 @@ class SystemToolsController extends Controller
         return view('admin.system-tools.test-data-reset', [
             'isProduction' => app()->environment('production'),
             'options' => $this->resetOptions(),
+            'optionCounts' => $this->resetOptionCounts(),
+            'highRiskOptions' => $this->highRiskResetOptions(),
+            'environment' => app()->environment(),
         ]);
     }
 
@@ -111,7 +114,14 @@ class SystemToolsController extends Controller
             'confirmation' => ['required', Rule::in(['RESET TEST DATA'])],
             'options' => ['required', 'array', 'min:1'],
             'options.*' => ['required', Rule::in(array_keys($this->resetOptions()))],
+            'acknowledge_high_risk' => ['nullable', 'accepted'],
         ]);
+
+        if (collect($data['options'])->intersect($this->highRiskResetOptions())->isNotEmpty() && ! $request->boolean('acknowledge_high_risk')) {
+            return back()
+                ->withErrors(['acknowledge_high_risk' => 'High-risk reset options require acknowledgement.'])
+                ->withInput();
+        }
 
         $deleted = [];
 
@@ -138,6 +148,32 @@ class SystemToolsController extends Controller
             'payroll_test_data' => 'Payroll test data',
             'client_fund_payment_test_data' => 'Client fund payment test data',
             'bug_tracker_test_data' => 'Bug tracker test data',
+        ];
+    }
+
+    private function highRiskResetOptions(): array
+    {
+        return [
+            'work_status_test_data',
+            'attendance_test_data',
+            'payroll_test_data',
+            'client_fund_payment_test_data',
+            'bug_tracker_test_data',
+        ];
+    }
+
+    private function resetOptionCounts(): array
+    {
+        return [
+            'employee_test_data' => Employee::where('employee_id', 'like', 'TEST-%')
+                ->orWhere('employee_id', 'like', 'NSYS-TEST-%')
+                ->orWhere('name', 'like', '%Test%')
+                ->count(),
+            'work_status_test_data' => EmployeeWorkStatus::count(),
+            'attendance_test_data' => EmployeeAttendance::count(),
+            'payroll_test_data' => EmployeePayroll::count(),
+            'client_fund_payment_test_data' => SalaryPayment::count(),
+            'bug_tracker_test_data' => BugReport::count(),
         ];
     }
 

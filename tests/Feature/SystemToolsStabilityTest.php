@@ -42,7 +42,9 @@ class SystemToolsStabilityTest extends TestCase
         $this->actingAs($admin)
             ->get('/admin/test-data-reset')
             ->assertOk()
-            ->assertSee('RESET TEST DATA');
+            ->assertSee('RESET TEST DATA')
+            ->assertSee('Environment:')
+            ->assertSee('High Risk');
     }
 
     public function test_bug_tracker_actions_write_activity_log_and_module_filter_works(): void
@@ -109,6 +111,14 @@ class SystemToolsStabilityTest extends TestCase
             ->post('/admin/test-data-reset', [
                 'confirmation' => 'RESET TEST DATA',
                 'options' => ['bug_tracker_test_data'],
+            ])
+            ->assertSessionHasErrors('acknowledge_high_risk');
+
+        $this->actingAs($admin)
+            ->post('/admin/test-data-reset', [
+                'confirmation' => 'RESET TEST DATA',
+                'options' => ['bug_tracker_test_data'],
+                'acknowledge_high_risk' => '1',
             ])
             ->assertRedirect();
 
