@@ -144,11 +144,30 @@ class FinanceManagementController extends Controller
         return redirect('/admin/finance/accounts')->with('success', 'Finance account deleted successfully.');
     }
 
-    public function balanceSheet()
+    public function balanceSheet(Request $request)
     {
+        $filters = $request->only(['account_type', 'currency', 'status']);
+        $accounts = FinanceAccount::query()
+            ->when($filters['account_type'] ?? null, fn ($query, $type) => $query->where('account_type', $type))
+            ->when($filters['currency'] ?? null, fn ($query, $currency) => $query->where('currency', $currency))
+            ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->orderBy('currency')
+            ->orderBy('account_type')
+            ->get();
+
         return view('admin.finance.balance-sheet', [
             'summary' => $this->summary(),
-            'accounts' => FinanceAccount::orderBy('currency')->orderBy('account_type')->get(),
+            'reportSummary' => [
+                'bdt_balance' => (float) $accounts->where('currency', 'BDT')->sum('current_balance'),
+                'usd_balance' => (float) $accounts->where('currency', 'USD')->sum('current_balance'),
+                'active_accounts' => $accounts->where('status', 'active')->count(),
+                'inactive_accounts' => $accounts->where('status', 'inactive')->count(),
+            ],
+            'filters' => $filters,
+            'types' => FinanceAccount::TYPES,
+            'currencies' => FinanceAccount::CURRENCIES,
+            'statuses' => FinanceAccount::STATUSES,
+            'accounts' => $accounts,
         ]);
     }
 
