@@ -19,7 +19,9 @@
         * { box-sizing: border-box; }
         body { margin: 0; font-family: Arial, sans-serif; background: radial-gradient(circle at top left, #10234a, var(--bg)); color: var(--text); }
         .topbar { height: 64px; background: rgba(8, 18, 38, 0.9); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 28px; }
-        .brand { font-size: 18px; font-weight: 800; background: linear-gradient(90deg, var(--blue), var(--cyan)); -webkit-background-clip: text; color: transparent; }
+        .brand { align-items: center; display: inline-flex; gap: 8px; font-size: 18px; font-weight: 800; }
+        .brand-logo { border: 1px solid rgba(66, 232, 255, .35); border-radius: 50%; box-shadow: 0 8px 22px rgba(47, 140, 255, .22); height: 32px; object-fit: cover; width: 32px; }
+        .brand-text { background: linear-gradient(90deg, var(--blue), var(--cyan)); -webkit-background-clip: text; color: transparent; }
         .logout-btn, button { color: var(--text); background: var(--panel); border: 1px solid var(--line); padding: 8px 14px; border-radius: 10px; cursor: pointer; }
         input, select, textarea { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255,255,255,.08); color: var(--text); margin: 5px; }
         option { background: var(--bg-2); color: white; }
@@ -58,6 +60,7 @@
         }
         @media (max-width: 520px) {
             .brand { font-size: 16px; }
+            .brand-logo { height: 28px; width: 28px; }
             .topbar form { display: flex; gap: 8px; }
         }
     </style>
@@ -70,7 +73,10 @@
         $canDailySpend = $portalEmployee && (auth()->user()->hasRole('facebook_manager') || in_array(mb_strtolower($portalEmployee->roleName()), ['ad manager', 'facebook manager'], true));
     @endphp
     <div class="topbar">
-        <div class="brand">NSYS Employee Portal</div>
+        <div class="brand">
+            <img class="brand-logo" src="{{ asset('images/nsys-logo.png') }}" alt="NSYS Agency logo">
+            <span class="brand-text">NSYS Employee Portal</span>
+        </div>
         <form method="POST" action="/logout">
             @csrf
             <label class="nav-toggle" for="employee-nav-toggle">Menu</label>

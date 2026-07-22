@@ -46,8 +46,23 @@
         }
 
         .brand {
+            align-items: center;
+            display: inline-flex;
+            gap: 8px;
             font-size: 18px;
             font-weight: 800;
+        }
+
+        .brand-logo {
+            border: 1px solid rgba(66, 232, 255, .35);
+            border-radius: 50%;
+            box-shadow: 0 8px 22px rgba(47, 140, 255, .22);
+            height: 32px;
+            object-fit: cover;
+            width: 32px;
+        }
+
+        .brand-text {
             background: linear-gradient(90deg, var(--blue), var(--cyan));
             -webkit-background-clip: text;
             color: transparent;
@@ -397,6 +412,11 @@
             .brand {
                 font-size: 16px;
             }
+
+            .brand-logo {
+                height: 28px;
+                width: 28px;
+            }
         }
     </style>
 </head>
@@ -412,7 +432,10 @@
 
     <div class="topbar">
         <div class="topbar-left">
-            <div class="brand">NSYS Client Portal</div>
+            <div class="brand">
+                <img class="brand-logo" src="{{ asset('images/nsys-logo.png') }}" alt="NSYS Agency logo">
+                <span class="brand-text">NSYS Client Portal</span>
+            </div>
 
             <div class="department-tabs">
                 <a class="department-tab {{ ! $isEmployeeDepartment ? 'active-department' : '' }}" href="/client/dashboard">Marketing / Ads</a>

@@ -50,13 +50,28 @@
         }
 
         .brand {
+            align-items: center;
+            display: inline-flex;
             flex: 0 0 auto;
+            gap: 8px;
             font-size: 16px;
             font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .brand-logo {
+            border: 1px solid rgba(66, 232, 255, .35);
+            border-radius: 50%;
+            box-shadow: 0 8px 22px rgba(47, 140, 255, .22);
+            height: 30px;
+            object-fit: cover;
+            width: 30px;
+        }
+
+        .brand-text {
             background: linear-gradient(90deg, var(--blue), var(--cyan));
             -webkit-background-clip: text;
             color: transparent;
-            white-space: nowrap;
         }
 
         .department-tabs {
@@ -590,6 +605,11 @@
                 font-size: 15px;
             }
 
+            .brand-logo {
+                height: 26px;
+                width: 26px;
+            }
+
             .topbar > div:last-child {
                 width: 100%;
             }
@@ -615,7 +635,10 @@
 
     <div class="topbar">
         <div class="topbar-left">
-            <div class="brand">NSYS Agency Admin</div>
+            <div class="brand">
+                <img class="brand-logo" src="{{ asset('images/nsys-logo.png') }}" alt="NSYS Agency logo">
+                <span class="brand-text">NSYS Agency Admin</span>
+            </div>
 
             <div class="department-tabs">
                 @foreach($sections as $section)
