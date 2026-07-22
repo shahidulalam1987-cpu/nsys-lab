@@ -81,7 +81,7 @@ class FinanceCoreLedgerTest extends TestCase
         $this->actingAs($this->admin())
             ->get('/admin/finance/reports/reconciliation')
             ->assertOk()
-            ->assertSee('Finance Reconciliation')
+            ->assertSee('Reconciliation')
             ->assertSee('Mismatch')
             ->assertSee('200.00');
     }

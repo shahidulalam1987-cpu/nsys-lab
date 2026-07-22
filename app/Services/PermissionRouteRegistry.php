@@ -124,7 +124,7 @@ class PermissionRouteRegistry
                     ['key' => 'funding_dashboard', 'label' => 'Funding Dashboard', 'url' => '/admin/facebook-financial/funding-dashboard', 'active' => ['/admin/facebook-financial/funding-dashboard*'], 'permissions' => ['finance.view'], 'badge' => 'low_funding_balance', 'badge_danger' => true],
                     ['key' => 'card_management', 'label' => 'Card Management', 'url' => '/admin/facebook-cards', 'active' => ['/admin/facebook-cards*', '/admin/facebook-financial/card-loads*', '/admin/facebook-financial/card-transactions*', '/admin/facebook-financial/binance-purchases*', '/admin/payment-providers*', '/admin/provider-transactions*', '/admin/provider-fees*'], 'permissions' => ['cards.view'], 'badge' => 'low_card_balance', 'badge_danger' => true],
                     ['key' => 'reconciliation', 'label' => 'Reconciliation', 'url' => '/admin/finance/reports/reconciliation', 'active' => ['/admin/finance/reports/reconciliation*'], 'permissions' => ['reconciliation.view']],
-                    ['key' => 'finance_reports', 'label' => 'Finance Reports', 'url' => '/admin/finance/reports/balance-sheet', 'active' => ['/admin/finance/reports*'], 'permissions' => ['finance.view']],
+                    ['key' => 'finance_reports', 'label' => 'Finance Reports', 'url' => '/admin/finance/reports/balance-sheet', 'active' => ['/admin/finance/reports/balance-sheet*'], 'permissions' => ['finance.view']],
                 ],
             ],
             [

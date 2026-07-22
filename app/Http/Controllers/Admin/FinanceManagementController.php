@@ -152,7 +152,7 @@ class FinanceManagementController extends Controller
         ]);
     }
 
-    public function reconciliationReport()
+    public function reconciliationReport(Request $request)
     {
         $accounts = FinanceAccount::with(['ledgers' => fn ($query) => $query->latest('id')])
             ->orderBy('account_name')
@@ -170,11 +170,24 @@ class FinanceManagementController extends Controller
                     'ledger_balance' => $ledgerBalance,
                     'difference' => round($currentBalance - $ledgerBalance, 2),
                     'last_ledger_at' => $latestLedger?->created_at,
+                    'has_ledger' => (bool) $latestLedger,
                 ];
             });
 
+        $filter = $request->input('status', 'all');
+        $rows = $filter === 'mismatch'
+            ? $accounts->filter(fn ($row) => (float) $row['difference'] !== 0.0)->values()
+            : $accounts;
+
         return view('admin.finance.reconciliation-report', [
-            'rows' => $accounts,
+            'rows' => $rows,
+            'filter' => $filter,
+            'summary' => [
+                'total_accounts' => $accounts->count(),
+                'matched' => $accounts->where('difference', 0)->count(),
+                'mismatched' => $accounts->filter(fn ($row) => (float) $row['difference'] !== 0.0)->count(),
+                'no_ledger' => $accounts->where('has_ledger', false)->count(),
+            ],
             'mismatchCount' => $accounts->where('difference', '!=', 0)->count(),
         ]);
     }
