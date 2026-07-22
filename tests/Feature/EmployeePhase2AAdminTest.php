@@ -36,11 +36,6 @@ class EmployeePhase2AAdminTest extends TestCase
             'account_name' => 'Phase Two Employee',
             'account_number' => '123456',
             'branch_name' => 'Banani',
-            'bkash_number' => '01722222222',
-            'nagad_number' => '01733333333',
-            'rocket_number' => '01744444444',
-            'preferred_payment_method' => 'bkash',
-            'mobile_banking_info' => 'Use bKash first',
             'admin_note' => 'Trusted test employee',
         ]);
 
@@ -53,8 +48,6 @@ class EmployeePhase2AAdminTest extends TestCase
             'gender' => 'male',
             'salary_day' => 9,
             'branch_name' => 'Banani',
-            'bkash_number' => '01722222222',
-            'preferred_payment_method' => 'bkash',
             'admin_note' => 'Trusted test employee',
         ]);
     }

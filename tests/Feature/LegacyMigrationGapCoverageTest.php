@@ -51,7 +51,7 @@ class LegacyMigrationGapCoverageTest extends TestCase
             '/admin/datasets' => 'Datasets',
             '/admin/provider-transactions' => 'Provider Transactions',
             '/admin/provider-fees' => 'Provider Fee Tracking',
-            '/admin/ad-account-billing-history' => 'Ad Account Billing History',
+            '/admin/ad-account-billing-history' => 'Billing History',
             '/admin/meta-spend-snapshots' => 'Meta Spend Snapshots',
             '/admin/whatsapp-logs' => 'WhatsApp Logs',
             '/admin/meta-sync-logs' => 'Meta Sync Logs',
