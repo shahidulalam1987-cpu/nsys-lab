@@ -53,12 +53,12 @@
             <p>Completed Tasks</p>
             <h2>{{ number_format($summary['completed']) }}</h2>
         </a>
-        <a class="stat-card" href="/admin/automation?status=pending" style="border-color:#ef4444;">
+        <a class="stat-card" href="/admin/automation?status=pending&overdue=1" style="border-color:#ef4444;">
             <p>Overdue Tasks</p>
             <h2>{{ number_format($summary['overdue']) }}</h2>
         </a>
         <a class="stat-card" href="/admin/automation?date={{ now()->toDateString() }}" style="border-color:#2f8cff;">
-            <p>Today's Automation</p>
+            <p>Created Today</p>
             <h2>{{ number_format($summary['today']) }}</h2>
         </a>
     </div>
@@ -157,7 +157,7 @@
                                 </form>
                             @endif
                             @if($task->related_module)
-                                <a class="btn" href="/admin/automation?module={{ urlencode($task->related_module) }}">Module</a>
+                                <a class="btn" href="/admin/automation?module={{ urlencode($task->related_module) }}">Filter Module</a>
                             @endif
                         </td>
                     </tr>

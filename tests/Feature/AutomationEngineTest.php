@@ -115,6 +115,44 @@ class AutomationEngineTest extends TestCase
         ]);
     }
 
+    public function test_overdue_filter_shows_only_pending_overdue_tasks(): void
+    {
+        $admin = $this->admin();
+
+        AutomationTask::create([
+            'task_key' => 'overdue-task',
+            'title' => 'Overdue task',
+            'priority' => 'high',
+            'status' => 'pending',
+            'department' => 'Finance',
+            'due_date' => now()->subDay()->toDateString(),
+        ]);
+        AutomationTask::create([
+            'task_key' => 'future-task',
+            'title' => 'Future task',
+            'priority' => 'medium',
+            'status' => 'pending',
+            'department' => 'Finance',
+            'due_date' => now()->addDay()->toDateString(),
+        ]);
+        AutomationTask::create([
+            'task_key' => 'completed-overdue-task',
+            'title' => 'Completed overdue task',
+            'priority' => 'medium',
+            'status' => 'completed',
+            'department' => 'Finance',
+            'due_date' => now()->subDay()->toDateString(),
+            'completed_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/automation?status=pending&overdue=1');
+
+        $response->assertOk();
+        $response->assertSee('Overdue task');
+        $response->assertDontSee('Future task');
+        $response->assertDontSee('Completed overdue task');
+    }
+
     public function test_non_admin_cannot_access_automation_module(): void
     {
         $client = User::factory()->create(['role' => 'client', 'status' => 'active']);

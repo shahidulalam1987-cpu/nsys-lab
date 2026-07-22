@@ -93,7 +93,10 @@ class AutomationEngineService
             ->when($filters['priority'] ?? null, fn ($query, $value) => $query->where('priority', $value))
             ->when($filters['status'] ?? null, fn ($query, $value) => $query->where('status', $value))
             ->when($filters['module'] ?? null, fn ($query, $value) => $query->where('related_module', $value))
-            ->when($filters['date'] ?? null, fn ($query, $value) => $query->whereDate('created_at', $value));
+            ->when($filters['date'] ?? null, fn ($query, $value) => $query->whereDate('created_at', $value))
+            ->when($filters['overdue'] ?? false, fn ($query) => $query
+                ->where('status', 'pending')
+                ->whereDate('due_date', '<', today()));
     }
 
     public function completeTask(AutomationTask $task, User $user): AutomationTask

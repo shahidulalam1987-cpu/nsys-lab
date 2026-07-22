@@ -18,6 +18,7 @@ class AutomationController extends Controller
             'status' => ['nullable', Rule::in(array_keys(AutomationTask::STATUSES))],
             'date' => ['nullable', 'date'],
             'module' => ['nullable', 'string', 'max:100'],
+            'overdue' => ['nullable', 'boolean'],
         ]);
 
         return view('admin.automation.index', $automation->dashboard($filters, $request->user()));
