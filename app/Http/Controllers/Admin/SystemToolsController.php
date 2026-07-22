@@ -72,8 +72,7 @@ class SystemToolsController extends Controller
 
         $storageLinked = is_link(public_path('storage')) || file_exists(public_path('storage'));
 
-        return view('admin.system-tools.security-audit', [
-            'checks' => [
+        $checks = [
                 ['title' => 'Admin routes protected', 'status' => 'Passed', 'detail' => 'Admin routes are inside auth and admin middleware.'],
                 ['title' => 'Client routes protected', 'status' => 'Passed', 'detail' => 'Client routes use auth, client, and client.status middleware.'],
                 ['title' => 'Employee routes protected', 'status' => 'Passed', 'detail' => 'Employee portal routes use auth and employee middleware.'],
@@ -81,10 +80,16 @@ class SystemToolsController extends Controller
                 ['title' => 'Employee can only view own data', 'status' => 'Needs Review', 'detail' => 'Employee portal controllers should continue using the authenticated employee relation.'],
                 ['title' => 'Client can only view own data', 'status' => 'Needs Review', 'detail' => 'Client portal controllers should continue scoping records to the logged-in client.'],
                 ['title' => 'File upload validation enabled', 'status' => 'Passed', 'detail' => 'Employee documents and payment proofs validate file types and size.'],
-                ['title' => 'Public storage link status', 'status' => $storageLinked ? 'Passed' : 'Warning', 'detail' => $storageLinked ? 'public/storage is available.' : 'Run php artisan storage:link before production file downloads.'],
+                ['title' => 'Public storage link status', 'status' => $storageLinked ? 'Passed' : 'Warning', 'detail' => $storageLinked ? 'public/storage is available for public assets. DMS files remain private through controller access.' : 'Run php artisan storage:link only if public assets need browser delivery. DMS files remain private.'],
                 ['title' => 'Debug mode status', 'status' => config('app.debug') ? 'Warning' : 'Passed', 'detail' => config('app.debug') ? 'APP_DEBUG is enabled.' : 'APP_DEBUG is disabled.'],
                 ['title' => 'Pending risky GET actions', 'status' => $riskyGetRoutes->isEmpty() ? 'Passed' : 'Warning', 'detail' => $riskyGetRoutes->isEmpty() ? 'No risky admin GET actions found.' : $riskyGetRoutes->implode(', ')],
-            ],
+        ];
+
+        return view('admin.system-tools.security-audit', [
+            'checks' => $checks,
+            'summary' => collect($checks)->countBy('status'),
+            'lastCheckedAt' => now(),
+            'riskyGetRoutes' => $riskyGetRoutes,
         ]);
     }
 
