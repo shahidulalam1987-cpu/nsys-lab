@@ -1,23 +1,63 @@
 @extends('layouts.admin')
 
 @section('content')
+    <style>
+        .automation-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 16px;
+            max-width: 100%;
+        }
+
+        .automation-summary-grid .stat-card {
+            min-width: 0;
+            text-decoration: none;
+        }
+
+        .automation-filter-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 10px;
+            align-items: end;
+        }
+
+        .automation-filter-form select,
+        .automation-filter-form input {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .automation-filter-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 760px) {
+            .automation-summary-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
     <h1>Automation</h1>
     <p>Rule-based workflow tasks, reminders, and department queues. Automation is read-only except task completion.</p>
 
-    <div class="stats-grid">
-        <a class="stat-card" href="/admin/automation?status=pending" style="text-decoration:none;">
+    <div class="automation-summary-grid">
+        <a class="stat-card" href="/admin/automation?status=pending">
             <p>Pending Tasks</p>
             <h2>{{ number_format($summary['pending']) }}</h2>
         </a>
-        <a class="stat-card" href="/admin/automation?status=completed" style="text-decoration:none;border-color:#22c55e;">
+        <a class="stat-card" href="/admin/automation?status=completed" style="border-color:#22c55e;">
             <p>Completed Tasks</p>
             <h2>{{ number_format($summary['completed']) }}</h2>
         </a>
-        <a class="stat-card" href="/admin/automation?status=pending" style="text-decoration:none;border-color:#ef4444;">
+        <a class="stat-card" href="/admin/automation?status=pending" style="border-color:#ef4444;">
             <p>Overdue Tasks</p>
             <h2>{{ number_format($summary['overdue']) }}</h2>
         </a>
-        <a class="stat-card" href="/admin/automation?date={{ now()->toDateString() }}" style="text-decoration:none;border-color:#2f8cff;">
+        <a class="stat-card" href="/admin/automation?date={{ now()->toDateString() }}" style="border-color:#2f8cff;">
             <p>Today's Automation</p>
             <h2>{{ number_format($summary['today']) }}</h2>
         </a>
@@ -25,9 +65,9 @@
 
     <div class="card">
         <h2>Department Queue</h2>
-        <div class="stats-grid">
+        <div class="automation-summary-grid">
             @forelse($department_queue as $row)
-                <a class="stat-card" href="/admin/automation?department={{ urlencode($row->department_name) }}&status=pending" style="text-decoration:none;">
+                <a class="stat-card" href="/admin/automation?department={{ urlencode($row->department_name) }}&status=pending">
                     <p>{{ $row->department_name }}</p>
                     <h2>{{ number_format($row->total) }}</h2>
                 </a>
@@ -38,7 +78,7 @@
     </div>
 
     <div class="card">
-        <form method="GET" action="/admin/automation" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+        <form method="GET" action="/admin/automation" class="automation-filter-form">
             <select name="department">
                 <option value="">All Departments</option>
                 @foreach($departments as $department)
@@ -64,8 +104,10 @@
                 @endforeach
             </select>
             <input type="date" name="date" value="{{ $filters['date'] ?? '' }}">
-            <button class="btn" type="submit">Filter</button>
-            <a href="/admin/automation">Reset</a>
+            <div class="automation-filter-actions">
+                <button class="btn" type="submit">Filter</button>
+                <a href="/admin/automation">Reset</a>
+            </div>
         </form>
     </div>
 

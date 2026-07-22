@@ -134,8 +134,8 @@ class PermissionRouteRegistry
                 'icon' => 'settings',
                 'items' => [
                     ['key' => 'automation', 'label' => 'Automation', 'url' => '/admin/automation', 'active' => ['/admin/automation*'], 'permissions' => ['automation.view'], 'badge' => 'automation_pending'],
-                    ['key' => 'documents', 'label' => 'Document Management', 'url' => '/admin/documents', 'active' => ['/admin/documents*'], 'permissions' => ['documents.view']],
                     ['key' => 'bug_tracker', 'label' => 'Bug Tracker', 'url' => '/admin/bug-tracker', 'active' => ['/admin/bug-tracker*'], 'permissions' => ['system_tools.view'], 'badge' => 'open_bugs', 'badge_danger' => true],
+                    ['key' => 'documents', 'label' => 'Document Management', 'url' => '/admin/documents', 'active' => ['/admin/documents*'], 'permissions' => ['documents.view']],
                     ['key' => 'activity_log', 'label' => 'Activity Log', 'url' => '/admin/activity-log', 'active' => ['/admin/activity-log*'], 'permissions' => ['activity_log.view']],
                     ['key' => 'security_audit', 'label' => 'Security Audit', 'url' => '/admin/security-audit', 'active' => ['/admin/security-audit*'], 'permissions' => ['security_audit.view']],
                     ['key' => 'test_data_reset', 'label' => 'Test Data Reset', 'url' => '/admin/test-data-reset', 'active' => ['/admin/test-data-reset*'], 'permissions' => [self::SUPER_ADMIN_ONLY]],
