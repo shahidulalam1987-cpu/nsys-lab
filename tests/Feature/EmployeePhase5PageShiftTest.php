@@ -102,7 +102,7 @@ class EmployeePhase5PageShiftTest extends TestCase
 
         $createPage = $this->actingAs($admin)->get('/admin/assignments/create');
         $createPage->assertOk();
-        $createPage->assertSee('Page Search');
+        $createPage->assertSee('Filtered automatically by selected client.');
         $createPage->assertSee('Assignment Management Page');
 
         $response = $this->actingAs($admin)->post('/admin/assignments', [

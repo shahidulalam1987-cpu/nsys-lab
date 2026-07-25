@@ -33,10 +33,6 @@
                 </select>
             </p>
 
-            <p class="client-assignment-field">Page Search<br>
-                <input type="text" id="assignment-page-search" placeholder="Type page name">
-            </p>
-
             <p class="client-assignment-field">Page<br>
                 <select id="assignment-page-select" name="client_page_id" required>
                     <option value="">Select Page</option>
@@ -46,6 +42,7 @@
                         </option>
                     @endforeach
                 </select>
+                <small style="color:var(--muted);display:block;margin-top:4px;">Filtered automatically by selected client.</small>
             </p>
 
             <p class="client-assignment-field">Campaign<br>
@@ -95,18 +92,15 @@
     const clientSelect = document.querySelector('.js-client-select');
     const employeeSelect = document.getElementById('assignment-employee-select');
     const pageSelect = document.getElementById('assignment-page-select');
-    const pageSearch = document.getElementById('assignment-page-search');
     const campaignSelect = document.getElementById('assignment-campaign-select');
 
     function filterAssignmentRelations() {
         const clientId = clientSelect.value;
         const pageId = pageSelect.value;
-        const term = pageSearch.value.trim().toLowerCase();
 
         pageSelect.querySelectorAll('option[data-client-id]').forEach((option) => {
             const clientMatches = !clientId || option.dataset.clientId === clientId;
-            const pageMatches = !term || option.dataset.pageName.includes(term);
-            option.hidden = !(clientMatches && pageMatches);
+            option.hidden = !clientMatches;
         });
 
         if (pageSelect.selectedOptions[0]?.hidden) {
@@ -126,7 +120,6 @@
 
     clientSelect.addEventListener('change', filterAssignmentRelations);
     pageSelect.addEventListener('change', filterAssignmentRelations);
-    pageSearch.addEventListener('input', filterAssignmentRelations);
     filterAssignmentRelations();
 
     function syncAssignmentEmployeeType() {
