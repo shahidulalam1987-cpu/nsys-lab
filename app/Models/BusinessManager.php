@@ -43,6 +43,11 @@ class BusinessManager extends Model
         return $this->hasMany(Campaign::class);
     }
 
+    public function datasets()
+    {
+        return $this->hasMany(Dataset::class);
+    }
+
     public function dailyPerformanceReports()
     {
         return $this->hasManyThrough(DailyPerformanceReport::class, Campaign::class);

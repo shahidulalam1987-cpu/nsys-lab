@@ -85,6 +85,20 @@
             <p><strong>Status:</strong> {{ $campaign->adAccount?->statusLabel() ?: '-' }}</p>
         </div>
         <div class="card campaign-detail-card">
+            <h2>Pixel / Dataset</h2>
+            <p><strong>Name:</strong> {{ $campaign->dataset?->dataset_name ?: '-' }}</p>
+            <p><strong>ID:</strong> {{ $campaign->dataset?->dataset_id ?: '-' }}</p>
+            <p><strong>Source:</strong> {{ $campaign->dataset?->eventSourceLabel() ?: '-' }}</p>
+            <p><strong>Status:</strong> {{ $campaign->dataset?->statusLabel() ?: '-' }}</p>
+            <p><strong>Domain:</strong>
+                @if($campaign->dataset?->domain_url)
+                    <a href="{{ $campaign->dataset->domain_url }}" target="_blank">{{ $campaign->dataset->domain_url }}</a>
+                @else
+                    -
+                @endif
+            </p>
+        </div>
+        <div class="card campaign-detail-card">
             <h2>Client Information</h2>
             <p><strong>Client:</strong> {{ $campaign->client?->company_name ?: '-' }}</p>
             <p><strong>Contact:</strong> {{ $campaign->client?->owner_name ?: '-' }}</p>

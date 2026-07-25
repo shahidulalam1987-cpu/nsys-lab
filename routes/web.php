@@ -55,6 +55,7 @@ use App\Http\Controllers\Admin\AutomationController;
 use App\Http\Controllers\Admin\DocumentManagementController;
 use App\Http\Controllers\Admin\MarketingOperationsController;
 use App\Http\Controllers\Admin\MigrationGapController;
+use App\Http\Controllers\Admin\DatasetController;
 use App\Http\Controllers\Employee\PerformanceController as EmployeePerformanceController;
 
 Route::get('/', [DashboardController::class, 'index']);
@@ -301,8 +302,12 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::post('/admin/ad-account-cards', [MigrationGapController::class, 'storeAdAccountCard']);
     Route::get('/admin/ad-account-billing-history', [MigrationGapController::class, 'billingHistory']);
     Route::post('/admin/ad-account-billing-history', [MigrationGapController::class, 'storeBillingHistory']);
-    Route::get('/admin/datasets', [MigrationGapController::class, 'datasets']);
-    Route::post('/admin/datasets', [MigrationGapController::class, 'storeDataset']);
+    Route::get('/admin/datasets', [DatasetController::class, 'index']);
+    Route::get('/admin/datasets/create', [DatasetController::class, 'create']);
+    Route::post('/admin/datasets', [DatasetController::class, 'store']);
+    Route::get('/admin/datasets/{dataset}/edit', [DatasetController::class, 'edit']);
+    Route::post('/admin/datasets/{dataset}/update', [DatasetController::class, 'update']);
+    Route::post('/admin/datasets/{dataset}/delete', [DatasetController::class, 'destroy']);
     Route::get('/admin/meta-spend-snapshots', [MigrationGapController::class, 'metaSnapshots']);
     Route::post('/admin/meta-spend-snapshots', [MigrationGapController::class, 'storeMetaSnapshot']);
     Route::get('/admin/meta-sync-logs', [MigrationGapController::class, 'metaSyncLogs']);

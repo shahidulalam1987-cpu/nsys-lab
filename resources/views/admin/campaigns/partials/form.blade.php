@@ -49,6 +49,16 @@
                     @endforeach
                 </select>
             </label>
+            <label>Pixel / Dataset<br>
+                <select name="dataset_id" id="campaign-dataset">
+                    <option value="">None</option>
+                    @foreach($datasets as $dataset)
+                        <option value="{{ $dataset->id }}" data-bm-id="{{ $dataset->business_manager_id }}" data-ad-account-id="{{ $dataset->ad_account_id }}" data-client-id="{{ $dataset->client_id }}" @selected(old('dataset_id', $campaign?->dataset_id) == $dataset->id)>
+                            {{ $dataset->dataset_name }} - {{ $dataset->dataset_id }}
+                        </option>
+                    @endforeach
+                </select>
+            </label>
             <label>Objective<br>
                 <select name="objective" required>
                     @foreach($objectives as $value => $label)
@@ -82,6 +92,7 @@
     const clientSelect = document.getElementById('campaign-client');
     const pageSelect = document.getElementById('campaign-page');
     const pageSearch = document.getElementById('campaign-page-search');
+    const datasetSelect = document.getElementById('campaign-dataset');
 
     function filterCampaignRelations() {
         const bmId = bmSelect.value;
@@ -117,6 +128,16 @@
         });
         if (pageSelect.selectedOptions[0]?.hidden) {
             pageSelect.value = '';
+        }
+
+        datasetSelect.querySelectorAll('option[data-client-id]').forEach((option) => {
+            const matchesClient = !clientId || !option.dataset.clientId || option.dataset.clientId === clientId;
+            const matchesBm = !bmId || !option.dataset.bmId || option.dataset.bmId === bmId;
+            const matchesAd = !adAccountId || !option.dataset.adAccountId || option.dataset.adAccountId === adAccountId;
+            option.hidden = !(matchesClient && matchesBm && matchesAd);
+        });
+        if (datasetSelect.selectedOptions[0]?.hidden) {
+            datasetSelect.value = '';
         }
     }
 

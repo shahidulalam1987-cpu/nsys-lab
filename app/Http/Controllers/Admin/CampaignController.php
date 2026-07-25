@@ -8,6 +8,7 @@ use App\Models\BusinessManager;
 use App\Models\Campaign;
 use App\Models\Client;
 use App\Models\ClientPage;
+use App\Models\Dataset;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -28,7 +29,7 @@ class CampaignController extends Controller
             'search' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $query = Campaign::with(['businessManager', 'adAccount', 'client', 'page'])
+        $query = Campaign::with(['businessManager', 'adAccount', 'client', 'page', 'dataset'])
             ->when($filters['business_manager_id'] ?? null, fn ($query, $id) => $query->where('business_manager_id', $id))
             ->when($filters['ad_account_id'] ?? null, fn ($query, $id) => $query->where('ad_account_id', $id))
             ->when($filters['client_id'] ?? null, fn ($query, $id) => $query->where('client_id', $id))
@@ -80,7 +81,7 @@ class CampaignController extends Controller
 
     public function show(Campaign $campaign)
     {
-        $campaign->load(['businessManager', 'adAccount', 'client', 'page', 'dailyPerformanceReports']);
+        $campaign->load(['businessManager', 'adAccount', 'client', 'page', 'dataset', 'dailyPerformanceReports']);
         $reports = $campaign->dailyPerformanceReports->sortByDesc('report_date');
         $totalSpend = (float) $reports->sum('spend');
 
@@ -130,6 +131,7 @@ class CampaignController extends Controller
             'adAccounts' => AdAccount::with(['businessManager', 'client'])->orderBy('ad_account_name')->get(),
             'clients' => Client::orderBy('company_name')->get(),
             'clientPages' => ClientPage::with(['client', 'businessManager', 'adAccount'])->orderBy('page_name')->get(),
+            'datasets' => Dataset::with(['businessManager', 'adAccount', 'client'])->orderBy('dataset_name')->get(),
             'objectives' => Campaign::OBJECTIVES,
             'statuses' => Campaign::STATUSES,
         ];
@@ -144,6 +146,7 @@ class CampaignController extends Controller
             'ad_account_id' => ['required', 'exists:ad_accounts,id'],
             'client_id' => ['required', 'exists:clients,id'],
             'client_page_id' => ['required', 'exists:client_pages,id'],
+            'dataset_id' => ['nullable', 'exists:datasets,id'],
             'objective' => ['required', Rule::in(array_keys(Campaign::OBJECTIVES))],
             'status' => ['required', Rule::in(array_keys(Campaign::STATUSES))],
             'start_date' => ['nullable', 'date'],
@@ -183,6 +186,17 @@ class CampaignController extends Controller
             throw ValidationException::withMessages([
                 'client_page_id' => 'Selected page is linked with a different ad account.',
             ]);
+        }
+
+        $dataset = ! empty($data['dataset_id']) ? Dataset::find($data['dataset_id']) : null;
+        if ($dataset && $dataset->business_manager_id && (int) $dataset->business_manager_id !== (int) $data['business_manager_id']) {
+            throw ValidationException::withMessages(['dataset_id' => 'Selected Pixel/Dataset is linked with a different BM.']);
+        }
+        if ($dataset && $dataset->ad_account_id && (int) $dataset->ad_account_id !== (int) $data['ad_account_id']) {
+            throw ValidationException::withMessages(['dataset_id' => 'Selected Pixel/Dataset is linked with a different ad account.']);
+        }
+        if ($dataset && $dataset->client_id && (int) $dataset->client_id !== (int) $data['client_id']) {
+            throw ValidationException::withMessages(['dataset_id' => 'Selected Pixel/Dataset is linked with a different client.']);
         }
 
         $data['daily_budget'] = $data['daily_budget'] ?? 0;

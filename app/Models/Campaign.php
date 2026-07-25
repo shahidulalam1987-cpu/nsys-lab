@@ -34,6 +34,7 @@ class Campaign extends Model
         'ad_account_id',
         'client_id',
         'client_page_id',
+        'dataset_id',
         'objective',
         'status',
         'start_date',
@@ -71,6 +72,11 @@ class Campaign extends Model
     public function page()
     {
         return $this->belongsTo(ClientPage::class, 'client_page_id');
+    }
+
+    public function dataset()
+    {
+        return $this->belongsTo(Dataset::class);
     }
 
     public function assignments()

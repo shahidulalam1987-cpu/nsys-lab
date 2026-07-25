@@ -48,7 +48,7 @@ class LegacyMigrationGapCoverageTest extends TestCase
             '/admin/payment-providers' => 'Payment Providers',
             '/admin/ad-account-pages' => 'Ad Account Page Mapping',
             '/admin/ad-account-cards' => 'Ad Account Card Mapping',
-            '/admin/datasets' => 'Datasets',
+            '/admin/datasets' => 'Pixels & Datasets',
             '/admin/provider-transactions' => 'Provider Transactions',
             '/admin/provider-fees' => 'Provider Fee Tracking',
             '/admin/ad-account-billing-history' => 'Billing History',
@@ -104,10 +104,13 @@ class LegacyMigrationGapCoverageTest extends TestCase
         $this->actingAs($admin)->post('/admin/datasets', [
             'dataset_name' => 'Main Pixel',
             'dataset_id' => 'pixel-1001',
+            'business_manager_id' => $bm->id,
             'ad_account_id' => $account->id,
             'client_id' => $client->id,
             'client_page_id' => $page->id,
             'platform' => 'Meta',
+            'event_source_type' => 'website',
+            'domain_url' => 'https://example.com',
             'status' => 'active',
         ])->assertSessionHasNoErrors();
 
@@ -119,7 +122,20 @@ class LegacyMigrationGapCoverageTest extends TestCase
             'source' => 'manual',
         ])->assertSessionHasNoErrors();
 
-        $this->assertTrue(Dataset::where('dataset_id', 'pixel-1001')->where('client_page_id', $page->id)->exists());
+        $dataset = Dataset::where('dataset_id', 'pixel-1001')->where('client_page_id', $page->id)->firstOrFail();
+        $this->assertSame($bm->id, $dataset->business_manager_id);
+        $this->actingAs($admin)->post('/admin/campaigns/' . $campaign->id . '/update', [
+            'campaign_name' => $campaign->campaign_name,
+            'campaign_id' => $campaign->campaign_id,
+            'business_manager_id' => $bm->id,
+            'ad_account_id' => $account->id,
+            'client_id' => $client->id,
+            'client_page_id' => $page->id,
+            'dataset_id' => $dataset->id,
+            'objective' => 'sales',
+            'status' => 'active',
+        ])->assertRedirect('/admin/campaigns/' . $campaign->id);
+        $this->assertSame($dataset->id, $campaign->fresh()->dataset_id);
         $this->assertDatabaseHas('meta_spend_snapshots', [
             'campaign_id' => $campaign->id,
             'client_id' => $client->id,

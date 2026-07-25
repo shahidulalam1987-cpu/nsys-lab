@@ -103,6 +103,7 @@ class PermissionRouteRegistry
                 'items' => [
                     ['key' => 'business_managers', 'label' => 'Business Managers', 'url' => '/admin/business-managers', 'active' => ['/admin/business-managers*'], 'permissions' => ['business_managers.view']],
                     ['key' => 'ad_accounts', 'label' => 'Ad Accounts', 'url' => '/admin/ad-accounts', 'active' => ['/admin/ad-accounts*'], 'permissions' => ['ad_accounts.view'], 'badge' => 'ad_account_billing', 'badge_danger' => true],
+                    ['key' => 'datasets', 'label' => 'Pixels & Datasets', 'url' => '/admin/datasets', 'active' => ['/admin/datasets*'], 'permissions' => ['campaigns.view']],
                     ['key' => 'pages', 'label' => 'Pages', 'url' => '/admin/client-pages', 'active' => ['/admin/client-pages*'], 'permissions' => ['pages.view']],
                     ['key' => 'campaigns', 'label' => 'Campaigns', 'url' => '/admin/campaigns', 'active' => ['/admin/campaigns*'], 'permissions' => ['campaigns.view']],
                     ['key' => 'ad_account_ledger', 'label' => 'Ad Account Ledger', 'url' => '/admin/ad-account-ledger', 'active' => ['/admin/ad-account-ledger*'], 'permissions' => ['ad_account_ledger.view']],
