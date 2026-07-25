@@ -51,6 +51,30 @@ class ClientDailyStatementTest extends TestCase
         $response->assertSee('Final Total Due: 45228.45 BDT');
     }
 
+    public function test_daily_statement_form_uses_bangladesh_today_and_latest_snapshot_defaults(): void
+    {
+        $this->travelTo('2026-07-25 19:30:00');
+        [$client, $campaign] = $this->campaign(['company_name' => 'Mehedi Bedsheet']);
+        MetaSpendSnapshot::create([
+            'campaign_id' => $campaign->id,
+            'ad_account_id' => $campaign->ad_account_id,
+            'client_id' => $client->id,
+            'client_page_id' => $campaign->client_page_id,
+            'snapshot_date' => '2026-07-25',
+            'spend_usd' => 4009.29,
+            'orders' => 0,
+            'source' => 'daily_closing',
+        ]);
+
+        $response = $this->actingAs($this->admin())->get('/admin/client-fund/daily-statement');
+
+        $response->assertOk();
+        $response->assertSee('value="2026-07-26"', false);
+        $response->assertSee('data-previous-spend="4009.29"', false);
+        $response->assertSee('Current Lifetime Spend USD');
+        $response->assertSee('Previous Lifetime Spend USD');
+    }
+
     public function test_saving_daily_statement_creates_snapshot_performance_and_ads_due(): void
     {
         $this->travelTo('2026-07-26 13:00:00');

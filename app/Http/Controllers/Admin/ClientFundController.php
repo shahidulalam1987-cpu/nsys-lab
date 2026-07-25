@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Campaign;
 use App\Models\Client;
 use App\Models\ClientPage;
+use App\Models\MetaSpendSnapshot;
 use App\Services\ClientDailyStatementService;
 use App\Services\ClientFundDashboardService;
 use Illuminate\Http\Request;
@@ -179,7 +180,7 @@ class ClientFundController extends Controller
         }
 
         return array_merge([
-            'statement_date' => now()->toDateString(),
+            'statement_date' => now('Asia/Dhaka')->toDateString(),
             'orders' => 0,
         ], $data);
     }
@@ -189,11 +190,19 @@ class ClientFundController extends Controller
         $campaigns = Campaign::with(['client', 'page'])
             ->orderBy('campaign_name')
             ->get();
+        $latestSnapshots = MetaSpendSnapshot::query()
+            ->whereIn('campaign_id', $campaigns->pluck('id'))
+            ->orderByDesc('snapshot_date')
+            ->orderByDesc('id')
+            ->get()
+            ->unique('campaign_id')
+            ->keyBy('campaign_id');
 
         return [
             'clients' => Client::orderBy('company_name')->get(),
             'pages' => ClientPage::orderBy('page_name')->get(),
             'campaigns' => $campaigns,
+            'latestSnapshots' => $latestSnapshots,
         ];
     }
 }
