@@ -38,7 +38,6 @@
                     @endforeach
                 </select>
             </label>
-            <label>Page Search<br><input type="text" id="campaign-page-search" placeholder="Type page name"></label>
             <label>Page<br>
                 <select name="client_page_id" id="campaign-page" required>
                     <option value="">Select Page</option>
@@ -48,6 +47,7 @@
                         </option>
                     @endforeach
                 </select>
+                <small style="color:var(--muted);display:block;margin-top:4px;">Filtered automatically by selected client, BM, and ad account.</small>
             </label>
             <label>Pixel / Dataset<br>
                 <select name="dataset_id" id="campaign-dataset">
@@ -74,7 +74,13 @@
                 </select>
             </label>
             <label>Start Date<br><input type="date" name="start_date" value="{{ old('start_date', $campaign?->start_date?->toDateString()) }}"></label>
-            <label>End Date<br><input type="date" name="end_date" value="{{ old('end_date', $campaign?->end_date?->toDateString()) }}"></label>
+            <label>End Date<br>
+                <input type="date" name="end_date" id="campaign-end-date" value="{{ old('end_date', $campaign?->end_date?->toDateString()) }}">
+                <span style="display:flex;align-items:center;gap:6px;margin-top:6px;color:var(--muted);font-size:12px;">
+                    <input type="checkbox" id="campaign-ongoing" style="width:auto;margin:0;" @checked(! old('end_date', $campaign?->end_date?->toDateString()))>
+                    Ongoing / No end date
+                </span>
+            </label>
             <label>Daily Budget (USD)<br><input type="number" step="0.01" min="0" name="daily_budget" value="{{ old('daily_budget', $campaign?->daily_budget ?? 0) }}"></label>
             <label>Lifetime Budget (USD)<br><input type="number" step="0.01" min="0" name="lifetime_budget" value="{{ old('lifetime_budget', $campaign?->lifetime_budget ?? 0) }}"></label>
         </div>
@@ -91,8 +97,9 @@
     const adAccountSelect = document.getElementById('campaign-ad-account');
     const clientSelect = document.getElementById('campaign-client');
     const pageSelect = document.getElementById('campaign-page');
-    const pageSearch = document.getElementById('campaign-page-search');
     const datasetSelect = document.getElementById('campaign-dataset');
+    const endDateInput = document.getElementById('campaign-end-date');
+    const ongoingCheckbox = document.getElementById('campaign-ongoing');
 
     function filterCampaignRelations() {
         const bmId = bmSelect.value;
@@ -100,7 +107,6 @@
         const adAccountId = adAccountSelect.value;
         const adAccountClientId = adAccountOption?.dataset.clientId || '';
         const clientId = clientSelect.value;
-        const pageTerm = pageSearch.value.trim().toLowerCase();
 
         adAccountSelect.querySelectorAll('option[data-bm-id]').forEach((option) => {
             option.hidden = bmId && option.dataset.bmId !== bmId;
@@ -123,8 +129,7 @@
             const matchesClient = !clientId || option.dataset.clientId === clientId;
             const matchesBm = !bmId || !option.dataset.bmId || option.dataset.bmId === bmId;
             const matchesAd = !adAccountId || !option.dataset.adAccountId || option.dataset.adAccountId === adAccountId;
-            const matchesTerm = !pageTerm || option.dataset.pageName.includes(pageTerm);
-            option.hidden = !(matchesClient && matchesBm && matchesAd && matchesTerm);
+            option.hidden = !(matchesClient && matchesBm && matchesAd);
         });
         if (pageSelect.selectedOptions[0]?.hidden) {
             pageSelect.value = '';
@@ -144,6 +149,13 @@
     bmSelect.addEventListener('change', filterCampaignRelations);
     adAccountSelect.addEventListener('change', filterCampaignRelations);
     clientSelect.addEventListener('change', filterCampaignRelations);
-    pageSearch.addEventListener('input', filterCampaignRelations);
+    ongoingCheckbox.addEventListener('change', () => {
+        if (ongoingCheckbox.checked) {
+            endDateInput.value = '';
+        }
+
+        endDateInput.disabled = ongoingCheckbox.checked;
+    });
+    endDateInput.disabled = ongoingCheckbox.checked;
     filterCampaignRelations();
 </script>
