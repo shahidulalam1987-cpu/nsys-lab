@@ -268,8 +268,9 @@ class EnterpriseMarketingOperationsModuleTest extends TestCase
         $this->actingAs($admin)
             ->get('/admin/marketing-operations')
             ->assertOk()
-            ->assertSee('Moderator Operations')
-            ->assertSee('Ad Manager Operations')
+            ->assertSee('Client Daily Statement')
+            ->assertDontSee('Moderator Operations')
+            ->assertDontSee('Ad Manager Operations')
             ->assertSee('Auditor Operations')
             ->assertSee('Monitor Operations')
             ->assertSee('Agency Review')
@@ -279,6 +280,8 @@ class EnterpriseMarketingOperationsModuleTest extends TestCase
 
         $this->actingAs($admin)->get('/admin/marketing-operations/moderator_order/create')->assertOk();
         $this->actingAs($admin)->get('/admin/marketing-operations/ad_manager_spend/create')->assertOk();
+        $this->actingAs($admin)->get('/admin/marketing-operations/moderator/operations')->assertOk();
+        $this->actingAs($admin)->get('/admin/marketing-operations/ad-manager/operations')->assertOk();
     }
 
     private function scope(): array

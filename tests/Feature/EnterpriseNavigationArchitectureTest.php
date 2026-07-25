@@ -38,9 +38,11 @@ class EnterpriseNavigationArchitectureTest extends TestCase
 
         $response->assertOk()
             ->assertSee('Agency Operations')
-            ->assertSee('/admin/marketing-operations/moderator/operations', false)
-            ->assertSee('/admin/employee-submissions', false)
+            ->assertSee('/admin/client-fund/daily-statement', false)
             ->assertSee('/admin/daily-reports', false)
+            ->assertDontSee('Moderator Operations')
+            ->assertDontSee('Ad Manager Operations')
+            ->assertDontSee('Employee Submissions')
             ->assertDontSee('Legacy Meta Tools')
             ->assertDontSee('Facebook Dashboard');
     }

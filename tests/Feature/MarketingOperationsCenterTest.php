@@ -157,13 +157,16 @@ class MarketingOperationsCenterTest extends TestCase
             ->get('/admin/marketing-operations')
             ->assertOk()
             ->assertSee('Agency Operations')
-            ->assertSee('Moderator Operations')
-            ->assertSee('Ad Manager Operations')
+            ->assertSee('Client Daily Statement')
+            ->assertDontSee('Moderator Operations')
+            ->assertDontSee('Ad Manager Operations')
             ->assertDontSee('Marketing Operations')
             ->assertDontSee('>Facebook<', false)
             ->assertDontSee('>TikTok<', false);
 
         $this->actingAs($admin)->get('/admin/daily-reports')->assertOk();
+        $this->actingAs($admin)->get('/admin/marketing-operations/moderator/operations')->assertOk();
+        $this->actingAs($admin)->get('/admin/marketing-operations/ad-manager/operations')->assertOk();
         $this->actingAs($admin)->get('/admin/tiktok')->assertNotFound();
     }
 

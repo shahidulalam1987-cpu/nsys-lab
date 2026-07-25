@@ -2,7 +2,7 @@
 
 @section('content')
     <h1>Agency Operations</h1>
-    <p>Central operations center for employee submissions, verification, review, and performance reporting.</p>
+    <p>Central operations center for admin-entered daily performance, review, and reporting.</p>
 
     <div class="stats-grid">
         <div class="stat-card"><p>Pending Review</p><h2>{{ number_format($summary['pending']) }}</h2></div>
@@ -33,14 +33,14 @@
             <div class="stat-card"><p>Missing Reports</p><h2>{{ number_format(($enterpriseSummary['missing_moderator_reports'] ?? 0) + ($enterpriseSummary['missing_ad_reports'] ?? 0)) }}</h2></div>
             <div class="stat-card"><p>Submission %</p><h2>{{ number_format($submissionPercent, 2) }}%</h2></div>
         </div>
-        <p>Moderator and Ad Manager submission windows are controlled from Agency Operations Settings.</p>
+        <p>Admin Daily Statement is the current primary flow for daily client spend, orders, due, and advance tracking.</p>
     </div>
 
     <div class="card">
         <h2>Operations Queue</h2>
         <div style="display:flex;flex-wrap:wrap;gap:10px;">
-            <a class="btn" href="/admin/marketing-operations/moderator/operations">Moderator Operations</a>
-            <a class="btn" href="/admin/marketing-operations/ad-manager/operations">Ad Manager Operations</a>
+            <a class="btn" href="/admin/client-fund/daily-statement">Client Daily Statement</a>
+            <a class="btn" href="/admin/daily-reports">Daily Performance</a>
             <a class="btn" href="/admin/marketing-operations/auditor/operations">Auditor Operations</a>
             <a class="btn" href="/admin/marketing-operations/monitor/operations">Monitor Operations</a>
             <a class="btn" href="/admin/marketing-operations/agency">Agency Review</a>
