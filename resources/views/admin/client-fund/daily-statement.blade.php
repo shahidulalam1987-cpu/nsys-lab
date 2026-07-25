@@ -24,23 +24,30 @@
 
         .statement-workflow {
             display: grid;
-            gap: 10px;
+            gap: 8px;
             grid-template-columns: repeat(3, minmax(0, 1fr));
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
 
         .statement-step {
             background: rgba(59, 130, 246, 0.08);
             border: 1px solid rgba(96, 165, 250, 0.22);
-            border-radius: 10px;
-            padding: 14px;
+            border-radius: 8px;
+            padding: 10px 12px;
         }
 
         .statement-step strong {
             color: #e5edff;
             display: block;
-            font-size: 15px;
-            margin-bottom: 4px;
+            font-size: 13px;
+            line-height: 1.3;
+            margin-bottom: 3px;
+        }
+
+        .statement-step .statement-muted {
+            display: block;
+            font-size: 11px;
+            line-height: 1.35;
         }
 
         .statement-form-grid label {
