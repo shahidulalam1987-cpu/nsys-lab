@@ -105,6 +105,7 @@
         <div class="fund-actions">
             <a class="btn" href="/admin/salary-payments/create">Receive Payment</a>
             <a class="btn" href="/admin/salary-payments/pending">Pending Payments</a>
+            <a class="btn" href="/admin/client-fund/daily-statement">Daily Statement</a>
             <a class="btn" href="/admin/client-fund/export/csv">Export CSV</a>
             <a class="btn" href="/admin/client-fund/export/excel">Export Excel</a>
         </div>

@@ -221,6 +221,8 @@ Route::middleware(['auth', 'admin', 'department.permission'])->group(function ()
     Route::post('/admin/employee-notices/{notice}/delete', [EmployeeNoticeController::class, 'destroy']);
 
     Route::get('/admin/client-fund', [ClientFundController::class, 'dashboard']);
+    Route::get('/admin/client-fund/daily-statement', [ClientFundController::class, 'dailyStatement']);
+    Route::post('/admin/client-fund/daily-statement', [ClientFundController::class, 'saveDailyStatement']);
     Route::get('/admin/client-fund/export/csv', [ClientFundController::class, 'exportCsv']);
     Route::get('/admin/client-fund/export/excel', [ClientFundController::class, 'exportExcel']);
     Route::get('/admin/client-fund/{client}/details', [ClientFundController::class, 'show']);

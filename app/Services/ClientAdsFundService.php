@@ -44,6 +44,7 @@ class ClientAdsFundService
             'description' => $description,
             'adjustment_description' => 'Facebook Ads Spend Adjustment - performance report updated.',
             'created_by' => auth()->id(),
+            'allow_negative' => true,
             'balance_error' => 'Insufficient Facebook ads fund balance.',
         ]);
     }

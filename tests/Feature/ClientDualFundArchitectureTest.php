@@ -225,18 +225,19 @@ class ClientDualFundArchitectureTest extends TestCase
         $this->assertSame(2, ClientFundLedger::where('client_id', $client->id)->count());
     }
 
-    public function test_performance_report_is_blocked_when_ads_fund_is_insufficient(): void
+    public function test_performance_report_can_create_negative_ads_fund_due(): void
     {
-        [, $campaign] = $this->campaign();
+        [$client, $campaign] = $this->campaign();
 
         $this->actingAs($this->admin())->post('/admin/daily-reports', [
             'campaign_id' => $campaign->id,
             'report_date' => '2026-06-20',
             'spend' => 100,
             'orders' => 10,
-        ])->assertSessionHasErrors('amount');
+        ])->assertRedirect();
 
-        $this->assertDatabaseCount('daily_performance_reports', 0);
+        $this->assertDatabaseCount('daily_performance_reports', 1);
+        $this->assertSame(-15000.0, $client->fresh()->ads_fund_balance());
     }
 
     private function admin(): User
