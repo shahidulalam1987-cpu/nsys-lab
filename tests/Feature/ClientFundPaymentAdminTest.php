@@ -101,6 +101,39 @@ class ClientFundPaymentAdminTest extends TestCase
         $create->assertSee('Save Payment');
         $create->assertSee('Transaction ID / Reference');
         $create->assertSee('Payment Date');
+        $create->assertSee('NSYS Receiving Account (BDT)');
+        $create->assertSee('No active BDT receiving account found.');
+        $create->assertSee('Open Finance Accounts');
+    }
+
+    public function test_client_payment_create_shows_active_bdt_receiving_accounts(): void
+    {
+        $admin = $this->admin();
+
+        $bdtAccount = FinanceAccount::create([
+            'account_type' => 'bank',
+            'account_name' => 'NSYS Agency Bank',
+            'currency' => 'BDT',
+            'current_balance' => 25000,
+            'status' => 'active',
+        ]);
+
+        FinanceAccount::create([
+            'account_type' => 'binance',
+            'account_name' => 'USD Funding Account',
+            'currency' => 'USD',
+            'current_balance' => 100,
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($admin)->get('/admin/salary-payments/create');
+
+        $response->assertOk()
+            ->assertSee('NSYS Receiving Account (BDT)')
+            ->assertSee('Select the NSYS bank, cash, or wallet account where this client payment was received.')
+            ->assertSee($bdtAccount->account_name)
+            ->assertDontSee('No active BDT receiving account found.')
+            ->assertDontSee('USD Funding Account');
     }
 
     public function test_client_fund_summary_counts_payments_across_selected_month(): void

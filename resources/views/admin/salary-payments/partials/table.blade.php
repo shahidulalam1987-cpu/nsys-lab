@@ -62,13 +62,16 @@
                     @if($mode === 'pending' && $payment->status === 'pending')
                         <form method="POST" action="/admin/salary-payments/{{ $payment->id }}/approve" style="display:inline;">
                             @csrf
-                            <select name="finance_account_id" required>
-                                <option value="">Receive Into</option>
+                            <select name="finance_account_id" required @disabled(($financeAccounts ?? collect())->isEmpty()) title="Select the NSYS BDT account where this client payment was received.">
+                                <option value="">NSYS BDT Account</option>
                                 @foreach($financeAccounts ?? [] as $account)
                                     <option value="{{ $account->id }}">{{ $account->account_name }} - BDT {{ number_format((float) $account->current_balance, 2) }}</option>
                                 @endforeach
                             </select>
-                            <button class="btn-success" type="submit">Approve</button>
+                            <button class="btn-success" type="submit" @disabled(($financeAccounts ?? collect())->isEmpty())>Approve</button>
+                            @if(($financeAccounts ?? collect())->isEmpty())
+                                <a class="btn" href="/admin/finance/accounts">Add BDT Account</a>
+                            @endif
                         </form>
                         <form method="POST" action="/admin/salary-payments/{{ $payment->id }}/reject" style="display:inline;">
                             @csrf

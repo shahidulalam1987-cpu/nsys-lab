@@ -17,6 +17,18 @@
     @endif
 
     <div class="card" style="margin-top:20px;">
+        @if($financeAccounts->isEmpty())
+            <div class="card" style="margin-bottom:18px; border-color:rgba(245,158,11,.55); background:rgba(245,158,11,.08);">
+                <strong>No active BDT receiving account found.</strong>
+                <p style="margin:8px 0 0;color:#cbd5e1;">
+                    Add or activate a BDT Finance Account first. Client payments are recorded into an NSYS receiving account so the finance ledger can stay balanced.
+                </p>
+                <p style="margin:12px 0 0;">
+                    <a class="btn" href="/admin/finance/accounts">Open Finance Accounts</a>
+                </p>
+            </div>
+        @endif
+
         <form method="POST" action="/admin/salary-payments" enctype="multipart/form-data">
             @csrf
 
@@ -37,13 +49,14 @@
             </p>
 
             <p>Amount (BDT)<br><input type="number" step="0.01" min="1" name="amount" value="{{ old('amount') }}" required></p>
-            <p>Receive Into Finance Account<br>
-                <select name="finance_account_id" required>
+            <p>NSYS Receiving Account (BDT)<br>
+                <select name="finance_account_id" required @disabled($financeAccounts->isEmpty())>
                     <option value="">Select BDT Account</option>
                     @foreach($financeAccounts as $account)
                         <option value="{{ $account->id }}" @selected((string) old('finance_account_id') === (string) $account->id)>{{ $account->account_name }} - BDT {{ number_format((float) $account->current_balance, 2) }}</option>
                     @endforeach
                 </select>
+                <br><small style="color:#94a3b8;">Select the NSYS bank, cash, or wallet account where this client payment was received.</small>
             </p>
 
             <p>Payment Method<br>
